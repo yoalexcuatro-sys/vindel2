@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from 'react';
 import {
   User,
   createUserWithEmailAndPassword,
@@ -56,20 +56,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const profileFetchedRef = useRef<string | null>(null);
 
   // Fetch user profile from Firestore with retry for newly created profiles
-  const fetchUserProfile = async (uid: string, retries = 3): Promise<UserProfile | null> => {
+  const fetchUserProfile = useCallback(async (uid: string, retries = 5): Promise<UserProfile | null> => {
     try {
       const docRef = doc(db, 'users', uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const profile = docSnap.data() as UserProfile;
         setUserProfile(profile);
+        profileFetchedRef.current = uid;
         return profile;
       } else if (retries > 0) {
         // Profile might not be synced yet after registration, retry after a short delay
         console.log(`Profile not found, retrying... (${retries} attempts left)`);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 800));
         return fetchUserProfile(uid, retries - 1);
       } else {
         console.log('No user profile found for:', uid);
@@ -81,16 +83,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUserProfile(null);
       return null;
     }
-  };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       console.log('Auth state changed:', firebaseUser?.email || 'no user');
       setUser(firebaseUser);
       if (firebaseUser) {
-        // Only fetch profile if we don't already have it for this user
-        // This prevents race conditions when signUp already set the profile
-        if (!userProfile || userProfile.uid !== firebaseUser.uid) {
+        // Only fetch profile if we haven't already fetched it for this user
+        if (profileFetchedRef.current !== firebaseUser.uid) {
           try {
             await fetchUserProfile(firebaseUser.uid);
           } catch (error) {
@@ -99,12 +100,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else {
         setUserProfile(null);
+        profileFetchedRef.current = null;
       }
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [userProfile]);
+  }, [fetchUserProfile]);
 
   const signUp = async (email: string, password: string, userData: Partial<UserProfile>) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -145,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     setUserProfile(newProfile);
+    profileFetchedRef.current = user.uid;
   };
 
   const signIn = async (email: string, password: string) => {
@@ -186,12 +189,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       setUserProfile(newProfile);
+      profileFetchedRef.current = user.uid;
+    } else {
+      // Profile exists, set it
+      setUserProfile(docSnap.data() as UserProfile);
+      profileFetchedRef.current = user.uid;
     }
   };
 
   const logout = async () => {
     await signOut(auth);
     setUserProfile(null);
+    profileFetchedRef.current = null;
   };
 
   const resetPassword = async (email: string) => {
