@@ -195,7 +195,7 @@ const SUBCATEGORIES: Record<string, SubcategoryItem[]> = {
 };
 
 // Tipos de campos para formularios dinámicos
-type FieldType = 'text' | 'number' | 'select' | 'multiselect';
+type FieldType = 'text' | 'number' | 'select' | 'multiselect' | 'tire-size';
 
 interface FormField {
   id: string;
