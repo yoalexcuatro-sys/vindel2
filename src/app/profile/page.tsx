@@ -1,51 +1,76 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { currentUser } from '@/data/user';
-import { getProducts, Product, saveProducts } from '@/lib/storage';
+import { useAuth } from '@/lib/auth-context';
+import { getUserProducts, Product, deleteProduct } from '@/lib/products-service';
+import ProtectedRoute from '@/components/ProtectedRoute';
 import Link from 'next/link';
+import Image from 'next/image';
 import { 
   Star, Settings, Heart, User, Package, Clock, CheckCircle2, 
   ChevronRight, LayoutGrid, LogOut, BadgeCheck, Pencil, 
   FileText, Download, Megaphone, TrendingUp, Trash2, Building2, 
   Eye, Euro, BarChart3, ShoppingBag, ArrowUpRight, ArrowDownRight,
-  Receipt, Activity, Bell, Lock, List, Ban, AlertCircle
+  Receipt, Activity, Bell, Lock, List, Ban, AlertCircle, Loader2
 } from 'lucide-react';
 
 type ViewType = 'dashboard' | 'products' | 'profile' | 'favorites' | 'settings' | 'invoices' | 'promotion' | 'analytics';
 
 export default function ProfilePage() {
+  const { user, userProfile, logout, loading: authLoading } = useAuth();
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
   const [productFilter, setProductFilter] = useState<'active' | 'pending' | 'sold' | 'rejected'>('active');
   const [favoritesViewMode, setFavoritesViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedCardTheme, setSelectedCardTheme] = useState<number>(1);
   const [products, setProducts] = useState<Product[]>([]);
-  const user = currentUser;
-  const isBusiness = user.accountType === 'business';
+  const [productsLoading, setProductsLoading] = useState(true);
+  
+  const isBusiness = userProfile?.accountType === 'business';
 
   useEffect(() => {
-    setProducts(getProducts());
+    const loadProducts = async () => {
+      if (user) {
+        setProductsLoading(true);
+        try {
+          const userProducts = await getUserProducts(user.uid);
+          setProducts(userProducts);
+        } catch (error) {
+          console.error('Error loading products:', error);
+        } finally {
+          setProductsLoading(false);
+        }
+      }
+    };
+    loadProducts();
+    
     const savedTheme = localStorage.getItem('user_card_theme');
     if (savedTheme) setSelectedCardTheme(parseInt(savedTheme));
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
         localStorage.setItem('user_card_theme', selectedCardTheme.toString());
-        // Dispatch event for other components to update
         window.dispatchEvent(new Event('themeChange'));
     }
   }, [selectedCardTheme]);
 
-  const handleDeleteProduct = (productId: number) => {
+  const handleDeleteProduct = async (productId: string) => {
     if (confirm('Ești sigur că vrei să ștergi acest anunț?')) {
-      const updated = products.filter(p => p.id !== productId);
-      saveProducts(updated);
-      setProducts(updated);
+      try {
+        await deleteProduct(productId);
+        setProducts(products.filter(p => p.id !== productId));
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        alert('Nu s-a putut șterge anunțul. Încearcă din nou.');
+      }
     }
   };
 
-  const myProducts = products.filter(p => p.seller.id === 101);
+  const handleLogout = async () => {
+    await logout();
+  };
+
+  const myProducts = products;
 
   // Sidebar items
   const menuItems = [
@@ -58,6 +83,26 @@ export default function ProfilePage() {
     { id: 'promotion', label: 'Promovare', icon: Megaphone },
     { id: 'settings', label: 'Setări', icon: Settings },
   ];
+
+  // Show loading while auth is checking
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#13C1AC]" />
+      </div>
+    );
+  }
+
+  // Redirect handled by ProtectedRoute, but show nothing if no user
+  if (!user || !userProfile) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#13C1AC]" />
+        </div>
+      </ProtectedRoute>
+    );
+  }
 
   return (
     <div className={isBusiness ? 'min-h-screen bg-slate-900' : 'min-h-screen bg-gray-50 relative'}>
@@ -97,19 +142,27 @@ export default function ProfilePage() {
                     <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center mb-3 ring-4 ring-white/20 shadow-lg">
                       <Building2 className="w-9 h-9 text-white" />
                     </div>
-                    <h2 className="font-bold text-white text-lg">{user.businessName}</h2>
-                    <p className="text-slate-400 text-sm mt-1">{user.cui}</p>
+                    <h2 className="font-bold text-white text-lg">{userProfile.businessName}</h2>
+                    <p className="text-slate-400 text-sm mt-1">{userProfile.cui}</p>
                   </>
                 ) : (
                   <>
                     <div className="relative w-20 h-20 mx-auto mb-3">
-                      <img src={user.avatar} alt="" className="w-20 h-20 rounded-full object-cover ring-4 ring-gray-100 shadow-md" />
+                      {userProfile.photoURL ? (
+                        <Image src={userProfile.photoURL} alt="" width={80} height={80} className="w-20 h-20 rounded-full object-cover ring-4 ring-gray-100 shadow-md" />
+                      ) : (
+                        <div className="w-20 h-20 rounded-full bg-[#13C1AC] flex items-center justify-center ring-4 ring-gray-100 shadow-md">
+                          <span className="text-2xl font-bold text-white">
+                            {(userProfile.displayName || userProfile.email || 'U')[0].toUpperCase()}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <h2 className="font-bold text-gray-900 text-lg">{user.name}</h2>
+                    <h2 className="font-bold text-gray-900 text-lg">{userProfile.displayName || 'Utilizator'}</h2>
                   </>
                 )}
                 
-                {user.verified && (
+                {userProfile.verified && (
                   <span className={`inline-flex items-center gap-1.5 mt-3 px-4 py-1.5 rounded-full text-xs font-semibold ${isBusiness ? 'bg-teal-500/20 text-teal-400' : 'bg-[#13C1AC]/10 text-[#13C1AC] border border-[#13C1AC]/20'}`}>
                     <BadgeCheck className="w-4 h-4" />
                     {isBusiness ? 'Firmă Verificată' : 'Verificat'}
@@ -137,7 +190,10 @@ export default function ProfilePage() {
                 ))}
                 
                 <div className={`pt-4 mt-4 border-t ${isBusiness ? 'border-slate-700' : 'border-gray-100'}`}>
-                  <button className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium ${isBusiness ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}>
+                  <button 
+                    onClick={handleLogout}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium ${isBusiness ? 'text-red-400 hover:bg-red-500/10' : 'text-red-500 hover:bg-red-50'}`}
+                  >
                     <LogOut className="w-5 h-5" />
                     Deconectare
                   </button>
@@ -159,7 +215,7 @@ export default function ProfilePage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h1 className={`text-2xl font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
-                        Salut, {user.name.split(' ')[0]}! 👋
+                        Salut, {(userProfile.displayName || 'Utilizator').split(' ')[0]}! 👋
                       </h1>
                       <p className={`mt-1 ${isBusiness ? 'text-teal-100' : 'text-gray-500'}`}>
                         {isBusiness ? 'Iată performanța afacerii tale' : 'Iată un rezumat al activității tale'}
@@ -273,7 +329,7 @@ export default function ProfilePage() {
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{user.stats.sold}</h3>
+                                <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{userProfile.stats.sold}</h3>
                                 <p className="text-sm font-medium text-gray-500 mt-1">Produse vândute</p>
                             </div>
                         </div>
@@ -292,7 +348,7 @@ export default function ProfilePage() {
                                 </span>
                             </div>
                             <div>
-                                <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{user.stats.favorites}</h3>
+                                <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{userProfile.stats.favorites}</h3>
                                 <p className="text-sm font-medium text-gray-500 mt-1">Aprecieri totale</p>
                             </div>
                         </div>
@@ -312,7 +368,7 @@ export default function ProfilePage() {
                             </div>
                             <div>
                                 <div className="flex items-baseline gap-1">
-                                    <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{user.rating}</h3>
+                                    <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{userProfile.rating}</h3>
                                     <span className="text-sm text-gray-400 font-medium">/ 5.0</span>
                                 </div>
                                 <p className="text-sm font-medium text-gray-500 mt-1">Rating vânzător</p>
@@ -389,7 +445,7 @@ export default function ProfilePage() {
                               
                               <div className="p-4 flex flex-col flex-1">
                                  <h4 className="font-bold text-gray-900 text-base mb-1 line-clamp-1 group-hover:text-teal-600 transition-colors">{product.title}</h4>
-                                 <p className="text-xs text-slate-500 mb-4">Postat de {currentUser.name}</p>
+                                 <p className="text-xs text-slate-500 mb-4">Postat de {userProfile.displayName || 'Utilizator'}</p>
                                  
                                  <div className="flex items-center justify-between mt-auto">
                                     <span className="font-bold text-[#13C1AC] text-xl">{product.price} Lei</span>
@@ -871,7 +927,13 @@ export default function ProfilePage() {
                         
                         <div className="mt-4 flex justify-center md:justify-start">
                           <div className="relative group cursor-pointer">
-                            <img src={user.avatar} alt="Avatar" className="h-24 w-24 rounded-full object-cover group-hover:opacity-75 transition-opacity ring-4 ring-gray-100" />
+                            {userProfile.photoURL ? (
+                              <Image src={userProfile.photoURL} alt="Avatar" width={96} height={96} className="h-24 w-24 rounded-full object-cover group-hover:opacity-75 transition-opacity ring-4 ring-gray-100" />
+                            ) : (
+                              <div className="h-24 w-24 rounded-full bg-[#13C1AC] flex items-center justify-center ring-4 ring-gray-100">
+                                <span className="text-2xl font-bold text-white">{(userProfile.displayName || userProfile.email || 'U')[0].toUpperCase()}</span>
+                              </div>
+                            )}
                             <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-full">
                               <span className="text-xs font-bold text-white bg-black/50 px-2 py-1 rounded">Schimbă</span>
                             </div>
@@ -882,11 +944,11 @@ export default function ProfilePage() {
                       <div className="md:col-span-2 space-y-6">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Nume utilizator</label>
-                          <input type="text" defaultValue={user.name} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-gray-50" />
+                          <input type="text" defaultValue={userProfile.displayName || ''} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-gray-50" />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                          <textarea rows={3} defaultValue={user.bio} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-gray-50" />
+                          <textarea rows={3} defaultValue={userProfile.bio || ''} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-gray-50" />
                           <p className="text-xs text-gray-500 mt-1">Descriere scurtă care va apărea în profilul tău.</p>
                         </div>
                         <div>
@@ -898,7 +960,7 @@ export default function ProfilePage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                               </svg>
                             </div>
-                            <input type="text" defaultValue={user.location} className="block w-full pl-10 rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-gray-50" />
+                            <input type="text" defaultValue={userProfile.location || ''} className="block w-full pl-10 rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-gray-50" />
                           </div>
                         </div>
                       </div>
@@ -917,11 +979,11 @@ export default function ProfilePage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input type="email" defaultValue={user.email} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-white" />
+                            <input type="email" defaultValue={userProfile.email || ''} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-white" />
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
-                            <input type="tel" defaultValue={user.phone} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-white" />
+                            <input type="tel" defaultValue={userProfile.phone || ''} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-white" />
                           </div>
                         </div>
 
@@ -1012,77 +1074,17 @@ export default function ProfilePage() {
 
                 {/* Favorites Grid/List */}
                 <div className="p-8">
-                  <div className={favoritesViewMode === 'grid' ? `grid gap-4 ${selectedCardTheme === 8 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4'}` : "space-y-3"}>
-                    {/* Sample favorite items */}
-                    {[
-                      { id: 1, title: 'iPhone 14 Pro Max', price: '3.500', image: 'https://images.unsplash.com/photo-1678685888221-cda773a3dcdb?w=400', desc: 'Stare perfectă, garanție 12 luni', location: 'București' },
-                      { id: 2, title: 'MacBook Pro M2', price: '6.200', image: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400', desc: '16GB RAM, 512GB SSD, ca nou', location: 'Cluj-Napoca' },
-                      { id: 3, title: 'PlayStation 5', price: '2.100', image: 'https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=400', desc: 'Cu 2 controllere și 3 jocuri', location: 'Timișoara' },
-                    ].map((item) => (
-                      favoritesViewMode === 'grid' ? (
-                        <div key={item.id} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 overflow-hidden group">
-                          <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden">
-                            <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                            <button className="absolute top-2 right-2 p-1.5 bg-white/90 rounded-full shadow-sm text-red-500 hover:scale-110 transition-transform">
-                              <Heart className="h-4 w-4 fill-current" />
-                            </button>
-                          </div>
-                          <div className="p-3">
-                            <div className="flex justify-between items-start mb-1">
-                              <h3 className="text-sm font-bold text-gray-900 group-hover:text-[#13C1AC] transition-colors line-clamp-1">{item.title}</h3>
-                            </div>
-                            <p className="text-xs text-gray-500 mb-2 line-clamp-1">{item.desc}</p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-base font-bold text-gray-900">{item.price} lei</span>
-                              <button className="px-3 py-1.5 bg-[#13C1AC]/10 text-[#13C1AC] font-semibold rounded-lg hover:bg-[#13C1AC] hover:text-white transition-all text-xs">
-                                Contactează
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div key={item.id} className="flex flex-col sm:flex-row bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all group h-auto sm:h-32">
-                          <div className="w-full sm:w-40 h-40 sm:h-full relative bg-gray-100 shrink-0">
-                             <img src={item.image} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-                             <button className="absolute top-2 left-2 p-1.5 bg-white/90 rounded-full shadow-sm text-red-500 hover:scale-110 transition-transform">
-                              <Heart className="h-3.5 w-3.5 fill-current" />
-                            </button>
-                          </div>
-                          <div className="flex-1 p-3 sm:px-4 sm:py-3 flex flex-col justify-between">
-                              <div className="flex justify-between items-start gap-2">
-                                  <div>
-                                    <h3 className="text-base font-bold text-gray-900 group-hover:text-[#13C1AC] transition-colors">{item.title}</h3>
-                                    <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
-                                      <span className="inline-block w-1 h-1 rounded-full bg-[#13C1AC]"></span>
-                                      {item.location}
-                                    </p>
-                                  </div>
-                                  <span className="text-lg font-bold text-gray-900 whitespace-nowrap">{item.price} lei</span>
-                              </div>
-                              
-                              <div className="flex items-end justify-between mt-2">
-                                <p className="text-xs text-gray-600 line-clamp-1 max-w-[60%]">{item.desc}</p>
-                                <button className="px-4 py-1.5 bg-[#13C1AC] text-white font-medium rounded-lg hover:bg-[#0ea896] transition-all text-xs shadow-sm whitespace-nowrap">
-                                  Contactează
-                                </button>
-                              </div>
-                          </div>
-                        </div>
-                      )
-                    ))}
-                  </div>
-
-                  {/* Empty state - uncomment when no favorites */}
-                  {/* <div className="flex flex-col items-center justify-center py-16 text-center">
+                  {/* Empty state - no favorites yet */}
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
                     <div className="h-20 w-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-300">
                       <Heart className="h-10 w-10" />
                     </div>
                     <h3 className="text-lg font-medium text-gray-900">Nu ai favorite încă</h3>
                     <p className="text-gray-500 mt-1 max-w-sm text-sm">Apasă pe inimă pentru a salva produsele care îți plac.</p>
-                    <Link href="/" className="mt-6 px-6 py-2.5 bg-teal-500 text-white rounded-xl font-semibold hover:bg-teal-600 transition-colors">
+                    <Link href="/" className="mt-6 px-6 py-2.5 bg-[#13C1AC] text-white rounded-xl font-semibold hover:bg-[#0ea896] transition-colors">
                       Explorează produse
                     </Link>
-                  </div> */}
+                  </div>
                 </div>
               </div>
             )}
@@ -1094,40 +1096,13 @@ export default function ProfilePage() {
                   <h2 className={`text-xl font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Facturi</h2>
                 </div>
                 
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className={isBusiness ? 'bg-slate-900' : 'bg-gray-50'}>
-                      <tr>
-                        <th className={`px-6 py-3 text-left text-xs font-semibold uppercase ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>ID</th>
-                        <th className={`px-6 py-3 text-left text-xs font-semibold uppercase ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Data</th>
-                        <th className={`px-6 py-3 text-left text-xs font-semibold uppercase ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Descriere</th>
-                        <th className={`px-6 py-3 text-left text-xs font-semibold uppercase ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Sumă</th>
-                        <th className={`px-6 py-3 text-left text-xs font-semibold uppercase ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Status</th>
-                        <th className="px-6 py-3"></th>
-                      </tr>
-                    </thead>
-                    <tbody className={`divide-y ${isBusiness ? 'divide-slate-700' : 'divide-gray-100'}`}>
-                      {[
-                        { id: 'FAC-2026-001', date: '12/01/2026', desc: 'Comision vânzare', amount: '125 lei' },
-                        { id: 'FAC-2026-002', date: '05/01/2026', desc: 'Promovare Premium', amount: '49.99 lei' },
-                      ].map((inv, i) => (
-                        <tr key={i} className={isBusiness ? 'hover:bg-slate-700/50' : 'hover:bg-gray-50'}>
-                          <td className={`px-6 py-4 font-medium ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{inv.id}</td>
-                          <td className={`px-6 py-4 ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>{inv.date}</td>
-                          <td className={`px-6 py-4 ${isBusiness ? 'text-slate-300' : 'text-gray-700'}`}>{inv.desc}</td>
-                          <td className={`px-6 py-4 font-semibold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{inv.amount}</td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${isBusiness ? 'bg-emerald-500/20 text-emerald-400' : 'bg-green-100 text-green-700'}`}>Plătit</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <button className="text-teal-500 hover:underline text-sm font-medium flex items-center gap-1">
-                              <Download className="w-4 h-4" /> PDF
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                {/* Empty state - no invoices yet */}
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className={`h-20 w-20 rounded-full flex items-center justify-center mb-4 ${isBusiness ? 'bg-slate-700 text-slate-500' : 'bg-gray-50 text-gray-300'}`}>
+                    <FileText className="h-10 w-10" />
+                  </div>
+                  <h3 className={`text-lg font-medium ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Nu ai facturi încă</h3>
+                  <p className={`mt-1 max-w-sm text-sm ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Facturile pentru tranzacțiile tale vor apărea aici.</p>
                 </div>
               </div>
             )}

@@ -49,46 +49,8 @@ export default function ChatPage() {
         const parsed = JSON.parse(saved);
         setConversations(parsed);
       } else {
-        // Conversaciones de demo
-        const demoConversations: Conversation[] = [
-          {
-            id: '1',
-            participantId: 201,
-            participantName: 'Maria García',
-            participantAvatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-            productId: 1,
-            productTitle: 'iPhone 14 Pro Max',
-            productImage: 'https://images.unsplash.com/photo-1678685888221-cda773a3dcdb?w=100',
-            productPrice: 3500,
-            messages: [
-              { id: '1', senderId: 201, text: 'Bună! Mai este disponibil iPhone-ul?', timestamp: '10:30', read: true },
-              { id: '2', senderId: 101, text: 'Da, este încă disponibil!', timestamp: '10:32', read: true },
-              { id: '3', senderId: 201, text: 'Perfect! Acceptați 3200 Lei?', timestamp: '10:35', read: false },
-            ],
-            lastMessage: 'Perfect! Acceptați 3200 Lei?',
-            lastMessageTime: '10:35',
-            unreadCount: 1
-          },
-          {
-            id: '2',
-            participantId: 202,
-            participantName: 'Alexandru Pop',
-            participantAvatar: 'https://randomuser.me/api/portraits/men/32.jpg',
-            productId: 2,
-            productTitle: 'MacBook Air M1',
-            productImage: 'https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=100',
-            productPrice: 4500,
-            messages: [
-              { id: '1', senderId: 202, text: 'Salut! Cât de vechi este MacBook-ul?', timestamp: 'Ieri', read: true },
-              { id: '2', senderId: 101, text: 'Are aproximativ 1 an, stare excelentă', timestamp: 'Ieri', read: true },
-            ],
-            lastMessage: 'Are aproximativ 1 an, stare excelentă',
-            lastMessageTime: 'Ieri',
-            unreadCount: 0
-          }
-        ];
-        setConversations(demoConversations);
-        localStorage.setItem('chat_conversations', JSON.stringify(demoConversations));
+        // Sin conversaciones - estado vacío
+        setConversations([]);
       }
     };
     loadConversations();

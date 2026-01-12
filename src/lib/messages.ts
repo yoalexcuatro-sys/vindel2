@@ -3,7 +3,7 @@
 export interface Message {
   id: string;
   conversationId: string;
-  senderId: number;
+  senderId: string | number;
   senderName: string;
   senderAvatar: string;
   content: string;
@@ -13,8 +13,8 @@ export interface Message {
 
 export interface Conversation {
   id: string;
-  participantIds: number[];
-  productId: number;
+  participantIds: (string | number)[];
+  productId: string | number;
   productTitle: string;
   productImage: string;
   productPrice: number;
@@ -82,11 +82,11 @@ export function saveMessage(message: Message) {
 }
 
 export function createOrGetConversation(
-  productId: number,
+  productId: string | number,
   productTitle: string,
   productImage: string,
   productPrice: number,
-  sellerId: number,
+  sellerId: string | number,
   sellerName: string
 ): Conversation {
   const conversations = getConversations();
@@ -96,7 +96,7 @@ export function createOrGetConversation(
   const existing = conversations.find(
     c => c.productId === productId && 
          c.participantIds.includes(currentUserId) && 
-         c.participantIds.includes(sellerId)
+         (c.participantIds.includes(sellerId) || c.participantIds.includes(String(sellerId)))
   );
   
   if (existing) return existing;

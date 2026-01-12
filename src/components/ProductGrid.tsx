@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import ProductCard from './ProductCard';
-import { getProducts, Product } from '@/lib/storage';
+import { getProducts, Product } from '@/lib/products-service';
 
 export default function ProductGrid() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -10,8 +10,18 @@ export default function ProductGrid() {
   const [currentTheme, setCurrentTheme] = useState(1);
 
   useEffect(() => {
-    setProducts(getProducts());
-    setLoading(false);
+    async function loadProducts() {
+      try {
+        const result = await getProducts({}, 20);
+        setProducts(result.products);
+      } catch (error) {
+        console.error('Error loading products:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    loadProducts();
     
     const loadTheme = () => {
       if (typeof window !== 'undefined') {

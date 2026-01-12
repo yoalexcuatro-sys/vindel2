@@ -1,40 +1,56 @@
 'use client';
 
 import { useState, use, useEffect } from 'react';
-import { getProducts, Product } from '@/lib/storage';
+import { getProducts, Product } from '@/lib/products-service';
 import ProductCard from '@/components/ProductCard';
 import { notFound } from 'next/navigation';
-import { MapPin, Star, Calendar, ShieldCheck } from 'lucide-react';
+import { MapPin, Star, Calendar, ShieldCheck, Package } from 'lucide-react';
 
 export default function UserProfile({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<'selling' | 'reviews'>('selling');
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userNotFound, setUserNotFound] = useState(false);
 
   useEffect(() => {
-    setProducts(getProducts());
-    setLoading(false);
-  }, []);
+    async function loadUserProducts() {
+      try {
+        const result = await getProducts({ sellerId: id }, 50);
+        setProducts(result.products);
+        if (result.products.length === 0) {
+          setUserNotFound(true);
+        }
+      } catch (error) {
+        console.error('Error loading user products:', error);
+        setUserNotFound(true);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadUserProducts();
+  }, [id]);
 
-  if (loading) return null;
-
-  // Find user data from products (mocking a user database)
-  const productWithSeller = products.find(p => p.seller.id === parseInt(id));
-  
-  if (!productWithSeller) {
-      // In a real app we'd fetch user by ID directly.
-      // Here if no product matches, user might not exist or has no products.
-      notFound();
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#13C1AC]"></div>
+      </div>
+    );
   }
 
-  const user = productWithSeller.seller;
+  if (userNotFound || products.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <Package className="h-16 w-16 text-gray-300 mb-4" />
+        <h1 className="text-xl font-bold text-gray-900 mb-2">Utilizator negăsit</h1>
+        <p className="text-gray-500">Acest utilizator nu există sau nu are anunțuri.</p>
+      </div>
+    );
+  }
 
-  // Filter products for this specific user
-  const userProducts = products.filter(p => p.seller.id === parseInt(id));
-  
-  // Fake reviews for this user
-  const reviews: any[] = [];
+  // Get user info from first product
+  const user = products[0].seller;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
@@ -63,12 +79,12 @@ export default function UserProfile({ params }: { params: Promise<{ id: string }
                     <div className="flex flex-wrap items-center justify-center md:justify-start text-sm text-gray-500 gap-4 mb-3">
                          <div className="flex items-center">
                             <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                            <span className="font-medium text-gray-900 mr-1">{user.rating}</span>
-                            <span>({user.reviews} valoraciones)</span>
+                            <span className="font-medium text-gray-900 mr-1">{user.rating || 0}</span>
+                            <span>({user.reviews || 0} recenzii)</span>
                          </div>
                          <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-1" />
-                            En Wallapop desde {user.joined}
+                            Pe Vindel din {user.joined || '2024'}
                          </div>
                     </div>
                 </div>
@@ -91,49 +107,32 @@ export default function UserProfile({ params }: { params: Promise<{ id: string }
                     onClick={() => setActiveTab('selling')}
                     className={`flex-1 min-w-[120px] py-4 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === 'selling' ? 'border-[#13C1AC] text-[#13C1AC]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                 >
-                    En venta ({userProducts.length})
+                    În vânzare ({products.length})
                 </button>
                 <button 
                     onClick={() => setActiveTab('reviews')}
                     className={`flex-1 min-w-[120px] py-4 text-sm font-medium text-center border-b-2 transition-colors ${activeTab === 'reviews' ? 'border-[#13C1AC] text-[#13C1AC]' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                 >
-                    Valoraciones ({user.reviews})
+                    Recenzii ({user.reviews || 0})
                 </button>
             </div>
 
             <div className="p-6">
                 {activeTab === 'selling' && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                        {userProducts.map(product => (
+                        {products.map(product => (
                             <ProductCard key={product.id} product={product} />
                         ))}
-                         {userProducts.length === 0 && (
-                            <p className="col-span-full text-center text-gray-500 py-10">Este usuario no tiene productos en venta actualmente.</p>
+                         {products.length === 0 && (
+                            <p className="col-span-full text-center text-gray-500 py-10">Acest utilizator nu are produse în vânzare.</p>
                         )}
                     </div>
                 )}
 
                 {activeTab === 'reviews' && (
-                    <div className="space-y-6">
-                        {reviews.map(review => (
-                            <div key={review.id} className="flex space-x-4 border-b border-gray-100 pb-6 last:border-0 last:pb-0">
-                                <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs">
-                                    {review.user.substring(0, 1)}
-                                </div>
-                                <div>
-                                    <div className="flex items-center justify-between mb-1">
-                                        <h4 className="font-bold text-gray-900">{review.user}</h4>
-                                        <span className="text-xs text-gray-500">{review.date}</span>
-                                    </div>
-                                    <div className="flex text-yellow-400 mb-2">
-                                        {[...Array(5)].map((_, i) => (
-                                            <Star key={i} className={`h-4 w-4 ${i < review.rating ? 'fill-current' : 'text-gray-200'}`} />
-                                        ))}
-                                    </div>
-                                    <p className="text-gray-600 text-sm">{review.comment}</p>
-                                </div>
-                            </div>
-                        ))}
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <Star className="h-12 w-12 text-gray-300 mb-3" />
+                        <p className="text-gray-500">Nu există recenzii încă.</p>
                     </div>
                 )}
             </div>

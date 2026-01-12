@@ -4,22 +4,28 @@ import { useState, useCallback, useEffect } from 'react';
 import { Heart, ArrowUpRight, ArrowDownRight, Clock, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Timestamp } from 'firebase/firestore';
 
 interface Product {
-  id: number;
+  id: string | number;
   title: string;
   price: number;
   image: string;
   images?: string[];
   location: string;
   reserved?: boolean;
-  publishedAt?: string;
+  publishedAt?: string | Timestamp;
 }
 
 // Helper para verificar si el producto es nuevo (menos de 24 horas)
-const isNewProduct = (publishedAt?: string): boolean => {
+const isNewProduct = (publishedAt?: string | Timestamp): boolean => {
   if (!publishedAt) return false;
-  const publishDate = new Date(publishedAt);
+  let publishDate: Date;
+  if (publishedAt instanceof Timestamp) {
+    publishDate = publishedAt.toDate();
+  } else {
+    publishDate = new Date(publishedAt);
+  }
   const now = new Date();
   const diffHours = (now.getTime() - publishDate.getTime()) / (1000 * 60 * 60);
   return diffHours < 24;

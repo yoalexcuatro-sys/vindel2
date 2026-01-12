@@ -4,7 +4,7 @@ import { Heart, Share2, Eye, Flag, MessageCircle, MapPin, ShieldCheck, ChevronLe
 import Link from 'next/link';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { getProducts, Product } from '@/lib/storage';
+import { getProduct, getProducts, Product } from '@/lib/products-service';
 import { createOrGetConversation } from '@/lib/messages';
 
 export default function ProductPage() {
@@ -17,25 +17,25 @@ export default function ProductPage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   useEffect(() => {
-    // Wrap in try-catch to avoid issues during build/SSR if localStorage is accessed
-    try {
-        const products = getProducts();
+    async function loadProduct() {
+      try {
         if (params?.id) {
-            const foundProduct = products.find((p) => p.id.toString() === params.id);
-            if (foundProduct) {
-                setProduct(foundProduct);
-                // Obtener otros productos del mismo vendedor
-                const otherProducts = products.filter(
-                  (p) => p.seller.id === foundProduct.seller.id && p.id !== foundProduct.id
-                ).slice(0, 5);
-                setSellerProducts(otherProducts);
-            }
+          const foundProduct = await getProduct(params.id as string);
+          if (foundProduct) {
+            setProduct(foundProduct);
+            // Obtener otros productos del mismo vendedor
+            const sellerResult = await getProducts({ sellerId: foundProduct.sellerId }, 6);
+            const otherProducts = sellerResult.products.filter(p => p.id !== foundProduct.id).slice(0, 5);
+            setSellerProducts(otherProducts);
+          }
         }
-    } catch (e) {
+      } catch (e) {
         console.error("Error loading product", e);
-    } finally {
+      } finally {
         setLoading(false);
+      }
     }
+    loadProduct();
   }, [params?.id]);
 
   if (loading) {

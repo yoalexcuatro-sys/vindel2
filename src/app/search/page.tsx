@@ -3,7 +3,7 @@
 
 import { Suspense, useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { getProducts, Product } from '@/lib/storage';
+import { getProducts, Product } from '@/lib/products-service';
 import ProductCard from '@/components/ProductCard';
 import { Filter, SlidersHorizontal, MapPin, Tag, ChevronDown, X } from 'lucide-react';
 import { localidades, Localidad } from '@/data/localidades';
@@ -15,8 +15,17 @@ function SearchResults() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setProducts(getProducts());
-    setLoading(false);
+    async function loadProducts() {
+      try {
+        const result = await getProducts({}, 100);
+        setProducts(result.products);
+      } catch (error) {
+        console.error('Error loading products:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProducts();
   }, []);
 
   const query = searchParams.get('q') || '';

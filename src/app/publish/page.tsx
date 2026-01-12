@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Camera, MapPin, X, ChevronLeft, Check, AlertCircle, Loader2,
@@ -15,6 +15,9 @@ import {
   Megaphone, Calculator, Package, Stethoscope, UserCircle, Sparkles
 } from 'lucide-react';
 import { localidades } from '@/data/localidades';
+import { useAuth } from '@/lib/auth-context';
+import { createProduct } from '@/lib/products-service';
+import { uploadProductImages } from '@/lib/storage-service';
 
 // =============================================================================
 // CONSTANTES
@@ -1013,6 +1016,7 @@ type Step = 'categoria' | 'subcategoria' | 'detalles';
 export default function PublishPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user, userProfile, loading: authLoading } = useAuth();
   
   // Estados principales
   const [step, setStep] = useState<Step>('categoria');
@@ -1038,6 +1042,13 @@ export default function PublishPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+
+  // Redirigir si no está autenticado
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login?redirect=/publish');
+    }
+  }, [user, authLoading, router]);
 
   // Campos dinámicos para la subcategoría actual
   const subcategoryFields = SUBCATEGORY_FIELDS[subcategoria] || [];
@@ -1120,45 +1131,51 @@ export default function PublishPage() {
 
   // Submit
   const handleSubmit = async () => {
-    if (!isValid) return;
+    if (!isValid || !user || !userProfile) return;
     
     setLoading(true);
     setError('');
 
     try {
-      const newProduct = {
-        id: Date.now(),
+      // Subir imágenes a Firebase Storage
+      let imageUrls: string[] = [];
+      if (imagenes.length > 0) {
+        imageUrls = await uploadProductImages(imagenes, user.uid);
+      }
+      
+      // Si no hay imágenes, usar placeholder
+      if (imageUrls.length === 0) {
+        imageUrls = ['https://placehold.co/400x400?text=No+Image'];
+      }
+
+      const productData = {
         title: titulo.trim(),
         description: descripcion.trim(),
         price: parseFloat(precio) || 0,
-        moneda,
-        category: categoria,
+        category: categoria || '',
         subcategory: subcategoria,
         condition: condicion,
-        negociable,
-        tipPersoana,
         location: ubicacion,
-        image: previews[0] || 'https://placehold.co/400x400?text=No+Image',
-        images: previews,
-        detallesExtra: customFields,
+        image: imageUrls[0],
+        images: imageUrls,
+        customFields: customFields,
+        sellerId: user.uid,
         seller: {
-          id: 101,
-          name: 'Usuario',
-          avatar: 'https://placehold.co/200x200?text=U'
+          id: user.uid,
+          name: userProfile.displayName || 'Usuario',
+          rating: userProfile.rating || 0,
+          reviews: userProfile.reviewsCount || 0,
+          avatar: userProfile.photoURL || 'https://placehold.co/200x200?text=U',
+          joined: new Date().getFullYear().toString(),
         },
-        publishedAt: new Date().toISOString(),
-        reserved: false
       };
 
-      const existingProducts = JSON.parse(localStorage.getItem('wallapop_clone_products') || '[]');
-      const updatedProducts = [newProduct, ...existingProducts];
+      await createProduct(productData);
       
-      localStorage.setItem('wallapop_clone_products', JSON.stringify(updatedProducts));
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
       setSuccess(true);
       setTimeout(() => router.push('/'), 2000);
     } catch (err: any) {
+      console.error('Error publishing:', err);
       setError(err.message || 'Eroare la publicare');
     } finally {
       setLoading(false);
