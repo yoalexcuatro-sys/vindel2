@@ -17,7 +17,7 @@ import {
 type ViewType = 'dashboard' | 'products' | 'profile' | 'favorites' | 'settings' | 'invoices' | 'promotion' | 'analytics';
 
 export default function ProfilePage() {
-  const { user, userProfile, logout, loading: authLoading } = useAuth();
+  const { user, userProfile, logout, loading: authLoading, profileLoading } = useAuth();
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
   const [productFilter, setProductFilter] = useState<'active' | 'pending' | 'sold' | 'rejected'>('active');
   const [favoritesViewMode, setFavoritesViewMode] = useState<'grid' | 'list'>('grid');
@@ -104,14 +104,38 @@ export default function ProfilePage() {
     );
   }
 
-  // If user exists but profile not loaded yet, show loading
-  if (!userProfile) {
+  // If user exists but profile is still loading
+  if (profileLoading) {
     return (
       <ProtectedRoute>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="h-8 w-8 animate-spin text-[#13C1AC] mx-auto mb-4" />
             <p className="text-gray-500">Încărcăm profilul...</p>
+          </div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // If user exists and profile loading finished, but no profile found
+  if (!userProfile) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center bg-white p-8 rounded-2xl shadow-sm max-w-md mx-4">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Profil Inexistent</h2>
+            <p className="text-gray-500 mb-6">
+              Nu am putut găsi profilul tău. Este posibil să fi apărut o eroare la înregistrare.
+            </p>
+            <button
+               onClick={handleLogout}
+               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-white bg-[#13C1AC] hover:bg-[#0da896]"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Deconectează-te
+            </button>
           </div>
         </div>
       </ProtectedRoute>

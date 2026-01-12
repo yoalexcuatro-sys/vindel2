@@ -42,6 +42,7 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   loading: boolean;
+  profileLoading: boolean;
   signUp: (email: string, password: string, userData: Partial<UserProfile>) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
@@ -56,19 +57,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       console.log('Auth state changed:', firebaseUser?.email || 'no user');
       setUser(firebaseUser);
-      
-      if (firebaseUser) {
+      setLoading(false);
+      // If no user, profile loading is also done (it's null)
+      if (!firebaseUser) {
+        setProfileLoading(false);
+        setUserProfile(null);
+      } else {
+        // If user exists, we start loading profile
+        setProfileLoading(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    async function fetchProfile() {
+      if (user) {
         // Try to fetch profile with retries for newly created accounts
         let profile: UserProfile | null = null;
         
         for (let attempt = 0; attempt < 5; attempt++) {
           try {
-            const docRef = doc(db, 'users', firebaseUser.uid);
+            const docRef = doc(db, 'users', user.uid);
             const docSnap = await getDoc(docRef);
             
             if (docSnap.exists()) {
@@ -83,19 +100,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           } catch (error) {
             console.error('Error fetching profile:', error);
+            if (attempt < 4) {
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
           }
         }
         
-        setUserProfile(profile);
+        if (profile) {
+          setUserProfile(profile);
+        } else {
+            // Self-repair: Create a default profile if it is missing after retries
+            console.log('Creating default profile for missing user document');
+            const newProfile: UserProfile = {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                accountType: 'personal',
+                verified: false,
+                rating: 0,
+                reviewsCount: 0,
+                createdAt: new Date(),
+                stats: {
+                  selling: 0,
+                  sold: 0,
+                  favorites: 0,
+                  views: 0,
+                },
+            };
+
+            try {
+                await setDoc(doc(db, 'users', user.uid), {
+                  ...newProfile,
+                  createdAt: serverTimestamp(),
+                });
+                setUserProfile(newProfile);
+                console.log('Defaut profile created successfully');
+            } catch (createError) {
+                console.error('Failed to create default profile:', createError);
+                setUserProfile(null);
+            }
+        }
+        setProfileLoading(false);
       } else {
         setUserProfile(null);
+        setProfileLoading(false);
       }
-      
-      setLoading(false);
-    });
+    }
 
-    return () => unsubscribe();
-  }, []);
+    if (!loading) {
+      if (user) {
+        fetchProfile();
+      }
+    }
+  }, [user, loading]);
 
   const signUp = async (email: string, password: string, userData: Partial<UserProfile>) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -220,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     userProfile,
     loading,
+    profileLoading,
     signUp,
     signIn,
     signInWithGoogle,
