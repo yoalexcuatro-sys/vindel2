@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await updateProfile(user, { displayName: userData.displayName });
     }
 
-    // Create user profile in Firestore
+    // Create user profile in Firestore (exclude undefined values for Firestore)
     const newProfile: UserProfile = {
       uid: user.uid,
       email: user.email,
@@ -116,8 +116,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       location: userData.location || '',
       bio: '',
       accountType: userData.accountType || 'personal',
-      businessName: userData.businessName,
-      cui: userData.cui,
       verified: false,
       rating: 0,
       reviewsCount: 0,
@@ -129,6 +127,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         views: 0,
       },
     };
+
+    // Only add business fields if they have values (Firestore doesn't accept undefined)
+    if (userData.businessName) {
+      newProfile.businessName = userData.businessName;
+    }
+    if (userData.cui) {
+      newProfile.cui = userData.cui;
+    }
 
     await setDoc(doc(db, 'users', user.uid), {
       ...newProfile,
