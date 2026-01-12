@@ -64,17 +64,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         setUserProfile(docSnap.data() as UserProfile);
+      } else {
+        console.log('No user profile found for:', uid);
+        setUserProfile(null);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      setUserProfile(null);
     }
   };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      console.log('Auth state changed:', user?.email || 'no user');
       setUser(user);
       if (user) {
-        await fetchUserProfile(user.uid);
+        try {
+          await fetchUserProfile(user.uid);
+        } catch (error) {
+          console.error('Error in auth state change:', error);
+        }
       } else {
         setUserProfile(null);
       }
