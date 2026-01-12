@@ -93,12 +93,26 @@ export default function ProfilePage() {
     );
   }
 
-  // Redirect handled by ProtectedRoute, but show nothing if no user
-  if (!user || !userProfile) {
+  // If no user, redirect to login (handled by ProtectedRoute)
+  if (!user) {
     return (
       <ProtectedRoute>
         <div className="min-h-screen bg-gray-50 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-[#13C1AC]" />
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  // If user exists but profile not loaded yet, show loading
+  if (!userProfile) {
+    return (
+      <ProtectedRoute>
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-[#13C1AC] mx-auto mb-4" />
+            <p className="text-gray-500">Încărcăm profilul...</p>
+          </div>
         </div>
       </ProtectedRoute>
     );

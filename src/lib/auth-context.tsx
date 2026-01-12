@@ -57,32 +57,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Fetch user profile from Firestore
-  const fetchUserProfile = async (uid: string) => {
+  // Fetch user profile from Firestore with retry for newly created profiles
+  const fetchUserProfile = async (uid: string, retries = 3): Promise<UserProfile | null> => {
     try {
       const docRef = doc(db, 'users', uid);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        setUserProfile(docSnap.data() as UserProfile);
+        const profile = docSnap.data() as UserProfile;
+        setUserProfile(profile);
+        return profile;
+      } else if (retries > 0) {
+        // Profile might not be synced yet after registration, retry after a short delay
+        console.log(`Profile not found, retrying... (${retries} attempts left)`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return fetchUserProfile(uid, retries - 1);
       } else {
         console.log('No user profile found for:', uid);
         setUserProfile(null);
+        return null;
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
       setUserProfile(null);
+      return null;
     }
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed:', user?.email || 'no user');
-      setUser(user);
-      if (user) {
-        try {
-          await fetchUserProfile(user.uid);
-        } catch (error) {
-          console.error('Error in auth state change:', error);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      console.log('Auth state changed:', firebaseUser?.email || 'no user');
+      setUser(firebaseUser);
+      if (firebaseUser) {
+        // Only fetch profile if we don't already have it for this user
+        // This prevents race conditions when signUp already set the profile
+        if (!userProfile || userProfile.uid !== firebaseUser.uid) {
+          try {
+            await fetchUserProfile(firebaseUser.uid);
+          } catch (error) {
+            console.error('Error in auth state change:', error);
+          }
         }
       } else {
         setUserProfile(null);
@@ -91,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [userProfile]);
 
   const signUp = async (email: string, password: string, userData: Partial<UserProfile>) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
