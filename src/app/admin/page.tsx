@@ -19,6 +19,10 @@ interface DashboardStats {
   activeListings: number;
   pendingListings: number;
   pendingReports: number;
+  messagesToday: number;
+  totalViews: number;
+  dbStatus: 'online' | 'offline' | 'checking';
+  apiLatency: number;
 }
 
 interface RecentActivity {
@@ -48,16 +52,24 @@ export default function AdminDashboard() {
     totalUsers: 0,
     activeListings: 0,
     pendingListings: 0,
-    pendingReports: 0
+    pendingReports: 0,
+    messagesToday: 0,
+    totalViews: 0,
+    dbStatus: 'checking',
+    apiLatency: 0
   });
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
+      const startTime = performance.now();
+      let dbStatus: 'online' | 'offline' = 'offline';
+      
       try {
         // Fetch users
         const usersSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(10)));
+        dbStatus = 'online'; // If we got here, DB is online
         const totalUsers = usersSnap.size;
         const recentUsers: RecentActivity[] = usersSnap.docs.slice(0, 5).map(doc => {
           const data = doc.data();
@@ -104,14 +116,38 @@ export default function AdminDashboard() {
         const reportsSnap = await getDocs(reportsQuery);
         const pendingReports = reportsSnap.size;
 
+        // Fetch messages from today
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const messagesSnap = await getDocs(collection(db, 'messages'));
+        const messagesToday = messagesSnap.docs.filter(doc => {
+          const data = doc.data();
+          const createdAt = data.createdAt?.toDate();
+          return createdAt && createdAt >= today;
+        }).length;
+
+        // Calculate total views from all products
+        const allProductsSnap = await getDocs(collection(db, 'products'));
+        const totalViews = allProductsSnap.docs.reduce((sum, doc) => {
+          const data = doc.data();
+          return sum + (data.views || 0);
+        }, 0);
+
+        const apiLatency = Math.round(performance.now() - startTime);
+
         setStats({
           totalUsers,
           activeListings,
           pendingListings,
-          pendingReports
+          pendingReports,
+          messagesToday,
+          totalViews,
+          dbStatus,
+          apiLatency
         });
       } catch (error) {
         console.error('Error fetching stats:', error);
+        setStats(prev => ({ ...prev, dbStatus: 'offline' }));
       } finally {
         setLoading(false);
       }
@@ -146,7 +182,7 @@ export default function AdminDashboard() {
         />
         <StatCard 
           title="Mesaje Azi" 
-          value="342" 
+          value={loading ? '...' : stats.messagesToday.toLocaleString()} 
           trend="+24%" 
           trendUp={true} 
           icon={MessageCircle} 
@@ -154,7 +190,7 @@ export default function AdminDashboard() {
         />
         <StatCard 
           title="Vizuale Totale" 
-          value="45.2k" 
+          value={loading ? '...' : stats.totalViews >= 1000 ? `${(stats.totalViews / 1000).toFixed(1)}k` : stats.totalViews.toString()} 
           trend="+18%" 
           trendUp={true} 
           icon={Eye} 
@@ -234,21 +270,25 @@ export default function AdminDashboard() {
            {/* System Status */}
            <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] rounded-xl shadow-lg p-6 text-white">
               <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-                 <CheckCircle className="w-5 h-5 text-emerald-400" />
+                 <CheckCircle className={`w-5 h-5 ${stats.dbStatus === 'online' ? 'text-emerald-400' : stats.dbStatus === 'checking' ? 'text-yellow-400' : 'text-red-400'}`} />
                  System Status
               </h2>
               <div className="space-y-3 text-sm text-slate-300">
                  <div className="flex justify-between">
                     <span>Database</span>
-                    <span className="text-emerald-400 font-mono">ONLINE</span>
+                    <span className={`font-mono ${stats.dbStatus === 'online' ? 'text-emerald-400' : stats.dbStatus === 'checking' ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {stats.dbStatus === 'checking' ? 'CHECKING...' : stats.dbStatus.toUpperCase()}
+                    </span>
                  </div>
                  <div className="flex justify-between">
                     <span>Storage (Firebase)</span>
-                    <span className="text-emerald-400 font-mono">34% Used</span>
+                    <span className="text-emerald-400 font-mono">Active</span>
                  </div>
                  <div className="flex justify-between">
                     <span>API Latency</span>
-                    <span className="text-emerald-400 font-mono">24ms</span>
+                    <span className={`font-mono ${stats.apiLatency < 500 ? 'text-emerald-400' : stats.apiLatency < 1000 ? 'text-yellow-400' : 'text-red-400'}`}>
+                      {loading ? '...' : `${stats.apiLatency}ms`}
+                    </span>
                  </div>
               </div>
            </div>
