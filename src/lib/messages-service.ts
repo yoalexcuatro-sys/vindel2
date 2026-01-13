@@ -22,6 +22,7 @@ export interface Message {
   text: string;
   createdAt: Timestamp;
   read: boolean;
+  readAt?: Timestamp;
 }
 
 export interface Conversation {
@@ -36,6 +37,8 @@ export interface Conversation {
   lastMessageAt?: Timestamp;
   unreadCount: Record<string, number>;
   createdAt: Timestamp;
+  lastSeen?: Record<string, Timestamp>;
+  typing?: Record<string, boolean>;
 }
 
 const CONVERSATIONS_COLLECTION = 'conversations';
@@ -230,9 +233,10 @@ export async function markMessagesAsRead(
   const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
   await updateDoc(conversationRef, {
     [`unreadCount.${userId}`]: 0,
+    [`lastSeen.${userId}`]: serverTimestamp(),
   });
 
-  // Mark individual messages as read
+  // Mark individual messages as read with timestamp
   const q = query(
     collection(db, MESSAGES_COLLECTION),
     where('conversationId', '==', conversationId),
@@ -242,9 +246,35 @@ export async function markMessagesAsRead(
   const querySnapshot = await getDocs(q);
   const updatePromises = querySnapshot.docs
     .filter(docSnap => docSnap.data().senderId !== userId)
-    .map(docSnap => updateDoc(doc(db, MESSAGES_COLLECTION, docSnap.id), { read: true }));
+    .map(docSnap => updateDoc(doc(db, MESSAGES_COLLECTION, docSnap.id), { 
+      read: true,
+      readAt: serverTimestamp()
+    }));
 
   await Promise.all(updatePromises);
+}
+
+// Update user's last seen in a conversation
+export async function updateLastSeen(
+  conversationId: string,
+  userId: string
+): Promise<void> {
+  const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
+  await updateDoc(conversationRef, {
+    [`lastSeen.${userId}`]: serverTimestamp(),
+  });
+}
+
+// Update typing status
+export async function updateTypingStatus(
+  conversationId: string,
+  userId: string,
+  isTyping: boolean
+): Promise<void> {
+  const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
+  await updateDoc(conversationRef, {
+    [`typing.${userId}`]: isTyping,
+  });
 }
 
 // Get unread message count for user

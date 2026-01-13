@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { 
   subscribeToConversations, subscribeToMessages, sendMessage,
-  markMessagesAsRead, Conversation, Message
+  markMessagesAsRead, updateLastSeen, updateTypingStatus, Conversation, Message
 } from '@/lib/messages-service';
 import { useAuth } from '@/lib/auth-context';
 import { createProductLink } from '@/lib/slugs';
@@ -70,6 +70,21 @@ function MessagesContent() {
     });
 
     return () => unsubscribe();
+  }, [activeConversation, user]);
+
+  // Update last seen periodically when viewing a conversation
+  useEffect(() => {
+    if (!activeConversation || !user) return;
+
+    // Update immediately
+    updateLastSeen(activeConversation.id, user.uid);
+
+    // Update every 30 seconds while viewing
+    const interval = setInterval(() => {
+      updateLastSeen(activeConversation.id, user.uid);
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, [activeConversation, user]);
 
   // Scroll to bottom when messages change
@@ -134,6 +149,30 @@ function MessagesContent() {
     if (diffHours < 24) return `${diffHours}h`;
     if (diffDays < 7) return `${diffDays}z`;
     return date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' });
+  };
+
+  const formatReadTime = (timestamp: Timestamp | undefined) => {
+    if (!timestamp) return '';
+    const date = timestamp.toDate();
+    return date.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Check if other user is online (seen in last 2 minutes)
+  const isOtherUserOnline = (conv: Conversation) => {
+    if (!user) return false;
+    const otherUserId = conv.participants.find(p => p !== user.uid);
+    if (!otherUserId || !conv.lastSeen?.[otherUserId]) return false;
+    const lastSeen = conv.lastSeen[otherUserId].toDate();
+    const now = new Date();
+    const diffMs = now.getTime() - lastSeen.getTime();
+    return diffMs < 2 * 60 * 1000; // 2 minutes
+  };
+
+  // Check if other user is typing
+  const isOtherUserTyping = (conv: Conversation) => {
+    if (!user) return false;
+    const otherUserId = conv.participants.find(p => p !== user.uid);
+    return otherUserId ? conv.typing?.[otherUserId] || false : false;
   };
 
   // Get other participant's name
@@ -230,6 +269,8 @@ function MessagesContent() {
                     const otherName = getOtherParticipantName(conv);
                     const otherAvatar = getOtherParticipantAvatar(conv);
                     const unreadCount = conv.unreadCount[user.uid] || 0;
+                    const isOnline = isOtherUserOnline(conv);
+                    const isTyping = isOtherUserTyping(conv);
                     
                     return (
                       <div key={conv.id} className="relative group">
@@ -261,7 +302,7 @@ function MessagesContent() {
                                   {otherName.charAt(0).toUpperCase()}
                                 </div>
                               )}
-                              <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                              <div className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                             </div>
 
                             {/* Info */}
@@ -283,7 +324,11 @@ function MessagesContent() {
                               
                               <div className="flex items-center justify-between">
                                 <p className={`text-sm truncate ${unreadCount > 0 ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
-                                  {conv.lastMessage || 'Începe conversația...'}
+                                  {isTyping ? (
+                                    <span className="text-[#13C1AC] italic">Scrie...</span>
+                                  ) : (
+                                    conv.lastMessage || 'Începe conversația...'
+                                  )}
                                 </p>
                                 {unreadCount > 0 && (
                                   <span className="ml-2 w-5 h-5 bg-[#13C1AC] text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">
@@ -369,7 +414,7 @@ function MessagesContent() {
                           {getOtherParticipantName(activeConversation).charAt(0).toUpperCase()}
                         </div>
                       )}
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                      <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${isOtherUserOnline(activeConversation) ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                     </div>
 
                     {/* Info */}
@@ -377,12 +422,20 @@ function MessagesContent() {
                       <h2 className="font-semibold text-gray-900 truncate">
                         {getOtherParticipantName(activeConversation)}
                       </h2>
-                      {activeConversation.productTitle && (
+                      {isOtherUserTyping(activeConversation) ? (
+                        <p className="text-xs text-[#13C1AC] font-medium italic">
+                          Scrie un mesaj...
+                        </p>
+                      ) : isOtherUserOnline(activeConversation) ? (
+                        <p className="text-xs text-green-500 font-medium">
+                          Online
+                        </p>
+                      ) : activeConversation.productTitle ? (
                         <p className="text-xs text-[#13C1AC] font-medium flex items-center gap-1 truncate">
                           <Circle className="w-2 h-2 fill-current flex-shrink-0" />
                           {activeConversation.productTitle}
                         </p>
-                      )}
+                      ) : null}
                     </div>
 
                     {activeConversation.productId && (
@@ -457,7 +510,14 @@ function MessagesContent() {
                                   {formatTime(message.createdAt)}
                                 </span>
                                 {isMine && (
-                                  <CheckCheck className={`w-3.5 h-3.5 ${message.read ? 'text-[#13C1AC]' : 'text-gray-400'}`} />
+                                  <div className="relative group/check">
+                                    <CheckCheck className={`w-3.5 h-3.5 ${message.read ? 'text-[#13C1AC]' : 'text-gray-400'}`} />
+                                    {message.read && message.readAt && (
+                                      <div className="absolute bottom-full right-0 mb-1 px-2 py-1 bg-gray-900 text-white text-[10px] rounded whitespace-nowrap opacity-0 group-hover/check:opacity-100 transition-opacity pointer-events-none">
+                                        Citit la {formatReadTime(message.readAt)}
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
