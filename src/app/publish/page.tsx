@@ -26,128 +26,210 @@ import { uploadProductImages } from '@/lib/storage-service';
 // Modelos de teléfonos por marca
 const PHONE_MODELS: Record<string, string[]> = {
   'Apple': [
+    // Serie 17 (sept 2025)
+    'iPhone 17 Pro Max', 'iPhone 17 Pro', 'iPhone 17 Plus', 'iPhone 17', 'iPhone 17 Air',
+    // Serie 16 (sept 2024)
     'iPhone 16 Pro Max', 'iPhone 16 Pro', 'iPhone 16 Plus', 'iPhone 16',
+    // Serie 15
     'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15',
+    // Serie 14
     'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14 Plus', 'iPhone 14',
+    // Serie 13
     'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13', 'iPhone 13 Mini',
+    // Serie 12
     'iPhone 12 Pro Max', 'iPhone 12 Pro', 'iPhone 12', 'iPhone 12 Mini',
+    // Serie 11
     'iPhone 11 Pro Max', 'iPhone 11 Pro', 'iPhone 11',
+    // Serie X
     'iPhone XS Max', 'iPhone XS', 'iPhone XR', 'iPhone X',
-    'iPhone SE (2024)', 'iPhone SE (2022)', 'iPhone SE (2020)',
+    // SE
+    'iPhone SE (2025)', 'iPhone SE (2022)', 'iPhone SE (2020)',
     'Alt model'
   ],
   'Samsung': [
-    'Galaxy S25 Ultra', 'Galaxy S25+', 'Galaxy S25',
+    // Serie S26 (2026)
+    'Galaxy S26 Ultra', 'Galaxy S26+', 'Galaxy S26',
+    // Serie S25 (2025)
+    'Galaxy S25 Ultra', 'Galaxy S25+', 'Galaxy S25', 'Galaxy S25 FE',
+    // Serie S24
     'Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24', 'Galaxy S24 FE',
+    // Serie S23
     'Galaxy S23 Ultra', 'Galaxy S23+', 'Galaxy S23', 'Galaxy S23 FE',
+    // Serie S22
     'Galaxy S22 Ultra', 'Galaxy S22+', 'Galaxy S22',
-    'Galaxy S21 Ultra', 'Galaxy S21+', 'Galaxy S21', 'Galaxy S21 FE',
-    'Galaxy Z Fold 6', 'Galaxy Z Fold 5', 'Galaxy Z Fold 4', 'Galaxy Z Fold 3',
-    'Galaxy Z Flip 6', 'Galaxy Z Flip 5', 'Galaxy Z Flip 4', 'Galaxy Z Flip 3',
-    'Galaxy A55', 'Galaxy A54', 'Galaxy A53', 'Galaxy A52', 'Galaxy A35', 'Galaxy A34', 'Galaxy A33',
-    'Galaxy A25', 'Galaxy A24', 'Galaxy A15', 'Galaxy A14', 'Galaxy A05s',
-    'Galaxy M55', 'Galaxy M54', 'Galaxy M34', 'Galaxy M14',
+    // Fold
+    'Galaxy Z Fold 7', 'Galaxy Z Fold 6', 'Galaxy Z Fold 5', 'Galaxy Z Fold 4',
+    // Flip
+    'Galaxy Z Flip 7', 'Galaxy Z Flip 6', 'Galaxy Z Flip 5', 'Galaxy Z Flip 4',
+    // Serie A
+    'Galaxy A56', 'Galaxy A55', 'Galaxy A54', 'Galaxy A36', 'Galaxy A35', 'Galaxy A34',
+    'Galaxy A26', 'Galaxy A25', 'Galaxy A16', 'Galaxy A15', 'Galaxy A06',
+    // Serie M
+    'Galaxy M56', 'Galaxy M55', 'Galaxy M35', 'Galaxy M15',
     'Alt model'
   ],
   'Xiaomi': [
-    'Xiaomi 14 Ultra', 'Xiaomi 14 Pro', 'Xiaomi 14',
+    // Serie 15 (2025)
+    'Xiaomi 15 Ultra', 'Xiaomi 15 Pro', 'Xiaomi 15',
+    // Serie 14
+    'Xiaomi 14 Ultra', 'Xiaomi 14 Pro', 'Xiaomi 14', 'Xiaomi 14 Civi',
+    // Serie 13
     'Xiaomi 13 Ultra', 'Xiaomi 13 Pro', 'Xiaomi 13', 'Xiaomi 13 Lite',
-    'Xiaomi 12 Pro', 'Xiaomi 12', 'Xiaomi 12 Lite',
+    // Redmi Note
+    'Redmi Note 15 Pro+', 'Redmi Note 15 Pro', 'Redmi Note 15',
     'Redmi Note 14 Pro+', 'Redmi Note 14 Pro', 'Redmi Note 14',
     'Redmi Note 13 Pro+', 'Redmi Note 13 Pro', 'Redmi Note 13',
-    'Redmi Note 12 Pro+', 'Redmi Note 12 Pro', 'Redmi Note 12',
-    'Redmi 14C', 'Redmi 13C', 'Redmi 13', 'Redmi 12',
-    'POCO X6 Pro', 'POCO X6', 'POCO X5 Pro', 'POCO X5',
-    'POCO F6 Pro', 'POCO F6', 'POCO F5 Pro', 'POCO F5',
-    'POCO M6 Pro', 'POCO M6', 'POCO M5',
+    // Redmi
+    'Redmi 15C', 'Redmi 14C', 'Redmi 14', 'Redmi 13C', 'Redmi 13',
+    // POCO
+    'POCO X7 Pro', 'POCO X7', 'POCO X6 Pro', 'POCO X6',
+    'POCO F7 Ultra', 'POCO F7 Pro', 'POCO F7', 'POCO F6 Pro', 'POCO F6',
+    'POCO M7 Pro', 'POCO M7', 'POCO M6 Pro', 'POCO M6',
+    // Mix
+    'Xiaomi Mix Fold 4', 'Xiaomi Mix Flip',
     'Alt model'
   ],
   'Huawei': [
+    // Pura (2025)
+    'Pura 80 Ultra', 'Pura 80 Pro', 'Pura 80',
+    // Pura 70
     'Pura 70 Ultra', 'Pura 70 Pro+', 'Pura 70 Pro', 'Pura 70',
+    // Mate 70
+    'Mate 70 Pro+', 'Mate 70 Pro', 'Mate 70', 'Mate 70 RS',
+    // Mate 60
     'Mate 60 Pro+', 'Mate 60 Pro', 'Mate 60', 'Mate 60 RS',
-    'Mate 50 Pro', 'Mate 50', 'Mate 40 Pro', 'Mate 40',
-    'P60 Pro', 'P60 Art', 'P60', 'P50 Pro', 'P50', 'P40 Pro', 'P40',
-    'Nova 12 Ultra', 'Nova 12 Pro', 'Nova 12', 'Nova 11 Pro', 'Nova 11',
+    // Mate X
+    'Mate X6', 'Mate X5', 'Mate X3',
+    // Nova
+    'Nova 13 Ultra', 'Nova 13 Pro', 'Nova 13',
+    'Nova 12 Ultra', 'Nova 12 Pro', 'Nova 12',
     'Alt model'
   ],
   'OnePlus': [
+    // Serie 14 (2026)
+    'OnePlus 14', 'OnePlus 14R',
+    // Serie 13
     'OnePlus 13', 'OnePlus 13R',
+    // Serie 12
     'OnePlus 12', 'OnePlus 12R',
-    'OnePlus 11', 'OnePlus 11R',
-    'OnePlus 10 Pro', 'OnePlus 10T',
+    // Open
+    'OnePlus Open 2', 'OnePlus Open',
+    // Nord
+    'OnePlus Nord 5', 'OnePlus Nord CE 5',
     'OnePlus Nord 4', 'OnePlus Nord CE 4', 'OnePlus Nord CE 4 Lite',
-    'OnePlus Nord 3', 'OnePlus Nord CE 3', 'OnePlus Nord CE 3 Lite',
-    'OnePlus Nord N30', 'OnePlus Nord N20',
-    'OnePlus Open',
+    'OnePlus Nord 3', 'OnePlus Nord CE 3',
     'Alt model'
   ],
   'Google': [
-    'Pixel 9 Pro XL', 'Pixel 9 Pro', 'Pixel 9', 'Pixel 9 Pro Fold',
+    // Pixel 10 (2025)
+    'Pixel 10 Pro XL', 'Pixel 10 Pro', 'Pixel 10', 'Pixel 10a',
+    // Pixel 9
+    'Pixel 9 Pro XL', 'Pixel 9 Pro', 'Pixel 9', 'Pixel 9a', 'Pixel 9 Pro Fold',
+    // Pixel 8
     'Pixel 8 Pro', 'Pixel 8', 'Pixel 8a',
+    // Pixel 7
     'Pixel 7 Pro', 'Pixel 7', 'Pixel 7a',
-    'Pixel 6 Pro', 'Pixel 6', 'Pixel 6a',
-    'Pixel Fold',
+    // Fold
+    'Pixel Fold 2', 'Pixel Fold',
     'Alt model'
   ],
   'Oppo': [
+    // Find X8
+    'Find X8 Ultra', 'Find X8 Pro', 'Find X8',
+    // Find X7
     'Find X7 Ultra', 'Find X7',
-    'Find X6 Pro', 'Find X6', 'Find X5 Pro', 'Find X5',
-    'Find N3', 'Find N3 Flip', 'Find N2', 'Find N2 Flip',
-    'Reno 12 Pro', 'Reno 12', 'Reno 11 Pro', 'Reno 11', 'Reno 11 F',
-    'Reno 10 Pro+', 'Reno 10 Pro', 'Reno 10',
-    'A3 Pro', 'A3', 'A2', 'A98', 'A79', 'A78', 'A58',
+    // Find N
+    'Find N5', 'Find N5 Flip', 'Find N4', 'Find N4 Flip', 'Find N3', 'Find N3 Flip',
+    // Reno
+    'Reno 13 Pro+', 'Reno 13 Pro', 'Reno 13',
+    'Reno 12 Pro', 'Reno 12', 'Reno 11 Pro', 'Reno 11',
+    // Serie A
+    'A4 Pro', 'A4', 'A3 Pro', 'A3', 'A2',
     'Alt model'
   ],
   'Motorola': [
+    // Edge 2025
+    'Edge 60 Ultra', 'Edge 60 Pro', 'Edge 60 Fusion',
+    // Edge 50
     'Edge 50 Ultra', 'Edge 50 Pro', 'Edge 50 Fusion', 'Edge 50 Neo',
-    'Edge 40 Pro', 'Edge 40 Neo', 'Edge 40',
+    // Razr 2025
+    'Razr 60 Ultra', 'Razr 60',
+    // Razr 50
     'Razr 50 Ultra', 'Razr 50', 'Razr 40 Ultra', 'Razr 40',
-    'Moto G85', 'Moto G84', 'Moto G54', 'Moto G34',
-    'Moto G Power (2024)', 'Moto G Stylus (2024)',
-    'ThinkPhone',
+    // Moto G
+    'Moto G86', 'Moto G85', 'Moto G75', 'Moto G55', 'Moto G35',
+    'Moto G Power (2025)', 'Moto G Stylus (2025)',
+    'ThinkPhone 2', 'ThinkPhone',
     'Alt model'
   ],
   'Nothing': [
-    'Phone (2a) Plus', 'Phone (2a)',
-    'Phone (2)', 'Phone (1)',
-    'CMF Phone 1',
+    // Phone 3 (2025)
+    'Phone (3)', 'Phone (3a)',
+    // Phone 2
+    'Phone (2a) Plus', 'Phone (2a)', 'Phone (2)',
+    // Phone 1
+    'Phone (1)',
+    // CMF
+    'CMF Phone 2', 'CMF Phone 1',
     'Alt model'
   ],
   'Sony': [
-    'Xperia 1 VI', 'Xperia 5 V', 'Xperia 10 VI',
-    'Xperia 1 V', 'Xperia 5 IV', 'Xperia 10 V',
-    'Xperia 1 IV', 'Xperia 5 III', 'Xperia 10 IV',
+    // 2025
+    'Xperia 1 VII', 'Xperia 5 VII', 'Xperia 10 VII',
+    // 2024
+    'Xperia 1 VI', 'Xperia 5 VI', 'Xperia 10 VI',
+    // 2023
+    'Xperia 1 V', 'Xperia 5 V', 'Xperia 10 V',
     'Xperia Pro-I',
     'Alt model'
   ],
   'Realme': [
-    'GT 6', 'GT 5 Pro', 'GT 5',
-    'GT Neo 6', 'GT Neo 5', 'GT Neo 5 SE',
-    '12 Pro+', '12 Pro', '12', '12x',
-    '11 Pro+', '11 Pro', '11', '11x',
-    'C67', 'C55', 'C53', 'C35',
-    'Narzo 70 Pro', 'Narzo 70', 'Narzo 60 Pro', 'Narzo 60',
+    // GT 7 (2025)
+    'GT 7 Pro', 'GT 7',
+    // GT 6
+    'GT 6', 'GT 6T',
+    // GT Neo
+    'GT Neo 7', 'GT Neo 6 SE', 'GT Neo 6',
+    // Serie 14
+    '14 Pro+', '14 Pro', '14', '14x',
+    // Serie 13
+    '13 Pro+', '13 Pro', '13', '13x',
+    // Serie C
+    'C75', 'C67', 'C55', 'C53',
+    // Narzo
+    'Narzo 80 Pro', 'Narzo 80', 'Narzo 70 Pro', 'Narzo 70',
     'Alt model'
   ],
   'Honor': [
-    'Magic 6 Pro', 'Magic 6', 'Magic V3', 'Magic V2',
-    'Magic 5 Pro', 'Magic 5', 'Magic V',
+    // Magic 7 (2025)
+    'Magic 7 Pro', 'Magic 7', 'Magic 7 Lite',
+    // Magic V4
+    'Magic V4', 'Magic V4 Flip',
+    // Magic 6
+    'Magic 6 Pro', 'Magic 6', 'Magic V3',
+    // Serie 300
+    '300 Pro', '300', '300 Lite',
+    // Serie 200
     '200 Pro', '200', '200 Lite',
-    '90 Pro', '90', '90 Lite',
-    'X9b', 'X8b', 'X7b',
+    // Serie X
+    'X9c', 'X9b', 'X8b',
     'Alt model'
   ],
   'Asus': [
+    // ROG Phone 9 (2025)
+    'ROG Phone 9 Pro', 'ROG Phone 9',
+    // ROG Phone 8
     'ROG Phone 8 Pro', 'ROG Phone 8',
+    // ROG Phone 7
     'ROG Phone 7 Ultimate', 'ROG Phone 7',
-    'ROG Phone 6 Pro', 'ROG Phone 6',
-    'Zenfone 11 Ultra', 'Zenfone 10', 'Zenfone 9',
+    // Zenfone
+    'Zenfone 12 Ultra', 'Zenfone 11 Ultra', 'Zenfone 10',
     'Alt model'
   ],
   'Nokia': [
-    'X30', 'X20', 'X10',
-    'G60', 'G50', 'G42', 'G22', 'G21',
-    'C32', 'C22', 'C21 Plus', 'C12',
+    'X40', 'X30', 'X20',
+    'G65', 'G60', 'G50', 'G42', 'G22',
+    'C35', 'C32', 'C22', 'C12',
     'Alt model'
   ],
   'Altă marcă': ['Alt model']
