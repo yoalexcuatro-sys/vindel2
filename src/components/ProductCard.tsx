@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Heart, ArrowUpRight, ArrowDownRight, Clock, ShoppingBag, Package, Star, Sparkles, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Heart, ArrowUpRight, ArrowDownRight, Clock, ShoppingBag, Package, Star, Sparkles, CheckCircle, AlertTriangle, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Timestamp } from 'firebase/firestore';
@@ -16,6 +16,7 @@ interface Product {
   price: number;
   currency?: 'LEI' | 'EUR';
   condition?: string;
+  negotiable?: boolean;
   image: string;
   images?: string[];
   location: string;
@@ -186,6 +187,16 @@ export default function ProductCard({ product }: { product: Product }) {
               return Icon ? <Icon className="w-3 h-3" /> : null;
             })()}
             {getConditionInfo(product.condition)?.label}
+          </div>
+        )}
+
+        {/* Badge de Negociabil */}
+        {product.negotiable && (
+          <div className={`absolute left-2 px-2 py-1 text-[10px] font-semibold rounded-md flex items-center gap-1 pointer-events-none z-10 bg-violet-500 text-white ${
+            getConditionInfo(product.condition) ? 'top-9' : 'top-2'
+          }`}>
+            <MessageCircle className="w-3 h-3" />
+            Negociabil
           </div>
         )}
         
