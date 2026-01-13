@@ -1304,7 +1304,7 @@ export default function PublishPage() {
 
   const filteredCities = CITIES.filter(city => 
     city.toLowerCase().includes(citySearch.toLowerCase())
-  );
+  ).slice(0, 10);
 
   const handleSelectCategory = (cat: string) => {
     setCategoria(cat);
@@ -2004,21 +2004,27 @@ export default function PublishPage() {
                     focus:outline-none focus:border-[#13C1AC] focus:bg-white transition-all"
                 />
                 
-                {showCityDropdown && (
-                  <div className="absolute z-10 w-full mt-2 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl max-h-48 overflow-y-auto">
-                    {filteredCities.map((city) => (
-                      <button
-                        key={city}
-                        onClick={() => { setUbicacion(city); setCitySearch(city); setShowCityDropdown(false); }}
-                        className={`w-full px-4 py-2.5 text-left hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm ${
-                          ubicacion === city ? 'bg-[#13C1AC]/10 text-[#13C1AC]' : 'text-gray-700'
-                        }`}
-                      >
-                        <MapPin className="w-3 h-3" />
-                        {city}
-                        {ubicacion === city && <Check className="w-3 h-3 ml-auto" />}
-                      </button>
-                    ))}
+                {showCityDropdown && citySearch.length > 0 && (
+                  <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl max-h-60 overflow-y-auto">
+                    {filteredCities.length > 0 ? (
+                      filteredCities.map((city) => (
+                        <button
+                          key={city}
+                          onClick={() => { setUbicacion(city); setCitySearch(city); setShowCityDropdown(false); }}
+                          className={`w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-center gap-2 text-sm border-b border-gray-100 last:border-b-0 ${
+                            ubicacion === city ? 'bg-[#13C1AC]/10 text-[#13C1AC]' : 'text-gray-700'
+                          }`}
+                        >
+                          <MapPin className="w-4 h-4 text-gray-400" />
+                          <span className="flex-1">{city}</span>
+                          {ubicacion === city && <Check className="w-4 h-4 text-[#13C1AC]" />}
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-3 text-gray-500 text-sm text-center">
+                        Nu s-a găsit orașul "{citySearch}"
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
