@@ -156,76 +156,86 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard General</h1>
-        <p className="text-gray-500">Privire de ansamblu asupra platformei Vindel.ro</p>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard General</h1>
+          <p className="text-gray-500 text-sm mt-1">Privire de ansamblu asupra platformei Vindel.ro</p>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <div className={`w-2 h-2 rounded-full ${stats.dbStatus === 'online' ? 'bg-green-500' : stats.dbStatus === 'checking' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}`}></div>
+          <span>{stats.dbStatus === 'online' ? 'Sistem Operațional' : stats.dbStatus === 'checking' ? 'Se verifică...' : 'Offline'}</span>
+        </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Grid - 2x2 on mobile, 4 columns on desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
-          title="Utilizatori Totali" 
+          title="Utilizatori" 
           value={loading ? '...' : stats.totalUsers.toLocaleString()} 
-          trend="+12%" 
-          trendUp={true} 
+          subtitle="Conturi înregistrate"
           icon={Users} 
           color="blue"
         />
         <StatCard 
-          title="Anunțuri Active" 
+          title="Anunțuri" 
           value={loading ? '...' : stats.activeListings.toLocaleString()} 
-          trend="+5%" 
-          trendUp={true} 
+          subtitle="Active pe platformă"
           icon={ShoppingBag} 
           color="emerald"
         />
         <StatCard 
           title="Mesaje Azi" 
           value={loading ? '...' : stats.messagesToday.toLocaleString()} 
-          trend="+24%" 
-          trendUp={true} 
+          subtitle="Conversații"
           icon={MessageCircle} 
           color="purple"
         />
         <StatCard 
-          title="Vizuale Totale" 
+          title="Vizualizări" 
           value={loading ? '...' : stats.totalViews >= 1000 ? `${(stats.totalViews / 1000).toFixed(1)}k` : stats.totalViews.toString()} 
-          trend="+18%" 
-          trendUp={true} 
+          subtitle="Total anunțuri"
           icon={Eye} 
           color="orange"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Activity */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-gray-500" />
+        <div className="lg:col-span-2 bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 p-6">
+          <h2 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-[#13C1AC]" />
             Activitate Recentă
           </h2>
-          <div className="space-y-6">
+          <div className="space-y-4">
             {loading ? (
               <div className="text-center text-gray-500 py-8">Se încarcă...</div>
             ) : recentActivity.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">Nu există activitate recentă</div>
+              <div className="text-center text-gray-400 py-8">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gray-100 flex items-center justify-center">
+                  📭
+                </div>
+                Nu există activitate recentă
+              </div>
             ) : (
               recentActivity.map((activity) => (
-                <div key={activity.id} className="flex items-start gap-4 pb-6 border-b border-gray-100 last:border-0 last:pb-0">
-                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                     {activity.type === 'product' ? '🛒' : '👤'}
+                <div key={activity.id} className="flex items-center gap-4 p-3 rounded-xl bg-white border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-lg ${
+                    activity.type === 'product' ? 'bg-emerald-50' : 'bg-blue-50'
+                  }`}>
+                     {activity.type === 'product' ? '📦' : '👤'}
                   </div>
                   <div className="flex-1 min-w-0">
                      <p className="text-sm font-medium text-gray-900 truncate">
                        {activity.title}
                      </p>
-                     <p className="text-xs text-gray-500 mt-1">{timeAgo(activity.createdAt)}</p>
+                     <p className="text-xs text-gray-400 mt-0.5">{timeAgo(activity.createdAt)}</p>
                   </div>
-                  <span className={`ml-auto text-xs px-2 py-1 rounded-full border shrink-0 ${
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${
                     activity.status === 'În așteptare' 
-                      ? 'bg-amber-50 text-amber-700 border-amber-200'
-                      : 'bg-green-50 text-green-700 border-green-200'
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-emerald-100 text-emerald-700'
                   }`}>
                      {activity.status}
                   </span>
@@ -235,58 +245,73 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Action Items */}
+        {/* Right Column */}
         <div className="space-y-6">
            {/* Pending Approvals */}
-           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+           <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-100 p-5">
+              <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
                  <AlertCircle className="w-5 h-5 text-amber-500" />
-                 De Aprobat
+                 Acțiuni Rapide
               </h2>
-              <div className="flex items-center justify-between p-4 bg-amber-50 rounded-lg border border-amber-100 mb-3">
-                 <span className="text-amber-900 font-medium">
-                   {loading ? '...' : stats.pendingListings} Anunțuri noi
-                 </span>
-                 <Link 
-                   href="/admin/moderation"
-                   className="text-xs font-bold bg-white px-3 py-1.5 rounded shadow-sm hover:shadow text-amber-600 transition-shadow"
-                 >
-                    Verifică
-                 </Link>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-100">
-                 <span className="text-red-900 font-medium">
-                   {loading ? '...' : stats.pendingReports} Rapoarte
-                 </span>
-                 <Link 
-                   href="/admin/moderation?tab=reports"
-                   className="text-xs font-bold bg-white px-3 py-1.5 rounded shadow-sm hover:shadow text-red-600 transition-shadow"
-                 >
-                    Rezolvă
-                 </Link>
+              <div className="space-y-3">
+                <Link 
+                  href="/admin/moderation"
+                  className="flex items-center justify-between p-4 bg-amber-50 rounded-xl border border-amber-100 hover:border-amber-200 hover:shadow-sm transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">📋</span>
+                    <div>
+                      <span className="text-amber-900 font-semibold block text-sm">Anunțuri noi</span>
+                      <span className="text-amber-600 text-xs">{loading ? '...' : stats.pendingListings} în așteptare</span>
+                    </div>
+                  </div>
+                  <span className="text-amber-500 group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
+                
+                <Link 
+                  href="/admin/moderation?tab=reports"
+                  className="flex items-center justify-between p-4 bg-red-50 rounded-xl border border-red-100 hover:border-red-200 hover:shadow-sm transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">🚨</span>
+                    <div>
+                      <span className="text-red-900 font-semibold block text-sm">Rapoarte</span>
+                      <span className="text-red-600 text-xs">{loading ? '...' : stats.pendingReports} de rezolvat</span>
+                    </div>
+                  </div>
+                  <span className="text-red-500 group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
               </div>
            </div>
 
            {/* System Status */}
-           <div className="bg-gradient-to-br from-[#0f172a] to-[#1e293b] rounded-xl shadow-lg p-6 text-white">
-              <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+           <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 text-white">
+              <h2 className="text-base font-bold mb-4 flex items-center gap-2">
                  <CheckCircle className={`w-5 h-5 ${stats.dbStatus === 'online' ? 'text-emerald-400' : stats.dbStatus === 'checking' ? 'text-yellow-400' : 'text-red-400'}`} />
-                 System Status
+                 Status Sistem
               </h2>
-              <div className="space-y-3 text-sm text-slate-300">
-                 <div className="flex justify-between">
-                    <span>Database</span>
-                    <span className={`font-mono ${stats.dbStatus === 'online' ? 'text-emerald-400' : stats.dbStatus === 'checking' ? 'text-yellow-400' : 'text-red-400'}`}>
-                      {stats.dbStatus === 'checking' ? 'CHECKING...' : stats.dbStatus.toUpperCase()}
+              <div className="space-y-3 text-sm">
+                 <div className="flex justify-between items-center py-2 border-b border-slate-700">
+                    <span className="text-slate-400">Database</span>
+                    <span className={`font-mono text-xs px-2 py-1 rounded ${
+                      stats.dbStatus === 'online' ? 'bg-emerald-500/20 text-emerald-400' : 
+                      stats.dbStatus === 'checking' ? 'bg-yellow-500/20 text-yellow-400' : 
+                      'bg-red-500/20 text-red-400'
+                    }`}>
+                      {stats.dbStatus === 'checking' ? 'CHECKING' : stats.dbStatus.toUpperCase()}
                     </span>
                  </div>
-                 <div className="flex justify-between">
-                    <span>Storage (Firebase)</span>
-                    <span className="text-emerald-400 font-mono">Active</span>
+                 <div className="flex justify-between items-center py-2 border-b border-slate-700">
+                    <span className="text-slate-400">Firebase</span>
+                    <span className="font-mono text-xs px-2 py-1 rounded bg-emerald-500/20 text-emerald-400">ACTIVE</span>
                  </div>
-                 <div className="flex justify-between">
-                    <span>API Latency</span>
-                    <span className={`font-mono ${stats.apiLatency < 500 ? 'text-emerald-400' : stats.apiLatency < 1000 ? 'text-yellow-400' : 'text-red-400'}`}>
+                 <div className="flex justify-between items-center py-2">
+                    <span className="text-slate-400">Latency</span>
+                    <span className={`font-mono text-xs px-2 py-1 rounded ${
+                      stats.apiLatency < 500 ? 'bg-emerald-500/20 text-emerald-400' : 
+                      stats.apiLatency < 1000 ? 'bg-yellow-500/20 text-yellow-400' : 
+                      'bg-red-500/20 text-red-400'
+                    }`}>
                       {loading ? '...' : `${stats.apiLatency}ms`}
                     </span>
                  </div>
@@ -298,26 +323,26 @@ export default function AdminDashboard() {
   );
 }
 
-function StatCard({ title, value, trend, trendUp, icon: Icon, color }: any) {
+function StatCard({ title, value, subtitle, icon: Icon, color }: any) {
   const colors: any = {
-    blue: "bg-blue-50 text-blue-600",
-    emerald: "bg-emerald-50 text-emerald-600",
-    purple: "bg-purple-50 text-purple-600",
-    orange: "bg-orange-50 text-orange-600",
+    blue: "bg-blue-50 text-blue-600 ring-blue-100",
+    emerald: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+    purple: "bg-purple-50 text-purple-600 ring-purple-100",
+    orange: "bg-orange-50 text-orange-600 ring-orange-100",
   };
 
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-3 rounded-lg ${colors[color]}`}>
-          <Icon className="w-6 h-6" />
+    <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-5 border border-gray-100 hover:shadow-lg hover:border-gray-200 transition-all duration-300 group">
+      <div className="flex items-center gap-4">
+        <div className={`p-3 rounded-xl ${colors[color]} ring-4 ring-opacity-50 group-hover:scale-110 transition-transform duration-300`}>
+          <Icon className="w-5 h-5" />
         </div>
-        <span className={`text-xs font-bold px-2 py-1 rounded-full ${trendUp ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-          {trend}
-        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-sm font-medium text-gray-900 truncate">{title}</p>
+          <p className="text-xs text-gray-400">{subtitle}</p>
+        </div>
       </div>
-      <h3 className="text-slate-500 text-sm font-medium uppercase tracking-wide">{title}</h3>
-      <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
     </div>
   );
 }
