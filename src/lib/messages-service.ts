@@ -4,6 +4,7 @@ import {
   addDoc,
   getDoc,
   getDocs,
+  deleteDoc,
   query,
   where,
   orderBy,
@@ -171,6 +172,61 @@ export async function sendMessage(
   }
 
   return messageRef.id;
+}
+
+// Delete a message
+export async function deleteMessage(
+  messageId: string,
+  conversationId: string,
+  userId: string
+): Promise<boolean> {
+  try {
+    // Get the message to verify ownership
+    const messageRef = doc(db, MESSAGES_COLLECTION, messageId);
+    const messageSnap = await getDoc(messageRef);
+    
+    if (!messageSnap.exists()) {
+      return false;
+    }
+    
+    const message = messageSnap.data() as Message;
+    
+    // Only allow deleting own messages
+    if (message.senderId !== userId) {
+      return false;
+    }
+    
+    // Delete the message
+    await deleteDoc(messageRef);
+    
+    // Update last message in conversation if needed
+    const messagesQuery = query(
+      collection(db, MESSAGES_COLLECTION),
+      where('conversationId', '==', conversationId),
+      orderBy('createdAt', 'desc'),
+      limit(1)
+    );
+    
+    const remainingMessages = await getDocs(messagesQuery);
+    const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
+    
+    if (remainingMessages.empty) {
+      await updateDoc(conversationRef, {
+        lastMessage: '',
+      });
+    } else {
+      const lastMsg = remainingMessages.docs[0].data();
+      await updateDoc(conversationRef, {
+        lastMessage: lastMsg.text,
+        lastMessageAt: lastMsg.createdAt,
+      });
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Error deleting message:', error);
+    return false;
+  }
 }
 
 // Get messages for a conversation

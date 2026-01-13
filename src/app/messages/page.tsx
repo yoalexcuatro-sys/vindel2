@@ -8,7 +8,7 @@ import {
   CheckCheck, Circle, Smile
 } from 'lucide-react';
 import { 
-  subscribeToConversations, subscribeToMessages, sendMessage,
+  subscribeToConversations, subscribeToMessages, sendMessage, deleteMessage,
   markMessagesAsRead, updateLastSeen, updateTypingStatus, markUserOffline, Conversation, Message
 } from '@/lib/messages-service';
 import { useAuth } from '@/lib/auth-context';
@@ -495,7 +495,7 @@ function MessagesContent() {
                         return (
                           <div
                             key={message.id}
-                            className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
+                            className={`flex group/message ${isMine ? 'justify-end' : 'justify-start'}`}
                           >
                             {!isMine && showAvatar && (
                               <div className="mr-2 flex-shrink-0 self-end mb-5">
@@ -505,16 +505,33 @@ function MessagesContent() {
                             {!isMine && !showAvatar && <div className="w-10 mr-2" />}
                             
                             <div className={`max-w-[70%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
-                              <div
-                                className={`px-4 py-2.5 shadow-sm ${
-                                  isMine
-                                    ? 'bg-gradient-to-br from-[#13C1AC] to-emerald-500 text-white rounded-2xl rounded-br-md'
-                                    : 'bg-white text-gray-900 rounded-2xl rounded-bl-md border border-gray-100'
-                                }`}
-                              >
-                                <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                                  {message.text}
-                                </p>
+                              <div className={`flex items-center gap-1 ${isMine ? 'flex-row' : 'flex-row-reverse'}`}>
+                                {/* Delete button - only for own messages */}
+                                {isMine && (
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm('Sigur vrei să ștergi acest mesaj?')) {
+                                        await deleteMessage(message.id, activeConversation.id, user.uid);
+                                      }
+                                    }}
+                                    className="p-1.5 rounded-full hover:bg-red-100 text-gray-400 hover:text-red-500 opacity-0 group-hover/message:opacity-100 transition-all"
+                                    title="Șterge mesajul"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                                
+                                <div
+                                  className={`px-4 py-2.5 shadow-sm ${
+                                    isMine
+                                      ? 'bg-gradient-to-br from-[#13C1AC] to-emerald-500 text-white rounded-2xl rounded-br-md'
+                                      : 'bg-white text-gray-900 rounded-2xl rounded-bl-md border border-gray-100'
+                                  }`}
+                                >
+                                  <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
+                                    {message.text}
+                                  </p>
+                                </div>
                               </div>
                               <div className={`flex items-center gap-1 mt-1 px-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
                                 <span className="text-[10px] text-gray-400">
