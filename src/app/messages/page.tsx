@@ -38,13 +38,18 @@ function MessagesContent() {
     }
   }, [user, authLoading, router]);
 
-  // Subscribe to conversations
+  // Subscribe to conversations and update online status for all
   useEffect(() => {
     if (!user) return;
 
     const unsubscribe = subscribeToConversations(user.uid, (convs) => {
       setConversations(convs);
       setLoading(false);
+      
+      // Update lastSeen for all conversations when entering chat
+      convs.forEach(conv => {
+        updateLastSeen(conv.id, user.uid);
+      });
       
       // Auto-select conversation from URL param
       const conversationId = searchParams.get('conversation');
