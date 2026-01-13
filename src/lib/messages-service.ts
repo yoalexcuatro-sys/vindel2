@@ -252,3 +252,26 @@ export async function getUnreadCount(userId: string): Promise<number> {
   const conversations = await getUserConversations(userId);
   return conversations.reduce((total, conv) => total + (conv.unreadCount[userId] || 0), 0);
 }
+
+// Subscribe to unread count (real-time)
+export function subscribeToUnreadCount(
+  userId: string,
+  callback: (count: number) => void
+): () => void {
+  const q = query(
+    collection(db, CONVERSATIONS_COLLECTION),
+    where('participants', 'array-contains', userId)
+  );
+
+  return onSnapshot(q, (querySnapshot) => {
+    let totalUnread = 0;
+    querySnapshot.forEach((doc) => {
+      const conv = doc.data() as Conversation;
+      totalUnread += conv.unreadCount?.[userId] || 0;
+    });
+    callback(totalUnread);
+  }, (error) => {
+    console.error('Error subscribing to unread count:', error);
+    callback(0);
+  });
+}

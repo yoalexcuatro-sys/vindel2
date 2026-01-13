@@ -6,12 +6,28 @@ import { PlusCircle, MessageCircle, Heart, User, Menu, X, LogOut, Settings, Shie
 import { useState, Suspense, useRef, useEffect } from 'react';
 import SearchBar from './SearchBar';
 import { useAuth } from '@/lib/auth-context';
+import { subscribeToUnreadCount } from '@/lib/messages-service';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { user, userProfile, logout, loading } = useAuth();
   const userMenuRef = useRef<HTMLDivElement>(null);
+
+  // Subscribe to unread messages count
+  useEffect(() => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
+
+    const unsubscribe = subscribeToUnreadCount(user.uid, (count) => {
+      setUnreadCount(count);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   // Close user menu when clicking outside
   useEffect(() => {
@@ -61,8 +77,15 @@ export default function Navbar() {
 
             {/* Icons */}
             <div className="flex items-center space-x-5 text-gray-500">
-              <Link href="/messages" className="group flex flex-col items-center hover:text-[#13C1AC] transition-colors">
-                 <MessageCircle className="h-6 w-6 group-hover:scale-110 transition-transform" />
+              <Link href="/messages" className="group flex flex-col items-center hover:text-[#13C1AC] transition-colors relative">
+                 <div className="relative">
+                   <MessageCircle className="h-6 w-6 group-hover:scale-110 transition-transform" />
+                   {unreadCount > 0 && (
+                     <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                       {unreadCount > 9 ? '9+' : unreadCount}
+                     </span>
+                   )}
+                 </div>
                  <span className="text-xs mt-1 font-medium">Chat</span>
               </Link>
               <button className="group flex flex-col items-center hover:text-[#13C1AC] transition-colors">
@@ -178,8 +201,15 @@ export default function Navbar() {
                       Publică anunț
                   </Link>
                   <div className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-4">
-                      <Link href="/messages" className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC]">
-                          <MessageCircle className="h-6 w-6 mb-1" />
+                      <Link href="/messages" className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC] relative">
+                          <div className="relative">
+                            <MessageCircle className="h-6 w-6 mb-1" />
+                            {unreadCount > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5 text-[10px]">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-xs">Chat</span>
                       </Link>
                       <button className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC]">
