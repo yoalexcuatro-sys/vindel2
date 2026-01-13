@@ -48,6 +48,39 @@ function isProductApproved(product: Product): boolean {
 
 // Fetcher para productos home (destacados/recientes) - solo aprobados
 async function fetchHomeProducts(): Promise<Product[]> {
+  // Intentar obtener de caché local primero para carga instantánea
+  if (typeof window !== 'undefined') {
+    const cached = sessionStorage.getItem('home-products-cache');
+    if (cached) {
+      try {
+        const cachedProducts = JSON.parse(cached);
+        // Revalidar en background pero devolver caché inmediatamente
+        fetchHomeProductsFromFirebase().then(products => {
+          sessionStorage.setItem('home-products-cache', JSON.stringify(products));
+        }).catch(() => {});
+        return cachedProducts;
+      } catch {
+        // Si hay error parseando, continuar con fetch normal
+      }
+    }
+  }
+  
+  const products = await fetchHomeProductsFromFirebase();
+  
+  // Guardar en caché local
+  if (typeof window !== 'undefined') {
+    try {
+      sessionStorage.setItem('home-products-cache', JSON.stringify(products));
+    } catch {
+      // Ignorar errores de quota
+    }
+  }
+  
+  return products;
+}
+
+// Fetch desde Firebase sin caché
+async function fetchHomeProductsFromFirebase(): Promise<Product[]> {
   const q = query(
     collection(db, 'products'),
     where('sold', '==', false),
@@ -176,15 +209,27 @@ async function fetchSearchProducts(params: {
 
 /**
  * Hook para productos del home
- * Caché: 5 minutos, revalida en background
+ * Caché: sessionStorage + SWR para carga instantánea
  */
 export function useHomeProducts() {
+  // Intentar obtener datos iniciales de sessionStorage
+  const getFallbackData = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem('home-products-cache');
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return undefined;
+  };
+
   return useSWR('home-products', fetchHomeProducts, {
     revalidateOnFocus: false,
     revalidateOnMount: true,
     dedupingInterval: 60000,        // 1 minuto entre peticiones iguales
     refreshInterval: 300000,        // Refresca cada 5 min en background
     keepPreviousData: true,         // Mantiene datos mientras recarga
+    fallbackData: getFallbackData(),
   });
 }
 
