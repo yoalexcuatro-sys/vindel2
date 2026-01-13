@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { 
   Users, 
   ShoppingBag, 
@@ -9,8 +10,64 @@ import {
   CheckCircle, 
   AlertCircle
 } from 'lucide-react';
+import Link from 'next/link';
+import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+interface DashboardStats {
+  totalUsers: number;
+  activeListings: number;
+  pendingListings: number;
+  pendingReports: number;
+}
 
 export default function AdminDashboard() {
+  const [stats, setStats] = useState<DashboardStats>({
+    totalUsers: 0,
+    activeListings: 0,
+    pendingListings: 0,
+    pendingReports: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        // Fetch users count
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const totalUsers = usersSnap.size;
+
+        // Fetch all products
+        const productsSnap = await getDocs(collection(db, 'products'));
+        const products = productsSnap.docs.map(doc => doc.data());
+        
+        // Count active and pending
+        const activeListings = products.filter(p => p.status === 'active' || !p.status).length;
+        const pendingListings = products.filter(p => p.status === 'pending').length;
+
+        // Fetch reports count
+        const reportsQuery = query(
+          collection(db, 'reports'),
+          where('status', '==', 'pending')
+        );
+        const reportsSnap = await getDocs(reportsQuery);
+        const pendingReports = reportsSnap.size;
+
+        setStats({
+          totalUsers,
+          activeListings,
+          pendingListings,
+          pendingReports
+        });
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchStats();
+  }, []);
   return (
     <div className="space-y-8">
       <div>
@@ -22,7 +79,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Utilizatori Totali" 
-          value="1,234" 
+          value={loading ? '...' : stats.totalUsers.toLocaleString()} 
           trend="+12%" 
           trendUp={true} 
           icon={Users} 
@@ -30,7 +87,7 @@ export default function AdminDashboard() {
         />
         <StatCard 
           title="Anunțuri Active" 
-          value="856" 
+          value={loading ? '...' : stats.activeListings.toLocaleString()} 
           trend="+5%" 
           trendUp={true} 
           icon={ShoppingBag} 
@@ -90,16 +147,28 @@ export default function AdminDashboard() {
                  De Aprobat
               </h2>
               <div className="flex items-center justify-between p-4 bg-amber-50 rounded-lg border border-amber-100 mb-3">
-                 <span className="text-amber-900 font-medium">12 Anunțuri noi</span>
-                 <button className="text-xs font-bold bg-white px-3 py-1.5 rounded shadow-sm hover:shadow text-amber-600">
+                 <span className="text-amber-900 font-medium">
+                   {loading ? '...' : stats.pendingListings} Anunțuri noi
+                 </span>
+                 <Link 
+                   href="/admin/moderation"
+                   className="text-xs font-bold bg-white px-3 py-1.5 rounded shadow-sm hover:shadow text-amber-600 transition-shadow"
+                 >
                     Verifică
-                 </button>
+                 </Link>
               </div>
               <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg border border-red-100">
-                 <span className="text-red-900 font-medium">3 Rapoarte</span>
-                 <button className="text-xs font-bold bg-white px-3 py-1.5 rounded shadow-sm hover:shadow text-red-600">
+                 <span className="text-red-900 font-medium">
+                   {loading ? '...' : stats.pendingReports} Rapoarte
+                 </span>
+                 <Link 
+                   href="/admin/moderation?tab=reports"
+                   className="text-xs font-bold bg-white px-3 py-1.5 rounded shadow-sm hover:shadow text-red-600 transition-shadow"
+                 >
                     Rezolvă
-                 </button>
+                 </Link>
+              </div>
+           </div>
               </div>
            </div>
 
