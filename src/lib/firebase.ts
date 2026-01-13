@@ -3,8 +3,7 @@ import { getAuth } from 'firebase/auth';
 import { 
   getFirestore, 
   initializeFirestore, 
-  persistentLocalCache, 
-  persistentMultipleTabManager, 
+  memoryLocalCache,
   Firestore 
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
@@ -33,11 +32,9 @@ let db: Firestore;
 
 if (getApps().length === 0) {
   app = initializeApp(firebaseConfig);
-  // Initialize Firestore with modern persistence settings
+  // Use memory cache to avoid localStorage quota issues
   db = initializeFirestore(app, {
-    localCache: persistentLocalCache({
-      tabManager: persistentMultipleTabManager()
-    })
+    localCache: memoryLocalCache()
   });
 } else {
   app = getApps()[0];
