@@ -47,10 +47,24 @@ export default function AdminSEO() {
   };
 
   return (
-    <div className="max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Configurări SEO & Platformă</h1>
-        <p className="text-gray-500">Gestionează metadatele globale și setările de contact</p>
+    <div className="relative max-w-4xl">
+      {/* Header with waves */}
+      <div className="relative bg-gradient-to-r from-slate-50 to-gray-100 -mx-6 lg:-mx-8 -mt-6 lg:-mt-8 px-6 lg:px-8 pt-6 lg:pt-8 pb-16 mb-6 overflow-hidden">
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="w-full h-16">
+            <path fill="white" d="M0,64 C288,89 432,24 720,49 C1008,74 1152,100 1440,64 L1440,120 L0,120 Z"></path>
+          </svg>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="w-full h-12 opacity-50">
+            <path fill="white" d="M0,96 C144,80 288,48 432,48 C576,48 720,80 864,80 C1008,80 1152,64 1296,48 L1440,32 L1440,120 L0,120 Z"></path>
+          </svg>
+        </div>
+        
+        <div className="relative z-10">
+          <h1 className="text-2xl font-bold text-gray-900">Configurări SEO & Platformă</h1>
+          <p className="text-gray-500 text-sm mt-1">Gestionează metadatele globale și setările de contact</p>
+        </div>
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">

@@ -75,24 +75,38 @@ export default function AdminUsers() {
   }
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Utilizatori</h1>
-          <p className="text-gray-500">Administrare conturi și permisiuni</p>
+    <div className="relative">
+      {/* Header with waves */}
+      <div className="relative bg-gradient-to-r from-slate-50 to-gray-100 -mx-6 lg:-mx-8 -mt-6 lg:-mt-8 px-6 lg:px-8 pt-6 lg:pt-8 pb-16 mb-6 overflow-hidden">
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="w-full h-16">
+            <path fill="white" d="M0,64 C288,89 432,24 720,49 C1008,74 1152,100 1440,64 L1440,120 L0,120 Z"></path>
+          </svg>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-             <div className="relative flex-1 sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input 
-                    type="text" 
-                    placeholder="Caută utilizatori..."
-                    className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-             </div>
-             <button className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">
-                <Filter className="w-5 h-5" />
-             </button>
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 120" preserveAspectRatio="none" className="w-full h-12 opacity-50">
+            <path fill="white" d="M0,96 C144,80 288,48 432,48 C576,48 720,80 864,80 C1008,80 1152,64 1296,48 L1440,32 L1440,120 L0,120 Z"></path>
+          </svg>
+        </div>
+        
+        <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Utilizatori</h1>
+            <p className="text-gray-500 text-sm mt-1">Administrare conturi și permisiuni</p>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+               <div className="relative flex-1 sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input 
+                      type="text" 
+                      placeholder="Caută utilizatori..."
+                      className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#13C1AC] focus:border-transparent shadow-sm"
+                  />
+               </div>
+               <button className="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 shadow-sm">
+                  <Filter className="w-5 h-5" />
+               </button>
+          </div>
         </div>
       </div>
 
