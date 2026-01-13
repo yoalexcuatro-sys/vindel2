@@ -81,6 +81,7 @@ export async function getOrCreateConversation(
     productImage: productData?.productImage,
     unreadCount: { [userId]: 0, [otherUserId]: 0 },
     createdAt: serverTimestamp() as Timestamp,
+    lastMessageAt: serverTimestamp() as Timestamp,
   };
 
   const docRef = await addDoc(collection(db, CONVERSATIONS_COLLECTION), newConversation);
@@ -92,7 +93,7 @@ export async function getUserConversations(userId: string): Promise<Conversation
   const q = query(
     collection(db, CONVERSATIONS_COLLECTION),
     where('participants', 'array-contains', userId),
-    orderBy('lastMessageAt', 'desc')
+    orderBy('createdAt', 'desc')
   );
 
   const querySnapshot = await getDocs(q);
@@ -110,16 +111,22 @@ export function subscribeToConversations(
   userId: string,
   callback: (conversations: Conversation[]) => void
 ): () => void {
+  // Query without orderBy to avoid index requirement
   const q = query(
     collection(db, CONVERSATIONS_COLLECTION),
-    where('participants', 'array-contains', userId),
-    orderBy('lastMessageAt', 'desc')
+    where('participants', 'array-contains', userId)
   );
 
   return onSnapshot(q, (querySnapshot) => {
     const conversations: Conversation[] = [];
     querySnapshot.forEach((doc) => {
       conversations.push({ id: doc.id, ...doc.data() } as Conversation);
+    });
+    // Sort client-side by lastMessageAt or createdAt
+    conversations.sort((a, b) => {
+      const aTime = a.lastMessageAt?.toMillis() || a.createdAt?.toMillis() || 0;
+      const bTime = b.lastMessageAt?.toMillis() || b.createdAt?.toMillis() || 0;
+      return bTime - aTime;
     });
     callback(conversations);
   });
