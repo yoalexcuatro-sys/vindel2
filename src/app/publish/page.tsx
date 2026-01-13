@@ -1904,6 +1904,48 @@ export default function PublishPage() {
                 </div>
               )}
 
+              {/* Stare tehnică - Solo para Auto-moto */}
+              {categoria === 'auto-moto' && (
+                <div>
+                  <label className="text-gray-600 text-xs mb-2 block">Stare tehnică</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { id: 'itp-valabil', label: 'ITP valabil', icon: Check },
+                      { id: 'fara-itp', label: 'Fără ITP', icon: AlertCircle },
+                      { id: 'nerulat-romania', label: 'Nerulat în România', icon: Globe },
+                      { id: 'carte-service', label: 'Carte service', icon: FileText },
+                      { id: 'km-reali', label: 'Km verificabili', icon: Shield },
+                      { id: 'primul-proprietar', label: 'Primul proprietar', icon: Star },
+                      { id: 'fara-accident', label: 'Fără accident', icon: Shield },
+                      { id: 'import-recent', label: 'Import recent', icon: Truck },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => {
+                          // Toggle - permite selección múltiple
+                          const current = customFields['stareTehnica'] || '';
+                          const values = current ? current.split(',') : [];
+                          if (values.includes(item.id)) {
+                            handleCustomFieldChange('stareTehnica', values.filter(v => v !== item.id).join(','));
+                          } else {
+                            handleCustomFieldChange('stareTehnica', [...values, item.id].join(','));
+                          }
+                        }}
+                        className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                          (customFields['stareTehnica'] || '').split(',').includes(item.id)
+                            ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                            : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-gray-400 text-xs mt-2">Poți selecta mai multe opțiuni</p>
+                </div>
+              )}
+
               {/* Tipo de persona */}
               <div className="flex gap-2 mt-3">
                 <button
