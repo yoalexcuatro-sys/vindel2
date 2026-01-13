@@ -21,6 +21,28 @@ interface DashboardStats {
   pendingReports: number;
 }
 
+interface RecentActivity {
+  id: string;
+  type: 'product' | 'user';
+  title: string;
+  status: string;
+  createdAt: Date;
+}
+
+// Helper to format time ago
+function timeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffMins < 1) return 'Acum';
+  if (diffMins < 60) return `Acum ${diffMins} minute`;
+  if (diffHours < 24) return `Acum ${diffHours} ore`;
+  return `Acum ${diffDays} zile`;
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats>({
     totalUsers: 0,
@@ -28,22 +50,51 @@ export default function AdminDashboard() {
     pendingListings: 0,
     pendingReports: 0
   });
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        // Fetch users count
-        const usersSnap = await getDocs(collection(db, 'users'));
+        // Fetch users
+        const usersSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(10)));
         const totalUsers = usersSnap.size;
+        const recentUsers: RecentActivity[] = usersSnap.docs.slice(0, 5).map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            type: 'user' as const,
+            title: `Utilizator nou înregistrat: ${data.name || data.email || 'Anonim'}`,
+            status: 'Verificat',
+            createdAt: data.createdAt?.toDate() || new Date()
+          };
+        });
 
         // Fetch all products
-        const productsSnap = await getDocs(collection(db, 'products'));
+        const productsSnap = await getDocs(query(collection(db, 'products'), orderBy('publishedAt', 'desc'), limit(10)));
         const products = productsSnap.docs.map(doc => doc.data());
         
         // Count active and pending
         const activeListings = products.filter(p => p.status === 'active' || !p.status).length;
         const pendingListings = products.filter(p => p.status === 'pending').length;
+
+        const recentProducts: RecentActivity[] = productsSnap.docs.slice(0, 5).map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            type: 'product' as const,
+            title: `Anunț nou: ${data.title || 'Fără titlu'}`,
+            status: data.status === 'pending' ? 'În așteptare' : 'Publicat',
+            createdAt: data.publishedAt?.toDate() || new Date()
+          };
+        });
+
+        // Merge and sort by date
+        const allActivity = [...recentUsers, ...recentProducts]
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(0, 8);
+
+        setRecentActivity(allActivity);
 
         // Fetch reports count
         const reportsQuery = query(
@@ -119,22 +170,32 @@ export default function AdminDashboard() {
             Activitate Recentă
           </h2>
           <div className="space-y-6">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-start gap-4 pb-6 border-b border-gray-100 last:border-0 last:pb-0">
-                <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
-                   {i % 2 === 0 ? '🛒' : '👤'}
+            {loading ? (
+              <div className="text-center text-gray-500 py-8">Se încarcă...</div>
+            ) : recentActivity.length === 0 ? (
+              <div className="text-center text-gray-500 py-8">Nu există activitate recentă</div>
+            ) : (
+              recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-start gap-4 pb-6 border-b border-gray-100 last:border-0 last:pb-0">
+                  <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+                     {activity.type === 'product' ? '🛒' : '👤'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                     <p className="text-sm font-medium text-gray-900 truncate">
+                       {activity.title}
+                     </p>
+                     <p className="text-xs text-gray-500 mt-1">{timeAgo(activity.createdAt)}</p>
+                  </div>
+                  <span className={`ml-auto text-xs px-2 py-1 rounded-full border shrink-0 ${
+                    activity.status === 'În așteptare' 
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-green-50 text-green-700 border-green-200'
+                  }`}>
+                     {activity.status}
+                  </span>
                 </div>
-                <div>
-                   <p className="text-sm font-medium text-gray-900">
-                     {i % 2 === 0 ? 'Anunț nou: iPhone X 256GB' : 'Utilizator nou înregistrat: Marian Popescu'}
-                   </p>
-                   <p className="text-xs text-gray-500 mt-1">Acum {i * 15} minute</p>
-                </div>
-                <span className="ml-auto text-xs px-2 py-1 bg-green-50 text-green-700 rounded-full border border-green-200">
-                   {i % 2 === 0 ? 'Publicat' : 'Verificat'}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -167,8 +228,6 @@ export default function AdminDashboard() {
                  >
                     Rezolvă
                  </Link>
-              </div>
-           </div>
               </div>
            </div>
 
