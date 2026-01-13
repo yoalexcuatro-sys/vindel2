@@ -505,19 +505,31 @@ function MessagesContent() {
                             {!isMine && !showAvatar && <div className="w-10 mr-2" />}
                             
                             <div className={`max-w-[70%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
-                              <div className={`flex items-center gap-1 ${isMine ? 'flex-row' : 'flex-row-reverse'}`}>
+                              <div className={`flex items-center gap-2 ${isMine ? 'flex-row' : 'flex-row-reverse'}`}>
                                 {/* Delete button - only for own messages */}
                                 {isMine && (
                                   <button
-                                    onClick={async () => {
-                                      if (confirm('Sigur vrei să ștergi acest mesaj?')) {
-                                        await deleteMessage(message.id, activeConversation.id, user.uid);
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      const confirmed = window.confirm('Sigur vrei să ștergi acest mesaj?');
+                                      if (confirmed) {
+                                        deleteMessage(message.id, activeConversation.id, user.uid)
+                                          .then((success) => {
+                                            if (!success) {
+                                              alert('Nu s-a putut șterge mesajul');
+                                            }
+                                          })
+                                          .catch((err) => {
+                                            console.error('Delete error:', err);
+                                            alert('Eroare la ștergere');
+                                          });
                                       }
                                     }}
-                                    className="p-1.5 rounded-full hover:bg-red-100 text-gray-400 hover:text-red-500 opacity-0 group-hover/message:opacity-100 transition-all"
+                                    className="p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 opacity-0 group-hover/message:opacity-100 transition-all duration-200"
                                     title="Șterge mesajul"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <Trash2 className="w-4 h-4" />
                                   </button>
                                 )}
                                 
