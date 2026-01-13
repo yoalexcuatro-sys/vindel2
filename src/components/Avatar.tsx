@@ -73,7 +73,9 @@ export default function Avatar({
 }: AvatarProps) {
   const [imageError, setImageError] = useState(false);
   
-  const showImage = src && !imageError;
+  // Filter out placeholder URLs that cause issues with Next.js image optimization
+  const validSrc = src && !src.includes('placehold.co') ? src : null;
+  const showImage = validSrc && !imageError;
   const initials = getInitials(name);
   const colorClass = getColorFromName(name);
   
@@ -82,7 +84,7 @@ export default function Avatar({
       {showImage ? (
         <div className={`${sizeClasses[size]} rounded-full overflow-hidden ring-2 ring-white shadow-md`}>
           <Image 
-            src={src} 
+            src={validSrc} 
             alt={name} 
             width={80} 
             height={80} 
