@@ -14,6 +14,7 @@ interface Product {
   id: string; // Ensure ID is string for slug generation
   title: string;
   price: number;
+  currency?: 'LEI' | 'EUR';
   image: string;
   images?: string[];
   location: string;
@@ -39,7 +40,14 @@ const isNewProduct = (publishedAt?: string | Timestamp): boolean => {
 export default function ProductCard({ product }: { product: Product }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
-  const [theme, setTheme] = useState(1);
+  const [theme, setTheme] = useState(() => {
+    // Cargar tema inmediatamente al inicializar
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('user_card_theme');
+      return saved ? parseInt(saved) : 1;
+    }
+    return 1;
+  });
   
   // Prefetch producto en hover para carga instantánea
   const prefetchProduct = useCallback(async () => {
@@ -52,7 +60,7 @@ export default function ProductCard({ product }: { product: Product }) {
     }
   }, [product.id]);
   
-  // Load theme preference
+  // Listen for theme changes from settings
   useEffect(() => {
     const loadTheme = () => {
       if (typeof window !== 'undefined') {
@@ -61,7 +69,6 @@ export default function ProductCard({ product }: { product: Product }) {
       }
     };
     
-    loadTheme();
     window.addEventListener('themeChange', loadTheme);
     return () => window.removeEventListener('themeChange', loadTheme);
   }, []);
@@ -165,7 +172,7 @@ export default function ProductCard({ product }: { product: Product }) {
                     <div className="text-[11px] text-slate-500 mt-1 truncate opacity-75">Electronics › Generic</div>
                  </div>
                  <div className="mt-2">
-                    <span className="block text-xl font-bold text-slate-900">{product.price} Lei</span>
+                    <span className="block text-base font-bold text-slate-900">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</span>
                     <span className="text-[10px] text-green-700 bg-green-50 px-2 py-0.5 rounded-full font-medium inline-block mt-1">Verificat</span>
                  </div>
               </div>
@@ -196,7 +203,7 @@ export default function ProductCard({ product }: { product: Product }) {
             <div className="px-1 flex-1 flex flex-col">
                  <div className="flex justify-between items-start">
                      <h4 className="font-medium text-gray-900 text-lg leading-tight line-clamp-1 group-hover:text-teal-600">{product.title}</h4>
-                     <p className="font-bold text-gray-900 text-lg whitespace-nowrap ml-2">{product.price} Lei</p>
+                     <p className="font-bold text-gray-900 text-base whitespace-nowrap ml-2">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</p>
                  </div>
                  <p className="text-sm text-gray-500 mt-1">Stare bună • Verificat</p>
             </div>
@@ -224,7 +231,7 @@ export default function ProductCard({ product }: { product: Product }) {
             
             <div className="px-1 flex flex-col">
                 <div className="flex justify-between items-start mb-0.5">
-                   <h4 className="text-base font-bold text-gray-900">{product.price} Lei</h4>
+                   <h4 className="text-base font-bold text-gray-900">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
                    <div className="p-1 -mr-1 rounded-full hover:bg-gray-100 transition-colors">
                      <Heart className="w-5 h-5 text-gray-900 stroke-[1.5]" />
                    </div>
@@ -264,7 +271,7 @@ export default function ProductCard({ product }: { product: Product }) {
             <div className="p-4 flex flex-col flex-1">
                 <div className="flex justify-between items-start">
                    <div>
-                     <h4 className="text-xl font-extrabold text-gray-900 mb-1">{product.price} Lei</h4>
+                     <h4 className="text-base font-bold text-gray-900 mb-1">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
                    </div>
                    <button className="text-gray-400 hover:text-red-500 transition-colors">
                      <Heart className="w-6 h-6 stroke-2" />
@@ -319,7 +326,7 @@ export default function ProductCard({ product }: { product: Product }) {
              <p className="text-xs text-slate-500 mb-4">Postat de Alex Electronics</p>
              
              <div className="flex items-center justify-between mt-auto">
-                <span className="font-bold text-[#13C1AC] text-xl">{product.price} Lei</span>
+                <span className="font-bold text-[#13C1AC] text-base">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</span>
                 <span className="bg-[#0f172a] text-white text-[11px] font-medium px-4 py-2 rounded-lg group-hover:bg-slate-800 transition-colors shadow-sm">
                     Vezi Detalii
                 </span>
@@ -355,7 +362,7 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
           <div className="p-4 flex flex-col flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <p className="text-xl font-bold text-[#13C1AC]">{product.price.toLocaleString()} <span className="text-sm font-medium text-gray-500">Lei</span></p>
+              <p className="text-base font-bold text-[#13C1AC]">{product.price.toLocaleString()} <span className="text-xs font-medium text-gray-500">{product.currency === 'EUR' ? '€' : 'Lei'}</span></p>
               <span className="text-xs text-gray-400">•</span>
               <span className="text-xs text-gray-500">Negociabil</span>
             </div>
@@ -396,7 +403,7 @@ export default function ProductCard({ product }: { product: Product }) {
             
             <div className="p-4 flex flex-col flex-1">
                 <div className="flex justify-between items-start mb-2">
-                   <h4 className="text-xl font-bold text-gray-900">{product.price} Lei</h4>
+                   <h4 className="text-base font-bold text-gray-900">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
                    <Heart className="w-5 h-5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer" />
                 </div>
                 

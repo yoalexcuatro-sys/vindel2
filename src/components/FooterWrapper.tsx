@@ -10,8 +10,10 @@ export default function FooterWrapper() {
   // Updated route for /anunturi/[category]/[slug]-[id]
   const isProductPage = pathname?.startsWith('/anunturi/');
   const isAdminPage = pathname?.startsWith('/admin');
+  const isMessagesPage = pathname?.startsWith('/messages') || pathname?.startsWith('/chat');
+  const isPublishPage = pathname?.startsWith('/publish');
 
-  if (isProductPage || isAdminPage) {
+  if (isProductPage || isAdminPage || isMessagesPage || isPublishPage) {
     return null;
   }
 

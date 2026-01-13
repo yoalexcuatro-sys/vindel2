@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getUserProducts, Product, deleteProduct } from '@/lib/products-service';
 import { uploadAvatar } from '@/lib/storage-service';
@@ -18,13 +19,22 @@ import {
 type ViewType = 'dashboard' | 'products' | 'profile' | 'favorites' | 'settings' | 'invoices' | 'promotion' | 'analytics';
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { user, userProfile, logout, loading: authLoading, profileLoading, updateUserProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
   const [productFilter, setProductFilter] = useState<'active' | 'pending' | 'sold' | 'rejected'>('active');
   const [favoritesViewMode, setFavoritesViewMode] = useState<'grid' | 'list'>('grid');
-  const [selectedCardTheme, setSelectedCardTheme] = useState<number>(1);
+  const [selectedCardTheme, setSelectedCardTheme] = useState<number>(() => {
+    // Cargar tema guardado inmediatamente al inicializar
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('user_card_theme');
+      return saved ? parseInt(saved) : 1;
+    }
+    return 1;
+  });
+  const [themeInitialized, setThemeInitialized] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
   
@@ -46,16 +56,17 @@ export default function ProfilePage() {
     };
     loadProducts();
     
-    const savedTheme = localStorage.getItem('user_card_theme');
-    if (savedTheme) setSelectedCardTheme(parseInt(savedTheme));
+    // Marcar como inicializado después del primer render
+    setThemeInitialized(true);
   }, [user]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    // Solo guardar si ya se inicializó (evita guardar el valor por defecto)
+    if (typeof window !== 'undefined' && themeInitialized) {
         localStorage.setItem('user_card_theme', selectedCardTheme.toString());
         window.dispatchEvent(new Event('themeChange'));
     }
-  }, [selectedCardTheme]);
+  }, [selectedCardTheme, themeInitialized]);
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -987,7 +998,11 @@ export default function ProfilePage() {
                           <div className="flex-shrink-0">
                             {productFilter === 'active' && (
                               <div className="flex items-center gap-0.5 bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
-                                <button className="p-2 text-gray-500 hover:text-[#13C1AC] hover:bg-[#E0F2F1] rounded transition-all duration-200" title="Editează">
+                                <button 
+                                  onClick={() => router.push(`/publish/edit/${product.id}`)}
+                                  className="p-2 text-gray-500 hover:text-[#13C1AC] hover:bg-[#E0F2F1] rounded transition-all duration-200" 
+                                  title="Editează"
+                                >
                                   <Pencil className="h-3.5 w-3.5" />
                                 </button>
                                 <button onClick={() => handleDeleteProduct(product.id)} className="p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded transition-all duration-200" title="Șterge">

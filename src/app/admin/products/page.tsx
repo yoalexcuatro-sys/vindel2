@@ -11,6 +11,19 @@ import { Product, approveProduct, rejectProduct } from '@/lib/products-service';
 export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter products based on search
+  const filteredProducts = products.filter(product => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      product.title?.toLowerCase().includes(query) ||
+      product.category?.toLowerCase().includes(query) ||
+      product.location?.toLowerCase().includes(query) ||
+      product.description?.toLowerCase().includes(query)
+    );
+  });
 
   useEffect(() => {
     // In a real app, you would have pagination here
@@ -101,6 +114,8 @@ export default function AdminProducts() {
                   <input 
                       type="text" 
                       placeholder="Caută anunțuri..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#13C1AC] focus:border-transparent shadow-sm"
                   />
                </div>
@@ -125,7 +140,7 @@ export default function AdminProducts() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {products.map((product) => (
+              {filteredProducts.map((product) => (
                 <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">

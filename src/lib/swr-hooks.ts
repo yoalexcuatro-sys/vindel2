@@ -330,3 +330,183 @@ export function invalidateProductsCache() {
     window.dispatchEvent(event);
   }
 }
+
+// ============================================
+// ADMIN HOOKS (con caché persistente)
+// ============================================
+
+interface AdminUser {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+  createdAt: any;
+  role?: 'user' | 'admin';
+  status?: 'active' | 'banned';
+  accountType?: 'personal' | 'business';
+  phone?: string;
+  location?: string;
+  companyName?: string;
+}
+
+interface AdminStats {
+  totalUsers: number;
+  totalProducts: number;
+  totalMessages: number;
+  totalViews: number;
+  dbStatus: string;
+  apiLatency: number;
+  recentActivity: Array<{
+    id: string;
+    type: string;
+    title: string;
+    time: string;
+  }>;
+}
+
+// Fetcher para usuarios del admin
+async function fetchAdminUsers(): Promise<AdminUser[]> {
+  const q = query(collection(db, 'users'), limit(50));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as AdminUser));
+}
+
+// Fetcher para estadísticas del admin
+async function fetchAdminStats(): Promise<AdminStats> {
+  const startTime = performance.now();
+  
+  const [usersSnap, productsSnap, messagesSnap] = await Promise.all([
+    getDocs(query(collection(db, 'users'), limit(1000))),
+    getDocs(query(collection(db, 'products'), limit(1000))),
+    getDocs(query(collection(db, 'conversations'), limit(1000)))
+  ]);
+  
+  const apiLatency = Math.round(performance.now() - startTime);
+  
+  // Calcular vistas totales
+  let totalViews = 0;
+  productsSnap.docs.forEach(doc => {
+    const data = doc.data();
+    totalViews += data.views || 0;
+  });
+  
+  // Actividad reciente
+  const recentActivity: AdminStats['recentActivity'] = [];
+  
+  // Últimos productos
+  const recentProducts = productsSnap.docs
+    .filter(doc => doc.data().createdAt)
+    .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0))
+    .slice(0, 3);
+  
+  recentProducts.forEach(doc => {
+    const data = doc.data();
+    recentActivity.push({
+      id: doc.id,
+      type: 'product',
+      title: data.title || 'Produs nou',
+      time: data.createdAt?.seconds 
+        ? new Date(data.createdAt.seconds * 1000).toISOString()
+        : new Date().toISOString()
+    });
+  });
+  
+  // Últimos usuarios
+  const recentUsers = usersSnap.docs
+    .filter(doc => doc.data().createdAt)
+    .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0))
+    .slice(0, 2);
+  
+  recentUsers.forEach(doc => {
+    const data = doc.data();
+    recentActivity.push({
+      id: doc.id,
+      type: 'user',
+      title: data.displayName || data.email || 'Utilizator nou',
+      time: data.createdAt?.seconds 
+        ? new Date(data.createdAt.seconds * 1000).toISOString()
+        : new Date().toISOString()
+    });
+  });
+  
+  // Ordenar por tiempo
+  recentActivity.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+  
+  return {
+    totalUsers: usersSnap.size,
+    totalProducts: productsSnap.size,
+    totalMessages: messagesSnap.size,
+    totalViews,
+    dbStatus: 'online',
+    apiLatency,
+    recentActivity: recentActivity.slice(0, 5)
+  };
+}
+
+// Fetcher para productos del admin (todos, sin filtro de aprobación)
+async function fetchAdminProducts(): Promise<Product[]> {
+  const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'), limit(100));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+}
+
+/**
+ * Hook para usuarios del admin con caché
+ */
+export function useAdminUsers() {
+  return useSWR<AdminUser[]>(
+    'admin-users',
+    fetchAdminUsers,
+    {
+      revalidateOnFocus: false,     // No recargar al volver a la pestaña
+      revalidateOnReconnect: false, // No recargar al reconectar
+      dedupingInterval: 60000,      // Deduplicar llamadas por 1 minuto
+      refreshInterval: 0,           // No refrescar automáticamente
+      keepPreviousData: true,       // Mantener datos anteriores
+    }
+  );
+}
+
+/**
+ * Hook para estadísticas del admin con caché
+ */
+export function useAdminStats() {
+  return useSWR<AdminStats>(
+    'admin-stats',
+    fetchAdminStats,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 30000,      // Deduplicar por 30 segundos
+      refreshInterval: 0,
+      keepPreviousData: true,
+    }
+  );
+}
+
+/**
+ * Hook para productos del admin con caché
+ */
+export function useAdminProducts() {
+  return useSWR<Product[]>(
+    'admin-products',
+    fetchAdminProducts,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60000,
+      refreshInterval: 0,
+      keepPreviousData: true,
+    }
+  );
+}
+
+/**
+ * Invalidar caché del admin
+ */
+export function invalidateAdminCache() {
+  if (typeof window !== 'undefined') {
+    const event = new CustomEvent('swr-invalidate', { detail: 'admin' });
+    window.dispatchEvent(event);
+  }
+}

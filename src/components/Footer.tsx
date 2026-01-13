@@ -2,7 +2,7 @@ import { Home, Briefcase, Smartphone, Shirt, PawPrint } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="relative mt-auto text-sm overflow-hidden">
+    <footer className="relative mt-56 text-sm overflow-hidden">
         {/* Wave Background */}
         <div className="absolute inset-0 z-0">
             {/* Base gradient */}

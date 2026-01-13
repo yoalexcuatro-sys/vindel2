@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { 
   Users, 
   ShoppingBag, 
@@ -11,30 +10,11 @@ import {
   AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
-import { collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
-interface DashboardStats {
-  totalUsers: number;
-  activeListings: number;
-  pendingListings: number;
-  pendingReports: number;
-  messagesToday: number;
-  totalViews: number;
-  dbStatus: 'online' | 'offline' | 'checking';
-  apiLatency: number;
-}
-
-interface RecentActivity {
-  id: string;
-  type: 'product' | 'user';
-  title: string;
-  status: string;
-  createdAt: Date;
-}
+import { useAdminStats } from '@/lib/swr-hooks';
 
 // Helper to format time ago
-function timeAgo(date: Date): string {
+function timeAgo(dateStr: string): string {
+  const date = new Date(dateStr);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / 60000);
@@ -48,113 +28,16 @@ function timeAgo(date: Date): string {
 }
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
-    activeListings: 0,
-    pendingListings: 0,
-    pendingReports: 0,
-    messagesToday: 0,
-    totalViews: 0,
-    dbStatus: 'checking',
-    apiLatency: 0
-  });
-  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: stats, isLoading: loading } = useAdminStats();
+  
+  const dbStatus = stats?.dbStatus || 'checking';
+  const totalUsers = stats?.totalUsers || 0;
+  const totalProducts = stats?.totalProducts || 0;
+  const totalMessages = stats?.totalMessages || 0;
+  const totalViews = stats?.totalViews || 0;
+  const apiLatency = stats?.apiLatency || 0;
+  const recentActivity = stats?.recentActivity || [];
 
-  useEffect(() => {
-    async function fetchStats() {
-      const startTime = performance.now();
-      let dbStatus: 'online' | 'offline' = 'offline';
-      
-      try {
-        // Fetch users
-        const usersSnap = await getDocs(query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(10)));
-        dbStatus = 'online'; // If we got here, DB is online
-        const totalUsers = usersSnap.size;
-        const recentUsers: RecentActivity[] = usersSnap.docs.slice(0, 5).map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            type: 'user' as const,
-            title: `Utilizator nou înregistrat: ${data.name || data.email || 'Anonim'}`,
-            status: 'Verificat',
-            createdAt: data.createdAt?.toDate() || new Date()
-          };
-        });
-
-        // Fetch all products
-        const productsSnap = await getDocs(query(collection(db, 'products'), orderBy('publishedAt', 'desc'), limit(10)));
-        const products = productsSnap.docs.map(doc => doc.data());
-        
-        // Count active and pending
-        const activeListings = products.filter(p => p.status === 'active' || !p.status).length;
-        const pendingListings = products.filter(p => p.status === 'pending').length;
-
-        const recentProducts: RecentActivity[] = productsSnap.docs.slice(0, 5).map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            type: 'product' as const,
-            title: `Anunț nou: ${data.title || 'Fără titlu'}`,
-            status: data.status === 'pending' ? 'În așteptare' : 'Publicat',
-            createdAt: data.publishedAt?.toDate() || new Date()
-          };
-        });
-
-        // Merge and sort by date
-        const allActivity = [...recentUsers, ...recentProducts]
-          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-          .slice(0, 8);
-
-        setRecentActivity(allActivity);
-
-        // Fetch reports count
-        const reportsQuery = query(
-          collection(db, 'reports'),
-          where('status', '==', 'pending')
-        );
-        const reportsSnap = await getDocs(reportsQuery);
-        const pendingReports = reportsSnap.size;
-
-        // Fetch messages from today
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const messagesSnap = await getDocs(collection(db, 'messages'));
-        const messagesToday = messagesSnap.docs.filter(doc => {
-          const data = doc.data();
-          const createdAt = data.createdAt?.toDate();
-          return createdAt && createdAt >= today;
-        }).length;
-
-        // Calculate total views from all products
-        const allProductsSnap = await getDocs(collection(db, 'products'));
-        const totalViews = allProductsSnap.docs.reduce((sum, doc) => {
-          const data = doc.data();
-          return sum + (data.views || 0);
-        }, 0);
-
-        const apiLatency = Math.round(performance.now() - startTime);
-
-        setStats({
-          totalUsers,
-          activeListings,
-          pendingListings,
-          pendingReports,
-          messagesToday,
-          totalViews,
-          dbStatus,
-          apiLatency
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-        setStats(prev => ({ ...prev, dbStatus: 'offline' }));
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchStats();
-  }, []);
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -164,8 +47,8 @@ export default function AdminDashboard() {
           <p className="text-gray-500 text-sm mt-1">Privire de ansamblu asupra platformei Vindel.ro</p>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-500">
-          <div className={`w-2 h-2 rounded-full ${stats.dbStatus === 'online' ? 'bg-green-500' : stats.dbStatus === 'checking' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}`}></div>
-          <span>{stats.dbStatus === 'online' ? 'Sistem Operațional' : stats.dbStatus === 'checking' ? 'Se verifică...' : 'Offline'}</span>
+          <div className={`w-2 h-2 rounded-full ${dbStatus === 'online' ? 'bg-green-500' : dbStatus === 'checking' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}`}></div>
+          <span>{dbStatus === 'online' ? 'Sistem Operațional' : dbStatus === 'checking' ? 'Se verifică...' : 'Offline'}</span>
         </div>
       </div>
 
@@ -173,28 +56,28 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Utilizatori" 
-          value={loading ? '...' : stats.totalUsers.toLocaleString()} 
+          value={loading ? '...' : totalUsers.toLocaleString()} 
           subtitle="Conturi înregistrate"
           icon={Users} 
           color="blue"
         />
         <StatCard 
           title="Anunțuri" 
-          value={loading ? '...' : stats.activeListings.toLocaleString()} 
+          value={loading ? '...' : totalProducts.toLocaleString()} 
           subtitle="Active pe platformă"
           icon={ShoppingBag} 
           color="emerald"
         />
         <StatCard 
-          title="Mesaje Azi" 
-          value={loading ? '...' : stats.messagesToday.toLocaleString()} 
-          subtitle="Conversații"
+          title="Conversații" 
+          value={loading ? '...' : totalMessages.toLocaleString()} 
+          subtitle="Total mesaje"
           icon={MessageCircle} 
           color="purple"
         />
         <StatCard 
           title="Vizualizări" 
-          value={loading ? '...' : stats.totalViews >= 1000 ? `${(stats.totalViews / 1000).toFixed(1)}k` : stats.totalViews.toString()} 
+          value={loading ? '...' : totalViews >= 1000 ? `${(totalViews / 1000).toFixed(1)}k` : totalViews.toString()} 
           subtitle="Total anunțuri"
           icon={Eye} 
           color="orange"
@@ -228,16 +111,12 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                      <p className="text-sm font-medium text-gray-900 truncate">
-                       {activity.title}
+                       {activity.type === 'product' ? `Anunț: ${activity.title}` : `Utilizator: ${activity.title}`}
                      </p>
-                     <p className="text-xs text-gray-400 mt-0.5">{timeAgo(activity.createdAt)}</p>
+                     <p className="text-xs text-gray-400 mt-0.5">{timeAgo(activity.time)}</p>
                   </div>
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${
-                    activity.status === 'În așteptare' 
-                      ? 'bg-amber-100 text-amber-700'
-                      : 'bg-emerald-100 text-emerald-700'
-                  }`}>
-                     {activity.status}
+                  <span className="text-xs px-2.5 py-1 rounded-full font-medium shrink-0 bg-emerald-100 text-emerald-700">
+                     Nou
                   </span>
                 </div>
               ))
@@ -262,7 +141,7 @@ export default function AdminDashboard() {
                     <span className="text-xl">📋</span>
                     <div>
                       <span className="text-amber-900 font-semibold block text-sm">Anunțuri noi</span>
-                      <span className="text-amber-600 text-xs">{loading ? '...' : stats.pendingListings} în așteptare</span>
+                      <span className="text-amber-600 text-xs">Moderar anunțuri</span>
                     </div>
                   </div>
                   <span className="text-amber-500 group-hover:translate-x-1 transition-transform">→</span>
@@ -276,7 +155,7 @@ export default function AdminDashboard() {
                     <span className="text-xl">🚨</span>
                     <div>
                       <span className="text-red-900 font-semibold block text-sm">Rapoarte</span>
-                      <span className="text-red-600 text-xs">{loading ? '...' : stats.pendingReports} de rezolvat</span>
+                      <span className="text-red-600 text-xs">Ver rapoarte</span>
                     </div>
                   </div>
                   <span className="text-red-500 group-hover:translate-x-1 transition-transform">→</span>
@@ -287,18 +166,18 @@ export default function AdminDashboard() {
            {/* System Status */}
            <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-5 text-white">
               <h2 className="text-base font-bold mb-4 flex items-center gap-2">
-                 <CheckCircle className={`w-5 h-5 ${stats.dbStatus === 'online' ? 'text-emerald-400' : stats.dbStatus === 'checking' ? 'text-yellow-400' : 'text-red-400'}`} />
+                 <CheckCircle className={`w-5 h-5 ${dbStatus === 'online' ? 'text-emerald-400' : dbStatus === 'checking' ? 'text-yellow-400' : 'text-red-400'}`} />
                  Status Sistem
               </h2>
               <div className="space-y-3 text-sm">
                  <div className="flex justify-between items-center py-2 border-b border-slate-700">
                     <span className="text-slate-400">Database</span>
                     <span className={`font-mono text-xs px-2 py-1 rounded ${
-                      stats.dbStatus === 'online' ? 'bg-emerald-500/20 text-emerald-400' : 
-                      stats.dbStatus === 'checking' ? 'bg-yellow-500/20 text-yellow-400' : 
+                      dbStatus === 'online' ? 'bg-emerald-500/20 text-emerald-400' : 
+                      dbStatus === 'checking' ? 'bg-yellow-500/20 text-yellow-400' : 
                       'bg-red-500/20 text-red-400'
                     }`}>
-                      {stats.dbStatus === 'checking' ? 'CHECKING' : stats.dbStatus.toUpperCase()}
+                      {dbStatus === 'checking' ? 'CHECKING' : dbStatus.toUpperCase()}
                     </span>
                  </div>
                  <div className="flex justify-between items-center py-2 border-b border-slate-700">
@@ -308,11 +187,11 @@ export default function AdminDashboard() {
                  <div className="flex justify-between items-center py-2">
                     <span className="text-slate-400">Latency</span>
                     <span className={`font-mono text-xs px-2 py-1 rounded ${
-                      stats.apiLatency < 500 ? 'bg-emerald-500/20 text-emerald-400' : 
-                      stats.apiLatency < 1000 ? 'bg-yellow-500/20 text-yellow-400' : 
+                      apiLatency < 500 ? 'bg-emerald-500/20 text-emerald-400' : 
+                      apiLatency < 1000 ? 'bg-yellow-500/20 text-yellow-400' : 
                       'bg-red-500/20 text-red-400'
                     }`}>
-                      {loading ? '...' : `${stats.apiLatency}ms`}
+                      {loading ? '...' : `${apiLatency}ms`}
                     </span>
                  </div>
               </div>

@@ -58,7 +58,7 @@ export default function ProductGrid() {
               </div>
               <div className="h-1 w-full max-w-[150px] bg-[#13C1AC] rounded-full mt-1 opacity-80"></div>
             </div>
-            <a href="#" className="text-[#13C1AC] text-sm font-semibold hover:underline mb-2">Vezi toate</a>
+            <a href="/search" className="text-[#13C1AC] text-sm font-semibold hover:underline mb-2">Vezi toate</a>
           </div>
           <div className={`grid gap-3 md:gap-4 ${currentTheme === 8 || currentTheme === 9 ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6'}`}>
             {products.map((product) => (

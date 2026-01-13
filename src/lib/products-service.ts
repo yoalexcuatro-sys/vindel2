@@ -24,6 +24,8 @@ export interface Product {
   id: string;
   title: string;
   price: number;
+  currency?: 'LEI' | 'EUR';
+  negotiable?: boolean;
   image: string;
   images: string[];
   location: string;
