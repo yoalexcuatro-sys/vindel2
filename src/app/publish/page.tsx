@@ -1240,7 +1240,7 @@ export default function PublishPage() {
   const [descripcion, setDescripcion] = useState('');
   const [precio, setPrecio] = useState('');
   const [moneda, setMoneda] = useState<'LEI' | 'EUR'>('LEI');
-  const [condicion, setCondicion] = useState<'nou' | 'folosit'>('folosit');
+  const [condicion, setCondicion] = useState<string>('folosit-functional');
   const [negociable, setNegociable] = useState(false);
   const [tipPersoana, setTipPersoana] = useState<'fizica' | 'juridica'>('fizica');
   const [ubicacion, setUbicacion] = useState('');
@@ -1750,26 +1750,56 @@ export default function PublishPage() {
                 </p>
               </div>
 
-              {/* Nou/Folosit - Ocultar para Locuri de muncă e Imobiliare */}
+              {/* Stare - Ocultar para Locuri de muncă e Imobiliare */}
               {!isLocuriDeMunca && !isImobiliare && (
-                <div className="flex gap-2">
-                  {[
-                    { id: 'nou', label: 'Nou', icon: Star },
-                    { id: 'folosit', label: 'Folosit', icon: Users },
-                  ].map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setCondicion(item.id as any)}
-                      className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all text-sm ${
-                        condicion === item.id
-                          ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white'
-                          : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
-                      }`}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      {item.label}
-                    </button>
-                  ))}
+                <div>
+                  <label className="text-gray-600 text-xs mb-2 block">Stare</label>
+                  {categoria === 'electronice' ? (
+                    // Opciones expandidas para Electronice
+                    <div className="flex flex-wrap gap-2">
+                      {[
+                        { id: 'nou-sigilat', label: 'Nou (sigilat)', icon: Package },
+                        { id: 'nou-desigilat', label: 'Nou (desigilat)', icon: Star },
+                        { id: 'ca-nou', label: 'Ca nou', icon: Sparkles },
+                        { id: 'folosit-functional', label: 'Folosit - funcțional', icon: Check },
+                        { id: 'defect', label: 'Defect / Pentru piese', icon: Users },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => setCondicion(item.id)}
+                          className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                            condicion === item.id
+                              ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                              : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          <item.icon className="w-4 h-4" />
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    // Opciones simples para otras categorías
+                    <div className="flex gap-2">
+                      {[
+                        { id: 'nou', label: 'Nou', icon: Star },
+                        { id: 'folosit', label: 'Folosit', icon: Users },
+                      ].map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => setCondicion(item.id)}
+                          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all text-sm ${
+                            condicion === item.id
+                              ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white'
+                              : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          <item.icon className="w-4 h-4" />
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

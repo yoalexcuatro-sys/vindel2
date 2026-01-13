@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Heart, ArrowUpRight, ArrowDownRight, Clock, ShoppingBag } from 'lucide-react';
+import { Heart, ArrowUpRight, ArrowDownRight, Clock, ShoppingBag, Package, Star, Sparkles, CheckCircle, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Timestamp } from 'firebase/firestore';
@@ -15,6 +15,7 @@ interface Product {
   title: string;
   price: number;
   currency?: 'LEI' | 'EUR';
+  condition?: string;
   image: string;
   images?: string[];
   location: string;
@@ -22,6 +23,21 @@ interface Product {
   reserved?: boolean;
   publishedAt?: string | Timestamp;
 }
+
+// Helper para obtener el label y color del estado
+const getConditionInfo = (condition?: string): { label: string; color: string; icon: any } | null => {
+  if (!condition) return null;
+  const conditions: Record<string, { label: string; color: string; icon: any }> = {
+    'nou-sigilat': { label: 'Sigilat', color: 'bg-emerald-500 text-white', icon: Package },
+    'nou-desigilat': { label: 'Nou', color: 'bg-blue-500 text-white', icon: Star },
+    'ca-nou': { label: 'Ca nou', color: 'bg-cyan-500 text-white', icon: Sparkles },
+    'folosit-functional': { label: 'Folosit', color: 'bg-gray-500 text-white', icon: CheckCircle },
+    'defect': { label: 'Defect', color: 'bg-orange-500 text-white', icon: AlertTriangle },
+    'nou': { label: 'Nou', color: 'bg-emerald-500 text-white', icon: Star },
+    'folosit': { label: 'Folosit', color: 'bg-gray-500 text-white', icon: CheckCircle },
+  };
+  return conditions[condition] || null;
+};
 
 // Helper para verificar si el producto es nuevo (menos de 24 horas)
 const isNewProduct = (publishedAt?: string | Timestamp): boolean => {
@@ -146,6 +162,17 @@ export default function ProductCard({ product }: { product: Product }) {
             <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs font-semibold rounded-md backdrop-blur-sm pointer-events-none">
                 Reservat
             </div>
+        )}
+
+        {/* Badge de condición */}
+        {!product.reserved && getConditionInfo(product.condition) && (
+          <div className={`absolute top-2 left-2 px-2 py-1 text-[10px] font-semibold rounded-md flex items-center gap-1 pointer-events-none z-10 ${getConditionInfo(product.condition)?.color}`}>
+            {(() => {
+              const Icon = getConditionInfo(product.condition)?.icon;
+              return Icon ? <Icon className="w-3 h-3" /> : null;
+            })()}
+            {getConditionInfo(product.condition)?.label}
+          </div>
         )}
         
         <button className="absolute top-2 right-2 p-2 bg-white rounded-full text-gray-400 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-auto" onClick={(e) => { e.preventDefault(); }}>
