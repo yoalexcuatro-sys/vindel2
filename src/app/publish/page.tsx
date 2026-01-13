@@ -1582,7 +1582,7 @@ export default function PublishPage() {
         />
 
         {/* Formulario compacto en una sola tarjeta */}
-        <div className="bg-white rounded-3xl overflow-hidden shadow-sm">
+        <div className="bg-white rounded-3xl shadow-sm">
           
           {/* Sección: Fotografii */}
           <div className="p-5">
@@ -1978,7 +1978,7 @@ export default function PublishPage() {
           )}
 
           {/* Sección: Locație */}
-          <div className="p-5">
+          <div className="p-5 overflow-visible">
             <div className="flex items-center gap-3 mb-4">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                 sectionComplete.locatie ? 'bg-gradient-to-br from-[#13C1AC] to-emerald-500' : 'bg-gray-100'
@@ -1991,7 +1991,7 @@ export default function PublishPage() {
               </div>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-visible">
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
