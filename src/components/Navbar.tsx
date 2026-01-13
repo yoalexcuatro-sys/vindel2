@@ -11,7 +11,16 @@ import { subscribeToUnreadCount } from '@/lib/messages-service';
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(() => {
+    // Cargar de caché para carga instantánea
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem('unread-count-cache');
+        if (cached) return parseInt(cached, 10);
+      } catch {}
+    }
+    return 0;
+  });
   const { user, userProfile, logout, loading } = useAuth();
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -19,11 +28,16 @@ export default function Navbar() {
   useEffect(() => {
     if (!user) {
       setUnreadCount(0);
+      sessionStorage.removeItem('unread-count-cache');
       return;
     }
 
     const unsubscribe = subscribeToUnreadCount(user.uid, (count) => {
       setUnreadCount(count);
+      // Guardar en caché
+      try {
+        sessionStorage.setItem('unread-count-cache', count.toString());
+      } catch {}
     });
 
     return () => unsubscribe();

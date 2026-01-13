@@ -56,7 +56,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
+    // Cargar perfil de caché inmediatamente para carga instantánea
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = sessionStorage.getItem('user-profile-cache');
+        if (cached) return JSON.parse(cached);
+      } catch {}
+    }
+    return null;
+  });
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
 
@@ -109,6 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (profile) {
           setUserProfile(profile);
+          // Guardar en caché para carga instantánea
+          if (typeof window !== 'undefined') {
+            try {
+              sessionStorage.setItem('user-profile-cache', JSON.stringify(profile));
+            } catch {}
+          }
         } else {
             // Self-repair: Create a default profile if it is missing after retries
             console.log('Creating default profile for missing user document');
@@ -137,6 +152,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   createdAt: serverTimestamp(),
                 });
                 setUserProfile(newProfile);
+                // Guardar en caché
+                if (typeof window !== 'undefined') {
+                  try {
+                    sessionStorage.setItem('user-profile-cache', JSON.stringify(newProfile));
+                  } catch {}
+                }
                 console.log('Defaut profile created successfully');
             } catch (createError) {
                 console.error('Failed to create default profile:', createError);
@@ -146,6 +167,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfileLoading(false);
       } else {
         setUserProfile(null);
+        // Limpiar caché cuando no hay usuario
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem('user-profile-cache');
+          } catch {}
+        }
         setProfileLoading(false);
       }
     }
@@ -254,6 +281,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await signOut(auth);
     setUserProfile(null);
+    // Limpiar caché
+    if (typeof window !== 'undefined') {
+      try {
+        sessionStorage.removeItem('user-profile-cache');
+      } catch {}
+    }
   };
 
   const resetPassword = async (email: string) => {
