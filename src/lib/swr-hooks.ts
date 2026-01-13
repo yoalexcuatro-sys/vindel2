@@ -181,8 +181,10 @@ async function fetchSearchProducts(params: {
 export function useHomeProducts() {
   return useSWR('home-products', fetchHomeProducts, {
     revalidateOnFocus: false,
+    revalidateOnMount: true,
     dedupingInterval: 60000,        // 1 minuto entre peticiones iguales
     refreshInterval: 300000,        // Refresca cada 5 min en background
+    keepPreviousData: true,         // Mantiene datos mientras recarga
   });
 }
 

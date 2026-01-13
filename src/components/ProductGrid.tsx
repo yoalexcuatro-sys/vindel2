@@ -8,10 +8,8 @@ import { useHomeProducts } from '@/lib/swr-hooks';
 export default function ProductGrid() {
   const { data: products, isLoading } = useHomeProducts();
   const [currentTheme, setCurrentTheme] = useState(1);
-  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const loadTheme = () => {
       const saved = localStorage.getItem('user_card_theme');
       if (saved) setCurrentTheme(parseInt(saved));
@@ -37,15 +35,6 @@ export default function ProductGrid() {
       ))}
     </div>
   );
-
-  // Pre-mount: siempre skeletons para evitar hydration mismatch
-  if (!mounted) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 bg-gray-50 min-h-[600px]">
-        {renderSkeletons()}
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 bg-gray-50 min-h-[600px]">
