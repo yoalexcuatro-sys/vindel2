@@ -14,6 +14,7 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { createProductLink } from '@/lib/slugs';
 import { Timestamp } from 'firebase/firestore';
+import Avatar from '@/components/Avatar';
 
 function MessagesContent() {
   const router = useRouter();
@@ -324,24 +325,13 @@ function MessagesContent() {
                         >
                           <div className="flex items-center gap-3">
                             {/* Avatar */}
-                            <div className="relative flex-shrink-0">
-                              {otherAvatar ? (
-                                <div className="w-14 h-14 rounded-full overflow-hidden ring-2 ring-white shadow-md">
-                                  <Image 
-                                    src={otherAvatar} 
-                                    alt={otherName} 
-                                    width={56} 
-                                    height={56} 
-                                    className="object-cover w-full h-full"
-                                  />
-                                </div>
-                              ) : (
-                                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#13C1AC] to-emerald-500 flex items-center justify-center text-white font-bold text-lg shadow-md">
-                                  {otherName.charAt(0).toUpperCase()}
-                                </div>
-                              )}
-                              <div className={`absolute bottom-0 right-0 w-4 h-4 rounded-full border-2 border-white ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                            </div>
+                            <Avatar 
+                              src={otherAvatar} 
+                              name={otherName} 
+                              size="lg"
+                              showOnlineStatus
+                              isOnline={isOnline}
+                            />
 
                             {/* Info */}
                             <div className="flex-1 min-w-0">
@@ -436,24 +426,13 @@ function MessagesContent() {
                     </button>
                     
                     {/* Other user avatar */}
-                    <div className="relative flex-shrink-0">
-                      {getOtherParticipantAvatar(activeConversation) ? (
-                        <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md">
-                          <Image 
-                            src={getOtherParticipantAvatar(activeConversation)} 
-                            alt={getOtherParticipantName(activeConversation)} 
-                            width={40} 
-                            height={40} 
-                            className="object-cover w-full h-full"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#13C1AC] to-emerald-500 flex items-center justify-center text-white font-bold">
-                          {getOtherParticipantName(activeConversation).charAt(0).toUpperCase()}
-                        </div>
-                      )}
-                      <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${isOtherUserOnline(activeConversation) ? 'bg-green-500' : 'bg-gray-400'}`}></div>
-                    </div>
+                    <Avatar 
+                      src={getOtherParticipantAvatar(activeConversation)} 
+                      name={getOtherParticipantName(activeConversation)} 
+                      size="md"
+                      showOnlineStatus
+                      isOnline={isOtherUserOnline(activeConversation)}
+                    />
 
                     {/* Info */}
                     <div className="min-w-0 flex-1">
@@ -519,15 +498,9 @@ function MessagesContent() {
                             className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}
                           >
                             {!isMine && showAvatar && (
-                              otherAvatar ? (
-                                <div className="w-8 h-8 rounded-full overflow-hidden mr-2 flex-shrink-0 self-end mb-5">
-                                  <Image src={otherAvatar} alt={otherName} width={32} height={32} className="object-cover w-full h-full" />
-                                </div>
-                              ) : (
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white text-xs font-bold mr-2 flex-shrink-0 self-end mb-5">
-                                  {otherName.charAt(0).toUpperCase()}
-                                </div>
-                              )
+                              <div className="mr-2 flex-shrink-0 self-end mb-5">
+                                <Avatar src={otherAvatar} name={otherName} size="sm" />
+                              </div>
                             )}
                             {!isMine && !showAvatar && <div className="w-10 mr-2" />}
                             
