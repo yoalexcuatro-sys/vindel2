@@ -156,12 +156,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
            <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-500">
              <Menu className="w-6 h-6" />
            </button>
-           
-           <div className="ml-auto flex items-center gap-4">
-              <span className="text-xs font-medium px-2 py-1 bg-green-100 text-green-700 rounded-full border border-green-200">
-                System Operational
-              </span>
-           </div>
         </header>
         
         <div className="p-4 lg:p-8 max-w-7xl mx-auto">
