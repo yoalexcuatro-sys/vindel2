@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { PlusCircle, MessageCircle, Heart, User, Menu, X, LogOut, Settings } from 'lucide-react';
+import { PlusCircle, MessageCircle, Heart, User, Menu, X, LogOut, Settings, Shield } from 'lucide-react';
 import { useState, Suspense, useRef, useEffect } from 'react';
 import SearchBar from './SearchBar';
 import { useAuth } from '@/lib/auth-context';
@@ -78,21 +78,21 @@ export default function Navbar() {
                       onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                       className="group flex flex-col items-center hover:text-[#13C1AC] transition-colors"
                     >
-                      {user.photoURL ? (
+                      {(userProfile?.photoURL || user.photoURL) ? (
                         <Image
-                          src={user.photoURL}
-                          alt={user.displayName || 'Avatar'}
+                          src={userProfile?.photoURL || user.photoURL || ''}
+                          alt={userProfile?.displayName || user.displayName || 'Avatar'}
                           width={24}
                           height={24}
                           className="w-6 h-6 rounded-full object-cover ring-2 ring-gray-200 group-hover:ring-[#13C1AC] transition-all"
                         />
                       ) : (
                         <div className="w-6 h-6 rounded-full bg-[#13C1AC] flex items-center justify-center text-white text-xs font-medium">
-                          {(user.displayName || user.email || 'U')[0].toUpperCase()}
+                          {(userProfile?.displayName || user.displayName || user.email || 'U')[0].toUpperCase()}
                         </div>
                       )}
                       <span className="text-xs mt-1 font-medium truncate max-w-[60px]">
-                        {user.displayName?.split(' ')[0] || 'Tu'}
+                        {userProfile?.displayName?.split(' ')[0] || user.displayName?.split(' ')[0] || 'Tu'}
                       </span>
                     </button>
                     
@@ -119,6 +119,16 @@ export default function Navbar() {
                           <Settings className="h-4 w-4" />
                           Setări
                         </Link>
+                        {userProfile?.role === 'admin' && (
+                          <Link 
+                            href="/admin" 
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-[#13C1AC] hover:bg-[#13C1AC]/10 font-medium"
+                            onClick={() => setIsUserMenuOpen(false)}
+                          >
+                            <Shield className="h-4 w-4" />
+                            Panel Admin
+                          </Link>
+                        )}
                         <button 
                           onClick={handleLogout}
                           className="flex items-center gap-2 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Open_Sans } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import FooterWrapper from "@/components/FooterWrapper";
 import { AuthProvider } from "@/lib/auth-context";
+import { SWRProvider } from "@/lib/swr-config";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -37,9 +38,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${openSans.variable} antialiased flex flex-col min-h-screen bg-gray-50`}
       >
         <AuthProvider>
-          <Navbar />
-          {children}
-          <FooterWrapper />
+          <SWRProvider>
+            <Navbar />
+            {children}
+            <FooterWrapper />
+          </SWRProvider>
         </AuthProvider>
       </body>
     </html>

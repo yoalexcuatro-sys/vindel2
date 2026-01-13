@@ -7,10 +7,11 @@ export default function FooterWrapper() {
   const pathname = usePathname();
   
   // Check if current page is product detail page
-  // Assuming route is /product/[id]
-  const isProductPage = pathname?.startsWith('/product/');
+  // Updated route for /anunturi/[category]/[slug]-[id]
+  const isProductPage = pathname?.startsWith('/anunturi/');
+  const isAdminPage = pathname?.startsWith('/admin');
 
-  if (isProductPage) {
+  if (isProductPage || isAdminPage) {
     return null;
   }
 

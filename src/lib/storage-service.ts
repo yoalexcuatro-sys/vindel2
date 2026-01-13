@@ -6,13 +6,14 @@ import {
   listAll,
 } from 'firebase/storage';
 import { storage } from './firebase';
+import { optimizeImage } from './image-optimizer';
 
 // Generate a unique filename
 function generateFileName(originalName: string): string {
   const timestamp = Date.now();
   const randomString = Math.random().toString(36).substring(2, 8);
-  const extension = originalName.split('.').pop();
-  return `${timestamp}-${randomString}.${extension}`;
+  // Ensure extension is webp since we optimize everything to webp
+  return `${timestamp}-${randomString}.webp`;
 }
 
 // Upload a single image
@@ -20,10 +21,24 @@ export async function uploadImage(
   file: File,
   path: string = 'products'
 ): Promise<string> {
+  // Optimize image to WebP before upload
+  let fileToUpload: Blob = file;
+  if (file.type.startsWith('image/')) {
+    try {
+      fileToUpload = await optimizeImage(file, {
+        maxWidth: 1920,
+        maxHeight: 1080,
+        quality: 0.85
+      });
+    } catch (e) {
+      console.warn('Image optimization failed, uploading original', e);
+    }
+  }
+
   const fileName = generateFileName(file.name);
   const storageRef = ref(storage, `${path}/${fileName}`);
   
-  await uploadBytes(storageRef, file);
+  await uploadBytes(storageRef, fileToUpload);
   const downloadURL = await getDownloadURL(storageRef);
   
   return downloadURL;
@@ -61,10 +76,24 @@ export async function uploadAvatar(
   file: File,
   userId: string
 ): Promise<string> {
+  // Optimize avatar (smaller dimensions)
+  let fileToUpload: Blob = file;
+  if (file.type.startsWith('image/')) {
+    try {
+      fileToUpload = await optimizeImage(file, {
+        maxWidth: 400,
+        maxHeight: 400,
+        quality: 0.8
+      });
+    } catch (e) {
+      console.warn('Avatar optimization failed, uploading original', e);
+    }
+  }
+
   const fileName = generateFileName(file.name);
   const storageRef = ref(storage, `avatars/${userId}/${fileName}`);
   
-  await uploadBytes(storageRef, file);
+  await uploadBytes(storageRef, fileToUpload);
   const downloadURL = await getDownloadURL(storageRef);
   
   return downloadURL;

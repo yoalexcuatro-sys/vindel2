@@ -1,35 +1,21 @@
 'use client';
 
 import { useState, use, useEffect } from 'react';
-import { getProducts, Product } from '@/lib/products-service';
+import { Product } from '@/lib/products-service';
 import ProductCard from '@/components/ProductCard';
 import { notFound } from 'next/navigation';
 import { MapPin, Star, Calendar, ShieldCheck, Package } from 'lucide-react';
+import { useUserProducts, useUserProfile } from '@/lib/swr-hooks';
 
 export default function UserProfile({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<'selling' | 'reviews'>('selling');
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [userNotFound, setUserNotFound] = useState(false);
-
-  useEffect(() => {
-    async function loadUserProducts() {
-      try {
-        const result = await getProducts({ sellerId: id }, 50);
-        setProducts(result.products);
-        if (result.products.length === 0) {
-          setUserNotFound(true);
-        }
-      } catch (error) {
-        console.error('Error loading user products:', error);
-        setUserNotFound(true);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadUserProducts();
-  }, [id]);
+  
+  // SWR para productos del usuario - carga instantánea
+  const { data: products, isLoading: loading } = useUserProducts(id);
+  
+  // SWR para perfil del usuario (foto actualizada)
+  const { data: userProfile } = useUserProfile(id);
 
   if (loading) {
     return (
@@ -39,7 +25,7 @@ export default function UserProfile({ params }: { params: Promise<{ id: string }
     );
   }
 
-  if (userNotFound || products.length === 0) {
+  if (!products || products.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center">
         <Package className="h-16 w-16 text-gray-300 mb-4" />
@@ -49,8 +35,11 @@ export default function UserProfile({ params }: { params: Promise<{ id: string }
     );
   }
 
-  // Get user info from first product
-  const user = products[0].seller;
+  // Get user info from first product, with photo from profile
+  const user = {
+    ...products[0].seller,
+    avatar: userProfile?.photoURL || products[0].seller.avatar
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">

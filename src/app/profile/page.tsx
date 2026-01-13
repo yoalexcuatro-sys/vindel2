@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { getUserProducts, Product, deleteProduct } from '@/lib/products-service';
+import { uploadAvatar } from '@/lib/storage-service';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -11,13 +12,15 @@ import {
   ChevronRight, LayoutGrid, LogOut, BadgeCheck, Pencil, 
   FileText, Download, Megaphone, TrendingUp, Trash2, Building2, 
   Eye, Euro, BarChart3, ShoppingBag, ArrowUpRight, ArrowDownRight,
-  Receipt, Activity, Bell, Lock, List, Ban, AlertCircle, Loader2
+  Receipt, Activity, Bell, Lock, List, Ban, AlertCircle, Loader2, Camera
 } from 'lucide-react';
 
 type ViewType = 'dashboard' | 'products' | 'profile' | 'favorites' | 'settings' | 'invoices' | 'promotion' | 'analytics';
 
 export default function ProfilePage() {
-  const { user, userProfile, logout, loading: authLoading, profileLoading } = useAuth();
+  const { user, userProfile, logout, loading: authLoading, profileLoading, updateUserProfile } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [activeView, setActiveView] = useState<ViewType>('dashboard');
   const [productFilter, setProductFilter] = useState<'active' | 'pending' | 'sold' | 'rejected'>('active');
   const [favoritesViewMode, setFavoritesViewMode] = useState<'grid' | 'list'>('grid');
@@ -53,6 +56,35 @@ export default function ProfilePage() {
         window.dispatchEvent(new Event('themeChange'));
     }
   }, [selectedCardTheme]);
+
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validar tipo de archivo
+    if (!file.type.startsWith('image/')) {
+      alert('Te rog selectează o imagine validă.');
+      return;
+    }
+
+    // Validar tamaño (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Imaginea este prea mare. Maxim 5MB.');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    try {
+      const photoURL = await uploadAvatar(file, user.uid);
+      await updateUserProfile({ photoURL });
+      alert('Fotografia de profil a fost actualizată!');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert('Nu s-a putut încărca fotografia. Încearcă din nou.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const handleDeleteProduct = async (productId: string) => {
     if (confirm('Ești sigur că vrei să ștergi acest anunț?')) {
@@ -670,6 +702,44 @@ export default function ProfilePage() {
                             </div>
                           )}
 
+                          {/* THEME 8: Friendly Card */}
+                          {selectedCardTheme === 8 && (
+                            <div className="group bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 h-full flex flex-col">
+                               <div className="relative aspect-square bg-gray-100 overflow-hidden">
+                                    <img src={product.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                    <div className="absolute top-2 right-2 p-1.5 bg-white rounded-full shadow-md text-gray-400 hover:text-red-500 transition-colors">
+                                      <Heart className="h-3.5 w-3.5" />
+                                    </div>
+                               </div>
+                               <div className="p-2.5 flex-1 flex flex-col">
+                                 <h3 className="text-sm font-normal text-gray-900 truncate mb-2">{product.title}</h3>
+                                 <div className="flex items-center justify-between mt-auto">
+                                   <span className="text-sm font-bold text-gray-900">{product.price} <span className="font-normal text-gray-400 text-xs">lei</span></span>
+                                   <span className="px-2 py-1 bg-[#13C1AC]/10 text-[#13C1AC] font-semibold rounded text-[10px]">Contactează</span>
+                                 </div>
+                               </div>
+                            </div>
+                          )}
+
+                          {/* THEME 9: Original Classic */}
+                          {selectedCardTheme === 9 && (
+                            <div className="group bg-white rounded-xl overflow-hidden cursor-pointer border border-gray-100 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 h-full flex flex-col">
+                               <div className="relative h-32 bg-gray-100 overflow-hidden">
+                                    <img src={product.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                                    {product.reserved && (
+                                      <div className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/50 text-white text-[10px] font-semibold rounded backdrop-blur-sm">
+                                          Reservat
+                                      </div>
+                                    )}
+                               </div>
+                               <div className="p-2.5 flex-1 flex flex-col">
+                                 <p className="text-base font-bold text-gray-900 mb-0.5">{product.price} Lei</p>
+                                 <p className="text-xs text-gray-700 truncate">{product.title}</p>
+                                 <p className="text-[10px] text-gray-400 mt-auto pt-1.5">{product.location}</p>
+                               </div>
+                            </div>
+                          )}
+
                           {/* FALLBACK / LEGACY CLEAN */}
                           {!selectedCardTheme && (
                             <div className="bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 cursor-pointer relative h-full flex flex-col group ring-1 ring-transparent hover:ring-teal-500/20">
@@ -838,9 +908,36 @@ export default function ProfilePage() {
 
                 {/* Product List */}
                 <div className="p-4 relative z-10">
-                  {myProducts.length > 0 ? (
+                  {productsLoading ? (
+                    <div className="flex flex-col items-center justify-center py-16">
+                      <Loader2 className="h-8 w-8 animate-spin text-[#13C1AC] mb-4" />
+                      <p className="text-gray-500">Se încarcă anunțurile...</p>
+                    </div>
+                  ) : myProducts.filter(p => {
+                    const now = new Date();
+                    const isPending = p.status === 'pending' && p.pendingUntil && new Date(p.pendingUntil.seconds * 1000) > now;
+                    const isApproved = p.status === 'approved' || (p.status === 'pending' && p.pendingUntil && new Date(p.pendingUntil.seconds * 1000) <= now) || !p.status;
+                    const isRejected = p.status === 'rejected';
+                    
+                    if (productFilter === 'active') return !p.sold && isApproved;
+                    if (productFilter === 'sold') return p.sold;
+                    if (productFilter === 'pending') return isPending;
+                    if (productFilter === 'rejected') return isRejected;
+                    return false;
+                  }).length > 0 ? (
                     <div className="space-y-2.5">
-                      {myProducts.map((product) => (
+                      {myProducts.filter(p => {
+                        const now = new Date();
+                        const isPending = p.status === 'pending' && p.pendingUntil && new Date(p.pendingUntil.seconds * 1000) > now;
+                        const isApproved = p.status === 'approved' || (p.status === 'pending' && p.pendingUntil && new Date(p.pendingUntil.seconds * 1000) <= now) || !p.status;
+                        const isRejected = p.status === 'rejected';
+                        
+                        if (productFilter === 'active') return !p.sold && isApproved;
+                        if (productFilter === 'sold') return p.sold;
+                        if (productFilter === 'pending') return isPending;
+                        if (productFilter === 'rejected') return isRejected;
+                        return false;
+                      }).map((product) => (
                         <div key={product.id} className="flex items-center gap-4 p-4 bg-gradient-to-r from-white to-gray-50/50 rounded-xl border border-gray-200/60 hover:border-[#13C1AC]/30 hover:bg-[#13C1AC]/5 transition-all duration-300 group cursor-pointer">
                           {/* Product Image */}
                           <div className="h-16 w-16 flex-shrink-0 relative rounded-lg overflow-hidden ring-1 ring-gray-200 shadow-sm">
@@ -964,19 +1061,39 @@ export default function ProfilePage() {
                         <p className="text-sm text-gray-500 mt-1">Cum te văd alți utilizatori pe platformă.</p>
                         
                         <div className="mt-4 flex justify-center md:justify-start">
-                          <div className="relative group cursor-pointer">
-                            {userProfile.photoURL ? (
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handlePhotoUpload}
+                            accept="image/*"
+                            className="hidden"
+                          />
+                          <div 
+                            className="relative group cursor-pointer"
+                            onClick={() => !uploadingPhoto && fileInputRef.current?.click()}
+                          >
+                            {uploadingPhoto ? (
+                              <div className="h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center ring-4 ring-gray-100">
+                                <Loader2 className="w-8 h-8 animate-spin text-[#13C1AC]" />
+                              </div>
+                            ) : userProfile.photoURL ? (
                               <Image src={userProfile.photoURL} alt="Avatar" width={96} height={96} className="h-24 w-24 rounded-full object-cover group-hover:opacity-75 transition-opacity ring-4 ring-gray-100" />
                             ) : (
-                              <div className="h-24 w-24 rounded-full bg-[#13C1AC] flex items-center justify-center ring-4 ring-gray-100">
+                              <div className="h-24 w-24 rounded-full bg-[#13C1AC] flex items-center justify-center ring-4 ring-gray-100 group-hover:opacity-75 transition-opacity">
                                 <span className="text-2xl font-bold text-white">{(userProfile.displayName || userProfile.email || 'U')[0].toUpperCase()}</span>
                               </div>
                             )}
-                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-full">
-                              <span className="text-xs font-bold text-white bg-black/50 px-2 py-1 rounded">Schimbă</span>
+                            {!uploadingPhoto && (
+                              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-full bg-black/40 transition-opacity">
+                                <Camera className="w-6 h-6 text-white" />
+                              </div>
+                            )}
+                            <div className="absolute -bottom-1 -right-1 bg-[#13C1AC] rounded-full p-1.5 shadow-lg border-2 border-white">
+                              <Camera className="w-3.5 h-3.5 text-white" />
                             </div>
                           </div>
                         </div>
+                        <p className="text-xs text-gray-400 mt-2 text-center md:text-left">Click pentru a schimba</p>
                       </div>
 
                       <div className="md:col-span-2 space-y-6">

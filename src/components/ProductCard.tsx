@@ -5,14 +5,19 @@ import { Heart, ArrowUpRight, ArrowDownRight, Clock, ShoppingBag } from 'lucide-
 import Link from 'next/link';
 import Image from 'next/image';
 import { Timestamp } from 'firebase/firestore';
+import { createProductLink } from '@/lib/slugs';
+import { mutate } from 'swr';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface Product {
-  id: string | number;
+  id: string; // Ensure ID is string for slug generation
   title: string;
   price: number;
   image: string;
   images?: string[];
   location: string;
+  category?: string; // Added for URL generation
   reserved?: boolean;
   publishedAt?: string | Timestamp;
 }
@@ -35,6 +40,17 @@ export default function ProductCard({ product }: { product: Product }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
   const [theme, setTheme] = useState(1);
+  
+  // Prefetch producto en hover para carga instantánea
+  const prefetchProduct = useCallback(async () => {
+    const key = `product-${product.id}`;
+    // Precargar en caché SWR
+    const docRef = doc(db, 'products', product.id);
+    const snapshot = await getDoc(docRef);
+    if (snapshot.exists()) {
+      mutate(key, { id: snapshot.id, ...snapshot.data() }, false);
+    }
+  }, [product.id]);
   
   // Load theme preference
   useEffect(() => {
@@ -67,7 +83,9 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const handleMouseEnter = useCallback(() => {
     if (imageCount > 1) setIsHovering(true);
-  }, [imageCount]);
+    // Prefetch producto para carga instantánea al hacer click
+    prefetchProduct();
+  }, [imageCount, prefetchProduct]);
 
   const handleMouseLeave = useCallback(() => {
     setCurrentImageIndex(0);
@@ -76,26 +94,31 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const ImageCarousel = ({ heightClass = "h-56" }: { heightClass?: string }) => (
     <div 
-      className={`relative ${heightClass} w-full bg-gray-100 overflow-hidden`}
+      className={`relative ${heightClass} w-full overflow-hidden`}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
+        {/* Primera imagen siempre visible como fondo */}
         <Image
           src={allImages[0]}
           alt={product.title}
           fill
           sizes="(max-width: 768px) 100vw, 25vw"
-          className={`object-cover transition-opacity duration-200 ${currentImageIndex === 0 ? 'opacity-100' : 'opacity-0'}`}
+          className="object-cover object-center"
+          style={{ objectPosition: 'center 30%' }}
+          priority
         />
         
+        {/* Imagen actual en hover se superpone */}
         {isHovering && currentImageIndex > 0 && allImages[currentImageIndex] && (
           <Image
             src={allImages[currentImageIndex]}
             alt={product.title}
             fill
             sizes="(max-width: 768px) 100vw, 25vw"
-            className="object-cover"
+            className="object-cover z-[1]"
+            style={{ objectPosition: 'center 30%' }}
           />
         )}
 
@@ -127,10 +150,10 @@ export default function ProductCard({ product }: { product: Product }) {
   // THEME 4: Structured Pro (Watch Style)
   if (theme === 4) {
     return (
-      <Link href={`/product/${product.id}`} className="block h-full">
+      <Link href={createProductLink(product)} className="block h-full">
         <div className="group bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300 h-full flex flex-col">
            <div className="flex p-3 gap-3 flex-1">
-              <div className="w-24 h-24 bg-gray-100 relative rounded-md overflow-hidden shrink-0">
+              <div className="w-24 h-24 relative rounded-md overflow-hidden shrink-0">
                  <ImageCarousel heightClass="h-full" />
               </div>
               <div className="flex-1 flex flex-col min-w-0 justify-between">
@@ -162,7 +185,7 @@ export default function ProductCard({ product }: { product: Product }) {
   // THEME 5: Minimalist Focus
   if (theme === 5) {
      return (
-       <Link href={`/product/${product.id}`} className="block h-full">
+       <Link href={createProductLink(product)} className="block h-full">
          <div className="group bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition-all duration-300 h-full flex flex-col">
             <div className="aspect-[5/4] rounded-xl overflow-hidden relative mb-3 ring-1 ring-black/5">
                  <ImageCarousel heightClass="h-full" />
@@ -185,10 +208,10 @@ export default function ProductCard({ product }: { product: Product }) {
   // THEME 6: Social Connect (Vinted Style)
   if (theme === 6) {
     return (
-      <Link href={`/product/${product.id}`} className="block h-full"> 
+      <Link href={createProductLink(product)} className="block h-full"> 
         <div className="group bg-transparent h-full flex flex-col cursor-pointer">
             <div className="relative mb-2">
-                <div className="aspect-[3/4] rounded-2xl overflow-hidden relative bg-gray-100 ring-1 ring-black/5">
+                <div className="aspect-[3/4] rounded-2xl overflow-hidden relative ring-1 ring-black/5">
                     <ImageCarousel heightClass="h-full" />
                     {/* Badge 1/2 */}
                     <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full z-20 pointer-events-none">
@@ -227,9 +250,9 @@ export default function ProductCard({ product }: { product: Product }) {
   // THEME 7: Auto/Imobiliare (Details & Tags)
   if (theme === 7) {
     return (
-      <Link href={`/product/${product.id}`} className="block h-full"> 
+      <Link href={createProductLink(product)} className="block h-full"> 
         <div className="group bg-white rounded-2xl border border-gray-300 overflow-hidden h-full flex flex-col hover:shadow-lg transition-all duration-300">
-            <div className="relative aspect-[4/3] bg-gray-100 border-b border-gray-100">
+            <div className="relative aspect-[4/3] border-b border-gray-100">
                 <ImageCarousel heightClass="h-full" />
                 <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 pointer-events-none">
                     <span className="w-4 h-1 rounded-full bg-white shadow-sm"></span>
@@ -280,10 +303,10 @@ export default function ProductCard({ product }: { product: Product }) {
   // THEME 8: Compact Card (User Requested)
   if (theme === 8) {
     return (
-      <Link href={`/product/${product.id}`} className="block h-full">
+      <Link href={createProductLink(product)} className="block h-full">
         <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden relative h-full flex flex-col ring-1 ring-gray-100/50">
           <div className="relative">
-             <div className="aspect-video bg-gray-100 relative overflow-hidden">
+             <div className="aspect-video relative overflow-hidden">
                 <ImageCarousel heightClass="h-full" />
              </div>
              <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold shadow-sm z-20 pointer-events-none">
@@ -310,9 +333,9 @@ export default function ProductCard({ product }: { product: Product }) {
   // THEME 9: Original Classic (vindel23 style)
   if (theme === 9) {
     return (
-      <Link href={`/product/${product.id}`} className="block h-full">
+      <Link href={createProductLink(product)} className="block h-full">
         <div className="group bg-white rounded-xl overflow-hidden border-2 border-gray-100 hover:border-[#13C1AC] hover:shadow-lg transition-all duration-300 cursor-pointer relative hover:-translate-y-1 h-full flex flex-col">
-          <div className="relative h-56 w-full bg-gray-100 shrink-0">
+          <div className="relative h-56 w-full shrink-0">
             <ImageCarousel heightClass="h-full" />
             {/* Etiqueta Nou - solo aparece las primeras 24h */}
             {isNewProduct(product.publishedAt) && (
@@ -358,10 +381,10 @@ export default function ProductCard({ product }: { product: Product }) {
 
   // DEFAULT (THEME 1: Classic Market - Reference Style)
   return (
-    <Link href={`/product/${product.id}`} className="block h-full">
+    <Link href={createProductLink(product)} className="block h-full">
         <div className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 relative h-full flex flex-col ring-1 ring-transparent hover:ring-teal-500/20">
             <div className="relative">
-                <div className="bg-gray-100 aspect-[4/3] relative overflow-hidden">
+                <div className="aspect-[4/3] relative overflow-hidden">
                     <ImageCarousel heightClass="h-full" />
                     <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                         <span className="w-1.5 h-1.5 rounded-full bg-white shadow-sm"></span>

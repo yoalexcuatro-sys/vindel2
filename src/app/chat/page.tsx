@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, MessageCircle, Check, CheckCheck } from 'lucide-react';
 import Link from 'next/link';
+import { createProductLink } from '@/lib/slugs';
 
 interface Message {
   id: string;
@@ -198,7 +199,7 @@ export default function ChatPage() {
                 {/* Producto relacionado */}
                 {selectedConversation.productTitle && (
                   <Link
-                    href={`/product/${selectedConversation.productId}`}
+                    href={createProductLink({ id: String(selectedConversation.productId || ''), title: selectedConversation.productTitle })}
                     className="mx-4 mt-4 p-3 bg-gray-50 rounded-xl flex gap-3 hover:bg-gray-100 transition-colors"
                   >
                     <img

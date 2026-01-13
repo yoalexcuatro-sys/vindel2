@@ -23,6 +23,7 @@ export interface UserProfile {
   phone?: string;
   location?: string;
   bio?: string;
+  role?: 'user' | 'admin';
   accountType: 'personal' | 'business';
   businessName?: string;
   cui?: string;
@@ -116,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 email: user.email,
                 displayName: user.displayName,
                 photoURL: user.photoURL,
+                role: 'user',
                 accountType: 'personal',
                 verified: false,
                 rating: 0,
@@ -173,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       phone: userData.phone || '',
       location: userData.location || '',
       bio: '',
+      role: 'user',
       accountType: userData.accountType || 'personal',
       verified: false,
       rating: 0,
@@ -222,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: user.email,
         displayName: user.displayName,
         photoURL: user.photoURL,
+        role: 'user',
         accountType: 'personal',
         verified: false,
         rating: 0,
