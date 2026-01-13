@@ -1240,7 +1240,7 @@ export default function PublishPage() {
   const [descripcion, setDescripcion] = useState('');
   const [precio, setPrecio] = useState('');
   const [moneda, setMoneda] = useState<'LEI' | 'EUR'>('LEI');
-  const [condicion, setCondicion] = useState<string>('folosit-functional');
+  const [condicion, setCondicion] = useState<string>('');
   const [negociable, setNegociable] = useState(false);
   const [tipPersoana, setTipPersoana] = useState<'fizica' | 'juridica'>('fizica');
   const [ubicacion, setUbicacion] = useState('');
