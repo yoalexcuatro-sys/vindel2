@@ -28,13 +28,27 @@ interface Product {
 const getConditionInfo = (condition?: string): { label: string; color: string; icon: any } | null => {
   if (!condition) return null;
   const conditions: Record<string, { label: string; color: string; icon: any }> = {
+    // Electronice / Gaming
     'nou-sigilat': { label: 'Sigilat', color: 'bg-emerald-500 text-white', icon: Package },
     'nou-desigilat': { label: 'Nou', color: 'bg-blue-500 text-white', icon: Star },
     'ca-nou': { label: 'Ca nou', color: 'bg-cyan-500 text-white', icon: Sparkles },
     'folosit-functional': { label: 'Folosit', color: 'bg-gray-500 text-white', icon: CheckCircle },
     'defect': { label: 'Defect', color: 'bg-orange-500 text-white', icon: AlertTriangle },
+    // General
     'nou': { label: 'Nou', color: 'bg-emerald-500 text-white', icon: Star },
     'folosit': { label: 'Folosit', color: 'bg-gray-500 text-white', icon: CheckCircle },
+    // Auto-moto
+    'accidentat': { label: 'Accidentat', color: 'bg-red-500 text-white', icon: AlertTriangle },
+    'pentru-piese': { label: 'Pentru piese', color: 'bg-orange-500 text-white', icon: AlertTriangle },
+    // Modă / Copii
+    'nou-eticheta': { label: 'Nou cu etichetă', color: 'bg-emerald-500 text-white', icon: Package },
+    'nou-fara-eticheta': { label: 'Nou', color: 'bg-blue-500 text-white', icon: Star },
+    'vintage': { label: 'Vintage', color: 'bg-amber-600 text-white', icon: Clock },
+    // Casă & Grădină
+    'renovat': { label: 'Recondiționat', color: 'bg-indigo-500 text-white', icon: Sparkles },
+    // Animale
+    'disponibil': { label: 'Disponibil', color: 'bg-green-500 text-white', icon: CheckCircle },
+    'rezervat': { label: 'Rezervat', color: 'bg-yellow-500 text-white', icon: Clock },
   };
   return conditions[condition] || null;
 };

@@ -1750,56 +1750,157 @@ export default function PublishPage() {
                 </p>
               </div>
 
-              {/* Stare - Ocultar para Locuri de muncă e Imobiliare */}
-              {!isLocuriDeMunca && !isImobiliare && (
+              {/* Stare - Opciones específicas por categoría */}
+              {!isLocuriDeMunca && !isImobiliare && categoria !== 'matrimoniale' && categoria !== 'servicii' && categoria !== 'turism' && (
                 <div>
                   <label className="text-gray-600 text-xs mb-2 block">Stare</label>
-                  {categoria === 'electronice' ? (
-                    // Opciones expandidas para Electronice
-                    <div className="flex flex-wrap gap-2">
-                      {[
-                        { id: 'nou-sigilat', label: 'Nou (sigilat)', icon: Package },
-                        { id: 'nou-desigilat', label: 'Nou (desigilat)', icon: Star },
-                        { id: 'ca-nou', label: 'Ca nou', icon: Sparkles },
-                        { id: 'folosit-functional', label: 'Folosit - funcțional', icon: Check },
-                        { id: 'defect', label: 'Defect / Pentru piese', icon: Users },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => setCondicion(item.id)}
-                          className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
-                            condicion === item.id
-                              ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
-                              : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
-                          }`}
-                        >
-                          <item.icon className="w-4 h-4" />
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    // Opciones simples para otras categorías
-                    <div className="flex gap-2">
-                      {[
-                        { id: 'nou', label: 'Nou', icon: Star },
-                        { id: 'folosit', label: 'Folosit', icon: Users },
-                      ].map((item) => (
-                        <button
-                          key={item.id}
-                          onClick={() => setCondicion(item.id)}
-                          className={`flex-1 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all text-sm ${
-                            condicion === item.id
-                              ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white'
-                              : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
-                          }`}
-                        >
-                          <item.icon className="w-4 h-4" />
-                          {item.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-2">
+                    {/* Electronice y Gaming */}
+                    {(categoria === 'electronice' || categoria === 'gaming') && [
+                      { id: 'nou-sigilat', label: 'Nou (sigilat)', icon: Package },
+                      { id: 'nou-desigilat', label: 'Nou (desigilat)', icon: Star },
+                      { id: 'ca-nou', label: 'Ca nou', icon: Sparkles },
+                      { id: 'folosit-functional', label: 'Folosit - funcțional', icon: Check },
+                      { id: 'defect', label: 'Defect / Pentru piese', icon: Users },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setCondicion(item.id)}
+                        className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                          condicion === item.id
+                            ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                            : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </button>
+                    ))}
+
+                    {/* Auto-moto */}
+                    {categoria === 'auto-moto' && [
+                      { id: 'nou', label: 'Nou', icon: Star },
+                      { id: 'folosit', label: 'Folosit', icon: Check },
+                      { id: 'accidentat', label: 'Accidentat', icon: AlertCircle },
+                      { id: 'pentru-piese', label: 'Pentru piese', icon: Wrench },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setCondicion(item.id)}
+                        className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                          condicion === item.id
+                            ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                            : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </button>
+                    ))}
+
+                    {/* Modă */}
+                    {categoria === 'moda' && [
+                      { id: 'nou-eticheta', label: 'Nou cu etichetă', icon: Package },
+                      { id: 'nou-fara-eticheta', label: 'Nou fără etichetă', icon: Star },
+                      { id: 'ca-nou', label: 'Ca nou', icon: Sparkles },
+                      { id: 'folosit', label: 'Folosit', icon: Check },
+                      { id: 'vintage', label: 'Vintage', icon: Clock },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setCondicion(item.id)}
+                        className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                          condicion === item.id
+                            ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                            : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </button>
+                    ))}
+
+                    {/* Copii */}
+                    {categoria === 'copii' && [
+                      { id: 'nou-eticheta', label: 'Nou cu etichetă', icon: Package },
+                      { id: 'nou', label: 'Nou', icon: Star },
+                      { id: 'ca-nou', label: 'Ca nou', icon: Sparkles },
+                      { id: 'folosit', label: 'Folosit', icon: Check },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setCondicion(item.id)}
+                        className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                          condicion === item.id
+                            ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                            : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </button>
+                    ))}
+
+                    {/* Sport */}
+                    {categoria === 'sport' && [
+                      { id: 'nou', label: 'Nou', icon: Star },
+                      { id: 'ca-nou', label: 'Ca nou', icon: Sparkles },
+                      { id: 'folosit', label: 'Folosit', icon: Check },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setCondicion(item.id)}
+                        className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                          condicion === item.id
+                            ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                            : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </button>
+                    ))}
+
+                    {/* Casă & Grădină */}
+                    {categoria === 'casa-gradina' && [
+                      { id: 'nou', label: 'Nou', icon: Star },
+                      { id: 'ca-nou', label: 'Ca nou', icon: Sparkles },
+                      { id: 'folosit', label: 'Folosit', icon: Check },
+                      { id: 'renovat', label: 'Renovat/Recondiționat', icon: Wrench },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setCondicion(item.id)}
+                        className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                          condicion === item.id
+                            ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                            : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </button>
+                    ))}
+
+                    {/* Animale - opciones diferentes */}
+                    {categoria === 'animale' && [
+                      { id: 'disponibil', label: 'Disponibil', icon: Check },
+                      { id: 'rezervat', label: 'Rezervat', icon: Clock },
+                    ].map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setCondicion(item.id)}
+                        className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                          condicion === item.id
+                            ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                            : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        <item.icon className="w-4 h-4" />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
 
