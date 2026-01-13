@@ -265,6 +265,20 @@ export async function updateLastSeen(
   });
 }
 
+// Mark user as offline by setting lastSeen to a past timestamp
+export async function markUserOffline(
+  conversationId: string,
+  userId: string
+): Promise<void> {
+  const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
+  // Set lastSeen to 5 minutes ago to ensure offline status
+  const pastTime = new Date(Date.now() - 5 * 60 * 1000);
+  await updateDoc(conversationRef, {
+    [`lastSeen.${userId}`]: Timestamp.fromDate(pastTime),
+    [`typing.${userId}`]: false,
+  });
+}
+
 // Update typing status
 export async function updateTypingStatus(
   conversationId: string,

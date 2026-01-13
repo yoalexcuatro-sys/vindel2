@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { 
   subscribeToConversations, subscribeToMessages, sendMessage,
-  markMessagesAsRead, updateLastSeen, updateTypingStatus, Conversation, Message
+  markMessagesAsRead, updateLastSeen, updateTypingStatus, markUserOffline, Conversation, Message
 } from '@/lib/messages-service';
 import { useAuth } from '@/lib/auth-context';
 import { createProductLink } from '@/lib/slugs';
@@ -30,6 +30,12 @@ function MessagesContent() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const conversationsRef = useRef<Conversation[]>([]);
+
+  // Keep ref updated with conversations
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -42,14 +48,19 @@ function MessagesContent() {
   useEffect(() => {
     if (!user) return;
 
+    let isFirstLoad = true;
+
     const unsubscribe = subscribeToConversations(user.uid, (convs) => {
       setConversations(convs);
       setLoading(false);
       
-      // Update lastSeen for all conversations when entering chat
-      convs.forEach(conv => {
-        updateLastSeen(conv.id, user.uid);
-      });
+      // Only update lastSeen once on initial load, not on every update
+      if (isFirstLoad) {
+        isFirstLoad = false;
+        convs.forEach(conv => {
+          updateLastSeen(conv.id, user.uid);
+        });
+      }
       
       // Auto-select conversation from URL param
       const conversationId = searchParams.get('conversation');
@@ -91,6 +102,28 @@ function MessagesContent() {
 
     return () => clearInterval(interval);
   }, [activeConversation, user]);
+
+  // Mark user as offline when leaving the page
+  useEffect(() => {
+    if (!user) return;
+
+    const handleBeforeUnload = () => {
+      // Mark offline for all conversations when closing/leaving page
+      conversationsRef.current.forEach(conv => {
+        markUserOffline(conv.id, user.uid);
+      });
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Mark offline when component unmounts (navigating away)
+      conversationsRef.current.forEach(conv => {
+        markUserOffline(conv.id, user.uid);
+      });
+    };
+  }, [user]); // Only depend on user, use ref for conversations
 
   // Scroll to bottom when messages change
   const scrollToBottom = (smooth = true) => {
