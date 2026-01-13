@@ -8,7 +8,7 @@ import {
   CheckCheck, Circle, Smile
 } from 'lucide-react';
 import { 
-  subscribeToConversations, subscribeToMessages, sendMessage, deleteMessage,
+  subscribeToConversations, subscribeToMessages, sendMessage, deleteMessage, deleteConversation,
   markMessagesAsRead, updateLastSeen, updateTypingStatus, markUserOffline, Conversation, Message
 } from '@/lib/messages-service';
 import { useAuth } from '@/lib/auth-context';
@@ -388,8 +388,27 @@ function MessagesContent() {
                             <div className="absolute right-4 top-14 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-40">
                               <button
                                 onClick={(e) => { 
+                                  e.preventDefault();
                                   e.stopPropagation(); 
-                                  // TODO: Implement delete conversation
+                                  const confirmed = window.confirm('Sigur vrei să ștergi această conversație? Toate mesajele vor fi șterse.');
+                                  if (confirmed) {
+                                    deleteConversation(conv.id, user.uid)
+                                      .then((success) => {
+                                        if (success) {
+                                          // If this was the active conversation, clear it
+                                          if (activeConversation?.id === conv.id) {
+                                            setActiveConversation(null);
+                                            window.history.replaceState(null, '', '/messages');
+                                          }
+                                        } else {
+                                          alert('Nu s-a putut șterge conversația');
+                                        }
+                                      })
+                                      .catch((err) => {
+                                        console.error('Delete conversation error:', err);
+                                        alert('Eroare la ștergere');
+                                      });
+                                  }
                                   setMenuOpen(null); 
                                 }}
                                 className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"

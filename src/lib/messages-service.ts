@@ -360,6 +360,54 @@ export async function getUnreadCount(userId: string): Promise<number> {
   return conversations.reduce((total, conv) => total + (conv.unreadCount[userId] || 0), 0);
 }
 
+// Delete a conversation and all its messages
+export async function deleteConversation(
+  conversationId: string,
+  userId: string
+): Promise<boolean> {
+  try {
+    console.log('Deleting conversation:', conversationId, 'by user:', userId);
+    
+    // Get the conversation to verify user is a participant
+    const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
+    const conversationSnap = await getDoc(conversationRef);
+    
+    if (!conversationSnap.exists()) {
+      console.error('Conversation not found');
+      return false;
+    }
+    
+    const conversation = conversationSnap.data() as Conversation;
+    
+    // Verify user is a participant
+    if (!conversation.participants.includes(userId)) {
+      console.error('User is not a participant of this conversation');
+      return false;
+    }
+    
+    // Delete all messages in the conversation
+    const messagesQuery = query(
+      collection(db, MESSAGES_COLLECTION),
+      where('conversationId', '==', conversationId)
+    );
+    
+    const messagesSnap = await getDocs(messagesQuery);
+    const deletePromises = messagesSnap.docs.map(msgDoc => deleteDoc(msgDoc.ref));
+    await Promise.all(deletePromises);
+    
+    console.log(`Deleted ${messagesSnap.docs.length} messages`);
+    
+    // Delete the conversation
+    await deleteDoc(conversationRef);
+    
+    console.log('Conversation deleted successfully');
+    return true;
+  } catch (error) {
+    console.error('Error deleting conversation:', error);
+    return false;
+  }
+}
+
 // Subscribe to unread count (real-time)
 export function subscribeToUnreadCount(
   userId: string,
