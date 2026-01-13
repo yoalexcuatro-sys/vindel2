@@ -23,6 +23,136 @@ import { uploadProductImages } from '@/lib/storage-service';
 // CONSTANTES
 // =============================================================================
 
+// Modelos de teléfonos por marca
+const PHONE_MODELS: Record<string, string[]> = {
+  'Apple': [
+    'iPhone 16 Pro Max', 'iPhone 16 Pro', 'iPhone 16 Plus', 'iPhone 16',
+    'iPhone 15 Pro Max', 'iPhone 15 Pro', 'iPhone 15 Plus', 'iPhone 15',
+    'iPhone 14 Pro Max', 'iPhone 14 Pro', 'iPhone 14 Plus', 'iPhone 14',
+    'iPhone 13 Pro Max', 'iPhone 13 Pro', 'iPhone 13', 'iPhone 13 Mini',
+    'iPhone 12 Pro Max', 'iPhone 12 Pro', 'iPhone 12', 'iPhone 12 Mini',
+    'iPhone 11 Pro Max', 'iPhone 11 Pro', 'iPhone 11',
+    'iPhone XS Max', 'iPhone XS', 'iPhone XR', 'iPhone X',
+    'iPhone SE (2024)', 'iPhone SE (2022)', 'iPhone SE (2020)',
+    'Alt model'
+  ],
+  'Samsung': [
+    'Galaxy S25 Ultra', 'Galaxy S25+', 'Galaxy S25',
+    'Galaxy S24 Ultra', 'Galaxy S24+', 'Galaxy S24', 'Galaxy S24 FE',
+    'Galaxy S23 Ultra', 'Galaxy S23+', 'Galaxy S23', 'Galaxy S23 FE',
+    'Galaxy S22 Ultra', 'Galaxy S22+', 'Galaxy S22',
+    'Galaxy S21 Ultra', 'Galaxy S21+', 'Galaxy S21', 'Galaxy S21 FE',
+    'Galaxy Z Fold 6', 'Galaxy Z Fold 5', 'Galaxy Z Fold 4', 'Galaxy Z Fold 3',
+    'Galaxy Z Flip 6', 'Galaxy Z Flip 5', 'Galaxy Z Flip 4', 'Galaxy Z Flip 3',
+    'Galaxy A55', 'Galaxy A54', 'Galaxy A53', 'Galaxy A52', 'Galaxy A35', 'Galaxy A34', 'Galaxy A33',
+    'Galaxy A25', 'Galaxy A24', 'Galaxy A15', 'Galaxy A14', 'Galaxy A05s',
+    'Galaxy M55', 'Galaxy M54', 'Galaxy M34', 'Galaxy M14',
+    'Alt model'
+  ],
+  'Xiaomi': [
+    'Xiaomi 14 Ultra', 'Xiaomi 14 Pro', 'Xiaomi 14',
+    'Xiaomi 13 Ultra', 'Xiaomi 13 Pro', 'Xiaomi 13', 'Xiaomi 13 Lite',
+    'Xiaomi 12 Pro', 'Xiaomi 12', 'Xiaomi 12 Lite',
+    'Redmi Note 14 Pro+', 'Redmi Note 14 Pro', 'Redmi Note 14',
+    'Redmi Note 13 Pro+', 'Redmi Note 13 Pro', 'Redmi Note 13',
+    'Redmi Note 12 Pro+', 'Redmi Note 12 Pro', 'Redmi Note 12',
+    'Redmi 14C', 'Redmi 13C', 'Redmi 13', 'Redmi 12',
+    'POCO X6 Pro', 'POCO X6', 'POCO X5 Pro', 'POCO X5',
+    'POCO F6 Pro', 'POCO F6', 'POCO F5 Pro', 'POCO F5',
+    'POCO M6 Pro', 'POCO M6', 'POCO M5',
+    'Alt model'
+  ],
+  'Huawei': [
+    'Pura 70 Ultra', 'Pura 70 Pro+', 'Pura 70 Pro', 'Pura 70',
+    'Mate 60 Pro+', 'Mate 60 Pro', 'Mate 60', 'Mate 60 RS',
+    'Mate 50 Pro', 'Mate 50', 'Mate 40 Pro', 'Mate 40',
+    'P60 Pro', 'P60 Art', 'P60', 'P50 Pro', 'P50', 'P40 Pro', 'P40',
+    'Nova 12 Ultra', 'Nova 12 Pro', 'Nova 12', 'Nova 11 Pro', 'Nova 11',
+    'Alt model'
+  ],
+  'OnePlus': [
+    'OnePlus 13', 'OnePlus 13R',
+    'OnePlus 12', 'OnePlus 12R',
+    'OnePlus 11', 'OnePlus 11R',
+    'OnePlus 10 Pro', 'OnePlus 10T',
+    'OnePlus Nord 4', 'OnePlus Nord CE 4', 'OnePlus Nord CE 4 Lite',
+    'OnePlus Nord 3', 'OnePlus Nord CE 3', 'OnePlus Nord CE 3 Lite',
+    'OnePlus Nord N30', 'OnePlus Nord N20',
+    'OnePlus Open',
+    'Alt model'
+  ],
+  'Google': [
+    'Pixel 9 Pro XL', 'Pixel 9 Pro', 'Pixel 9', 'Pixel 9 Pro Fold',
+    'Pixel 8 Pro', 'Pixel 8', 'Pixel 8a',
+    'Pixel 7 Pro', 'Pixel 7', 'Pixel 7a',
+    'Pixel 6 Pro', 'Pixel 6', 'Pixel 6a',
+    'Pixel Fold',
+    'Alt model'
+  ],
+  'Oppo': [
+    'Find X7 Ultra', 'Find X7',
+    'Find X6 Pro', 'Find X6', 'Find X5 Pro', 'Find X5',
+    'Find N3', 'Find N3 Flip', 'Find N2', 'Find N2 Flip',
+    'Reno 12 Pro', 'Reno 12', 'Reno 11 Pro', 'Reno 11', 'Reno 11 F',
+    'Reno 10 Pro+', 'Reno 10 Pro', 'Reno 10',
+    'A3 Pro', 'A3', 'A2', 'A98', 'A79', 'A78', 'A58',
+    'Alt model'
+  ],
+  'Motorola': [
+    'Edge 50 Ultra', 'Edge 50 Pro', 'Edge 50 Fusion', 'Edge 50 Neo',
+    'Edge 40 Pro', 'Edge 40 Neo', 'Edge 40',
+    'Razr 50 Ultra', 'Razr 50', 'Razr 40 Ultra', 'Razr 40',
+    'Moto G85', 'Moto G84', 'Moto G54', 'Moto G34',
+    'Moto G Power (2024)', 'Moto G Stylus (2024)',
+    'ThinkPhone',
+    'Alt model'
+  ],
+  'Nothing': [
+    'Phone (2a) Plus', 'Phone (2a)',
+    'Phone (2)', 'Phone (1)',
+    'CMF Phone 1',
+    'Alt model'
+  ],
+  'Sony': [
+    'Xperia 1 VI', 'Xperia 5 V', 'Xperia 10 VI',
+    'Xperia 1 V', 'Xperia 5 IV', 'Xperia 10 V',
+    'Xperia 1 IV', 'Xperia 5 III', 'Xperia 10 IV',
+    'Xperia Pro-I',
+    'Alt model'
+  ],
+  'Realme': [
+    'GT 6', 'GT 5 Pro', 'GT 5',
+    'GT Neo 6', 'GT Neo 5', 'GT Neo 5 SE',
+    '12 Pro+', '12 Pro', '12', '12x',
+    '11 Pro+', '11 Pro', '11', '11x',
+    'C67', 'C55', 'C53', 'C35',
+    'Narzo 70 Pro', 'Narzo 70', 'Narzo 60 Pro', 'Narzo 60',
+    'Alt model'
+  ],
+  'Honor': [
+    'Magic 6 Pro', 'Magic 6', 'Magic V3', 'Magic V2',
+    'Magic 5 Pro', 'Magic 5', 'Magic V',
+    '200 Pro', '200', '200 Lite',
+    '90 Pro', '90', '90 Lite',
+    'X9b', 'X8b', 'X7b',
+    'Alt model'
+  ],
+  'Asus': [
+    'ROG Phone 8 Pro', 'ROG Phone 8',
+    'ROG Phone 7 Ultimate', 'ROG Phone 7',
+    'ROG Phone 6 Pro', 'ROG Phone 6',
+    'Zenfone 11 Ultra', 'Zenfone 10', 'Zenfone 9',
+    'Alt model'
+  ],
+  'Nokia': [
+    'X30', 'X20', 'X10',
+    'G60', 'G50', 'G42', 'G22', 'G21',
+    'C32', 'C22', 'C21 Plus', 'C12',
+    'Alt model'
+  ],
+  'Altă marcă': ['Alt model']
+};
+
 const CATEGORIES = [
   { id: 'imobiliare', name: 'Imobiliare', icon: Home },
   { id: 'auto-moto', name: 'Auto & Moto', icon: Car },
@@ -544,10 +674,10 @@ const SUBCATEGORY_FIELDS: Record<string, FormField[]> = {
   ],
   // ELECTRONICE
   'Telefoane': [
-    { id: 'marca', label: 'Marcă', type: 'select', options: ['Apple', 'Samsung', 'Xiaomi', 'Huawei', 'OnePlus', 'Google', 'Oppo', 'Motorola', 'Altă marcă'], required: true },
-    { id: 'model', label: 'Model', type: 'text', placeholder: 'ex: iPhone 15, Galaxy S24', required: true },
+    { id: 'marca', label: 'Marcă', type: 'select', options: ['Apple', 'Samsung', 'Xiaomi', 'Huawei', 'OnePlus', 'Google', 'Oppo', 'Motorola', 'Nothing', 'Sony', 'Realme', 'Honor', 'Asus', 'Nokia', 'Altă marcă'], required: true },
+    { id: 'model', label: 'Model', type: 'select', options: [], required: true },
     { id: 'memorie', label: 'Memorie', type: 'select', options: ['32GB', '64GB', '128GB', '256GB', '512GB', '1TB'] },
-    { id: 'culoare', label: 'Culoare', type: 'text', placeholder: 'Culoare' },
+    { id: 'culoare', label: 'Culoare', type: 'select', options: ['Negru', 'Alb', 'Argintiu', 'Gri', 'Auriu', 'Roz', 'Albastru', 'Verde', 'Mov', 'Roșu', 'Portocaliu', 'Galben', 'Maro', 'Titan Natural', 'Titan Albastru', 'Titan Negru', 'Titan Alb', 'Altă culoare'] },
   ],
   'Laptopuri': [
     { id: 'marca', label: 'Marcă', type: 'select', options: ['Apple', 'ASUS', 'Dell', 'HP', 'Lenovo', 'Acer', 'MSI', 'Razer', 'Samsung', 'Huawei', 'Microsoft', 'Toshiba', 'LG', 'Gigabyte', 'Medion', 'Fujitsu', 'Alienware', 'Altă marcă'], required: true },
@@ -1615,14 +1745,27 @@ export default function PublishPage() {
                       <div className="relative">
                         <select
                           value={customFields[field.id] || ''}
-                          onChange={(e) => handleCustomFieldChange(field.id, e.target.value)}
+                          onChange={(e) => {
+                            handleCustomFieldChange(field.id, e.target.value);
+                            // Si cambia la marca de teléfono, resetear el modelo
+                            if (field.id === 'marca' && subcategoria === 'Telefoane') {
+                              handleCustomFieldChange('model', '');
+                            }
+                          }}
                           className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 text-sm
                             focus:outline-none focus:border-[#13C1AC] focus:bg-white appearance-none cursor-pointer"
                         >
                           <option value="" className="bg-white">Selectează...</option>
-                          {field.options?.map(opt => (
-                            <option key={opt} value={opt} className="bg-white">{opt}</option>
-                          ))}
+                          {/* Modelos dinámicos para teléfonos */}
+                          {field.id === 'model' && subcategoria === 'Telefoane' && customFields['marca'] ? (
+                            (PHONE_MODELS[customFields['marca']] || ['Alt model']).map(opt => (
+                              <option key={opt} value={opt} className="bg-white">{opt}</option>
+                            ))
+                          ) : (
+                            field.options?.map(opt => (
+                              <option key={opt} value={opt} className="bg-white">{opt}</option>
+                            ))
+                          )}
                         </select>
                         <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                       </div>
