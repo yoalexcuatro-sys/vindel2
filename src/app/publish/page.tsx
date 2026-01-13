@@ -1143,9 +1143,9 @@ export default function PublishPage() {
         imageUrls = await uploadProductImages(imagenes, user.uid);
       }
       
-      // Si no hay imágenes, usar placeholder
+      // Si no hay imágenes, usar placeholder local
       if (imageUrls.length === 0) {
-        imageUrls = ['https://placehold.co/400x400?text=No+Image'];
+        imageUrls = ['/placeholder-product.svg'];
       }
 
       const productData = {
@@ -1165,7 +1165,7 @@ export default function PublishPage() {
           name: userProfile.displayName || 'Usuario',
           rating: userProfile.rating || 0,
           reviews: userProfile.reviewsCount || 0,
-          avatar: userProfile.photoURL || 'https://placehold.co/200x200?text=U',
+          avatar: userProfile.photoURL || '',
           joined: new Date().getFullYear().toString(),
         },
       };

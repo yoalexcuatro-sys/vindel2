@@ -6,7 +6,7 @@ import Image from 'next/image';
 interface AvatarProps {
   src?: string | null;
   name: string;
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl';
   className?: string;
   showOnlineStatus?: boolean;
   isOnline?: boolean;
@@ -18,6 +18,7 @@ const sizeClasses = {
   md: 'w-10 h-10 text-sm',
   lg: 'w-14 h-14 text-lg',
   xl: 'w-20 h-20 text-2xl',
+  '2xl': 'w-24 h-24 md:w-32 md:h-32 text-3xl md:text-4xl',
 };
 
 const onlineDotSizes = {
@@ -26,6 +27,7 @@ const onlineDotSizes = {
   md: 'w-3 h-3',
   lg: 'w-4 h-4',
   xl: 'w-5 h-5',
+  '2xl': 'w-6 h-6',
 };
 
 // Genera un color consistente basado en el nombre

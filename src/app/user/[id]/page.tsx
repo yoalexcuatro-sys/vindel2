@@ -6,6 +6,7 @@ import ProductCard from '@/components/ProductCard';
 import { notFound } from 'next/navigation';
 import { MapPin, Star, Calendar, ShieldCheck, Package } from 'lucide-react';
 import { useUserProducts, useUserProfile } from '@/lib/swr-hooks';
+import Avatar from '@/components/Avatar';
 
 export default function UserProfile({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -52,11 +53,11 @@ export default function UserProfile({ params }: { params: Promise<{ id: string }
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6 flex flex-col md:flex-row items-center justify-between">
             <div className="flex flex-col md:flex-row items-center w-full">
                 <div className="relative mb-4 md:mb-0 md:mr-6">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img 
+                    <Avatar 
                         src={user.avatar} 
-                        alt={user.name} 
-                        className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-md object-cover"
+                        name={user.name} 
+                        size="2xl" 
+                        className="border-4 border-white shadow-md"
                     />
                      <div className="absolute bottom-2 right-2 bg-white rounded-full p-1 shadow-sm text-[#13C1AC]" title="Perfil verificado">
                         <ShieldCheck className="h-5 w-5 fill-current" />
