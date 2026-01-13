@@ -129,6 +129,9 @@ export function subscribeToConversations(
       return bTime - aTime;
     });
     callback(conversations);
+  }, (error) => {
+    console.error('Error subscribing to conversations:', error);
+    callback([]);
   });
 }
 
@@ -194,10 +197,10 @@ export function subscribeToMessages(
   conversationId: string,
   callback: (messages: Message[]) => void
 ): () => void {
+  // Query without orderBy to avoid index requirement, sort client-side
   const q = query(
     collection(db, MESSAGES_COLLECTION),
-    where('conversationId', '==', conversationId),
-    orderBy('createdAt', 'asc')
+    where('conversationId', '==', conversationId)
   );
 
   return onSnapshot(q, (querySnapshot) => {
@@ -205,7 +208,16 @@ export function subscribeToMessages(
     querySnapshot.forEach((doc) => {
       messages.push({ id: doc.id, ...doc.data() } as Message);
     });
+    // Sort client-side by createdAt
+    messages.sort((a, b) => {
+      const aTime = a.createdAt?.toMillis() || 0;
+      const bTime = b.createdAt?.toMillis() || 0;
+      return aTime - bTime;
+    });
     callback(messages);
+  }, (error) => {
+    console.error('Error subscribing to messages:', error);
+    callback([]);
   });
 }
 
