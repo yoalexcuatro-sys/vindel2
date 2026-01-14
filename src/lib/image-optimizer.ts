@@ -18,9 +18,9 @@ export async function optimizeImage(
   options: OptimizationOptions = {}
 ): Promise<Blob> {
   const {
-    maxWidth = 1920,
-    maxHeight = 1080,
-    quality = 0.8
+    maxWidth = 1200,
+    maxHeight = 900,
+    quality = 0.7
   } = options;
 
   return new Promise((resolve, reject) => {

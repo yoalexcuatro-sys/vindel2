@@ -191,19 +191,20 @@ export default function ProductCard({ product }: { product: Product }) {
       onMouseLeave={handleMouseLeave}
     >
         {/* Precargar todas las imágenes */}
-        {allImages.map((img, idx) => (
+        {allImages.slice(0, 5).map((img, idx) => (
           <Image
             key={idx}
             src={img}
             alt={product.title}
             fill
-            sizes="(max-width: 768px) 50vw, 20vw"
-            className={`object-cover object-center transition-opacity duration-150 ${
+            sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
+            className={`object-cover object-center transition-opacity duration-100 ${
               idx === currentImageIndex ? 'opacity-100 z-[1]' : 'opacity-0 z-0'
             }`}
             style={{ objectPosition: 'center 30%' }}
             priority={idx === 0}
             loading={idx === 0 ? 'eager' : 'lazy'}
+            quality={75}
           />
         ))}
 
