@@ -1610,6 +1610,9 @@ export default function ProfilePage() {
                                   iPhone 7 rosa
                                 </h3>
                            </div>
+                           <div className="mt-2 text-center">
+                             <span className="text-xs font-semibold text-[#13C1AC]">Vinted</span>
+                           </div>
                         </div>
 
                         {/* DESIGN 7: Auto/Imobiliare (Detail Focused) */}
@@ -1635,6 +1638,9 @@ export default function ProfilePage() {
                                 </div>
                                 <h3 className="text-gray-800 text-sm font-medium truncate">Audi Q3 2020</h3>
                                 <span className="inline-block px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-semibold rounded mt-1.5 w-fit">Folosit</span>
+                           </div>
+                           <div className="py-2 text-center border-t border-gray-100">
+                             <span className="text-xs font-semibold text-[#13C1AC]">Auto</span>
                            </div>
                         </div>
 
@@ -1663,6 +1669,9 @@ export default function ProfilePage() {
                                <span className="px-2 py-1 bg-[#13C1AC]/10 text-[#13C1AC] font-semibold rounded text-[10px]">Contactează</span>
                              </div>
                            </div>
+                           <div className="py-2 text-center border-t border-gray-100">
+                             <span className="text-xs font-semibold text-[#13C1AC]">Shop</span>
+                           </div>
                         </div>
 
                         {/* DESIGN 9: Original Classic (vindel23 style) */}
@@ -1687,6 +1696,9 @@ export default function ProfilePage() {
                              <p className="text-base font-bold text-gray-900 mb-0.5">4.500 Lei</p>
                              <p className="text-xs text-gray-700 truncate">MacBook Air M1</p>
                              <p className="text-[10px] text-gray-400 mt-1.5">București</p>
+                           </div>
+                           <div className="py-2 text-center border-t border-gray-100">
+                             <span className="text-xs font-semibold text-[#13C1AC]">Clasic</span>
                            </div>
                         </div>
                     </div>
