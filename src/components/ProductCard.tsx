@@ -299,20 +299,32 @@ function ProductCardComponent({ product }: { product: Product }) {
     );
   }
 
-  // THEME 6: Social Connect (Vinted Style)
+  // THEME 6: Social Connect (Vinted Style) - Sin carrusel
   if (theme === 6) {
     return (
       <Link href={createProductLink(product)} className="block h-full"> 
         <div className="group bg-transparent h-full flex flex-col cursor-pointer">
             <div className="relative mb-2">
                 <div className="aspect-[3/4] rounded-2xl overflow-hidden relative ring-1 ring-black/5">
-                    <ImageCarousel heightClass="h-full" />
-                    {/* Badge 1/2 */}
-                    <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full z-20 pointer-events-none">
-                       <span className="text-[10px] font-semibold text-white/90">
-                          1 / {imageCount || 1}
-                       </span>
-                    </div>
+                    {/* Imagen única sin carrusel */}
+                    <Image
+                      src={allImages[0]}
+                      alt={product.title}
+                      fill
+                      sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
+                      className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                      style={{ objectPosition: 'center 30%' }}
+                      loading="lazy"
+                      quality={60}
+                    />
+                    {/* Badge 1/N */}
+                    {imageCount > 1 && (
+                      <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full z-20 pointer-events-none">
+                         <span className="text-[10px] font-semibold text-white/90">
+                            1 / {imageCount}
+                         </span>
+                      </div>
+                    )}
                 </div>
             </div>
             
