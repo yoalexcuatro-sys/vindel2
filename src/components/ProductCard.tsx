@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Heart, ArrowUpRight, ArrowDownRight, Clock, ShoppingBag, Package, Star, Sparkles, CheckCircle, AlertTriangle, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -153,14 +153,24 @@ export default function ProductCard({ product }: { product: Product }) {
     : [product.image || '/placeholder.jpg'];
   const imageCount = allImages.length;
 
+  // Throttle mouse move para mejor rendimiento
+  const lastUpdateRef = useRef(0);
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (imageCount <= 1) return;
+    
+    // Throttle: solo actualizar cada 50ms
+    const now = Date.now();
+    if (now - lastUpdateRef.current < 50) return;
+    lastUpdateRef.current = now;
+    
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = x / rect.width;
     const newIndex = Math.min(Math.floor(percentage * imageCount), imageCount - 1);
-    setCurrentImageIndex(prev => prev !== newIndex ? newIndex : prev);
-  }, [imageCount]);
+    if (newIndex !== currentImageIndex) {
+      setCurrentImageIndex(newIndex);
+    }
+  }, [imageCount, currentImageIndex]);
 
   const handleMouseEnter = useCallback(() => {
     if (imageCount > 1) setIsHovering(true);
@@ -180,28 +190,22 @@ export default function ProductCard({ product }: { product: Product }) {
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-        {/* Primera imagen siempre visible como fondo */}
-        <Image
-          src={allImages[0]}
-          alt={product.title}
-          fill
-          sizes="(max-width: 768px) 100vw, 25vw"
-          className="object-cover object-center"
-          style={{ objectPosition: 'center 30%' }}
-          priority
-        />
-        
-        {/* Imagen actual en hover se superpone */}
-        {isHovering && currentImageIndex > 0 && allImages[currentImageIndex] && (
+        {/* Precargar todas las imágenes */}
+        {allImages.map((img, idx) => (
           <Image
-            src={allImages[currentImageIndex]}
+            key={idx}
+            src={img}
             alt={product.title}
             fill
-            sizes="(max-width: 768px) 100vw, 25vw"
-            className="object-cover z-[1]"
+            sizes="(max-width: 768px) 50vw, 20vw"
+            className={`object-cover object-center transition-opacity duration-150 ${
+              idx === currentImageIndex ? 'opacity-100 z-[1]' : 'opacity-0 z-0'
+            }`}
             style={{ objectPosition: 'center 30%' }}
+            priority={idx === 0}
+            loading={idx === 0 ? 'eager' : 'lazy'}
           />
-        )}
+        ))}
 
         {imageCount > 1 && (
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10 pointer-events-none">
