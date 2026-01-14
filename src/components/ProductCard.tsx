@@ -471,14 +471,24 @@ function ProductCardComponent({ product }: { product: Product }) {
     );
   }
 
-  // DEFAULT (THEME 1: Elegant Teal Border Style)
+  // DEFAULT (THEME 1: Elegant Teal Border Style) - Sin carrusel
   return (
     <div className="relative h-full">
         <Link href={createProductLink(product)} className="block h-full">
             <div className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 border-[#13C1AC] relative h-full flex flex-col">
                 <div className="relative">
                     <div className="aspect-[4/3] relative overflow-hidden rounded-t-xl">
-                        <ImageCarousel heightClass="h-full" />
+                        {/* Imagen única sin carrusel */}
+                        <Image
+                          src={allImages[0]}
+                          alt={product.title}
+                          fill
+                          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
+                          className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                          style={{ objectPosition: 'center 30%' }}
+                          loading="lazy"
+                          quality={60}
+                        />
                         
                         {/* Badge Reservat */}
                         {product.reserved && (
@@ -487,17 +497,10 @@ function ProductCardComponent({ product }: { product: Product }) {
                             </div>
                         )}
                         
-                        {/* Indicadores de imagen */}
+                        {/* Contador de fotos */}
                         {imageCount > 1 && (
-                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 pointer-events-none">
-                                {allImages.slice(0, 5).map((_, idx) => (
-                                    <span 
-                                        key={idx}
-                                        className={`h-1 rounded-full transition-all shadow-sm ${
-                                            idx === currentImageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/60'
-                                        }`}
-                                    />
-                                ))}
+                            <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-lg z-20 font-medium">
+                                1 / {imageCount}
                             </div>
                         )}
                     </div>
