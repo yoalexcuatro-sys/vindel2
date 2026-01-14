@@ -49,7 +49,7 @@ export default function ProductGrid() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 py-4 sm:py-6 md:py-8 bg-gray-50">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 py-3 sm:py-4 md:py-6 bg-gray-50">
       <style jsx>{`
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(20px); }
