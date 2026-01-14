@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, memo } from 'react';
-import { Heart, Clock, Package, Star, Sparkles, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Heart, Clock, Package, Star, Sparkles, CheckCircle, AlertTriangle, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
