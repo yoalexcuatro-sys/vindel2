@@ -96,16 +96,22 @@ export default function ProductGrid() {
             </a>
           </div>
           
-          {/* Product Grid - Responsive columns - Sin animaciones individuales para mejor rendimiento */}
+          {/* Product Grid - Responsive columns con animación de entrada */}
           <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {products.map((product, index) => (
+              <div 
+                key={product.id} 
+                className="animate-fadeInScale"
+                style={{ animationDelay: `${Math.min(index * 30, 300)}ms`, opacity: 0 }}
+              >
+                <ProductCard product={product} />
+              </div>
             ))}
           </div>
           
           {/* Load More - Mobile friendly */}
           {products.length >= 12 && (
-            <div className="mt-6 sm:mt-8 text-center">
+            <div className="mt-6 sm:mt-8 text-center animate-fadeInUp" style={{ animationDelay: '0.4s', opacity: 0 }}>
               <a 
                 href="/search" 
                 className="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-[#13C1AC] text-[#13C1AC] font-semibold rounded-full hover:bg-[#13C1AC] hover:text-white transition-all active:scale-95 text-sm sm:text-base"
