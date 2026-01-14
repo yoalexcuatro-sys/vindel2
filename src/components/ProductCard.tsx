@@ -1,15 +1,12 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { Heart, ArrowUpRight, ArrowDownRight, Clock, ShoppingBag, Package, Star, Sparkles, CheckCircle, AlertTriangle, MessageCircle } from 'lucide-react';
+import { useState, useCallback, useEffect, useRef, memo } from 'react';
+import { Heart, Clock, Package, Star, Sparkles, CheckCircle, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 import { createProductLink } from '@/lib/slugs';
-import { mutate } from 'swr';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { toggleFavorite } from '@/lib/favorites-service';
 import { useUserFavorites } from '@/lib/swr-hooks';
@@ -77,21 +74,25 @@ const isNewProduct = (publishedAt?: string | Timestamp): boolean => {
   return diffHours < 24;
 };
 
-export default function ProductCard({ product }: { product: Product }) {
+// Cache global del tema para evitar leer localStorage en cada card
+let cachedTheme: number | null = null;
+const getTheme = () => {
+  if (cachedTheme !== null) return cachedTheme;
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('user_card_theme');
+    cachedTheme = saved ? parseInt(saved) : 1;
+  }
+  return cachedTheme ?? 1;
+};
+
+function ProductCardComponent({ product }: { product: Product }) {
   const router = useRouter();
   const { user } = useAuth();
   const { data: favoriteIds, mutate: mutateFavorites } = useUserFavorites(user?.uid || null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
-  const [theme, setTheme] = useState(() => {
-    // Cargar tema inmediatamente al inicializar
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('user_card_theme');
-      return saved ? parseInt(saved) : 1;
-    }
-    return 1;
-  });
+  const [theme, setTheme] = useState(getTheme);
   
   // Check if product is favorited
   const isFavorited = favoriteIds?.includes(product.id) || false;
@@ -123,23 +124,15 @@ export default function ProductCard({ product }: { product: Product }) {
     }
   }, [user, product.id, favoriteIds, mutateFavorites, router]);
   
-  // Prefetch producto en hover para carga instantánea
-  const prefetchProduct = useCallback(async () => {
-    const key = `product-${product.id}`;
-    // Precargar en caché SWR
-    const docRef = doc(db, 'products', product.id);
-    const snapshot = await getDoc(docRef);
-    if (snapshot.exists()) {
-      mutate(key, { id: snapshot.id, ...snapshot.data() }, false);
-    }
-  }, [product.id]);
-  
   // Listen for theme changes from settings
   useEffect(() => {
     const loadTheme = () => {
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('user_card_theme');
-        if (saved) setTheme(parseInt(saved));
+        if (saved) {
+          cachedTheme = parseInt(saved);
+          setTheme(cachedTheme);
+        }
       }
     };
     
@@ -153,14 +146,14 @@ export default function ProductCard({ product }: { product: Product }) {
     : [product.image || '/placeholder.jpg'];
   const imageCount = allImages.length;
 
-  // Throttle mouse move para mejor rendimiento
+  // Throttle mouse move - ahora 100ms para mejor rendimiento
   const lastUpdateRef = useRef(0);
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (imageCount <= 1) return;
     
-    // Throttle: solo actualizar cada 50ms
+    // Throttle: solo actualizar cada 100ms
     const now = Date.now();
-    if (now - lastUpdateRef.current < 50) return;
+    if (now - lastUpdateRef.current < 100) return;
     lastUpdateRef.current = now;
     
     const rect = e.currentTarget.getBoundingClientRect();
@@ -174,9 +167,7 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const handleMouseEnter = useCallback(() => {
     if (imageCount > 1) setIsHovering(true);
-    // Prefetch producto para carga instantánea al hacer click
-    prefetchProduct();
-  }, [imageCount, prefetchProduct]);
+  }, [imageCount]);
 
   const handleMouseLeave = useCallback(() => {
     setCurrentImageIndex(0);
@@ -198,8 +189,8 @@ export default function ProductCard({ product }: { product: Product }) {
           sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
           className="object-cover object-center"
           style={{ objectPosition: 'center 30%' }}
-          priority
-          quality={75}
+          loading="lazy"
+          quality={60}
         />
         
         {/* Otras imágenes se superponen solo cuando están seleccionadas */}
@@ -542,3 +533,10 @@ export default function ProductCard({ product }: { product: Product }) {
     </div>
   );
 }
+
+// Memoized export to prevent unnecessary re-renders
+export default memo(ProductCardComponent, (prevProps, nextProps) => {
+  return prevProps.product.id === nextProps.product.id &&
+         prevProps.product.price === nextProps.product.price &&
+         prevProps.product.title === nextProps.product.title;
+});

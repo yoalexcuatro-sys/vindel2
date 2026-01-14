@@ -519,6 +519,7 @@ import { getUserFavoriteIds } from './favorites-service';
 
 /**
  * Hook para obtener IDs de favoritos del usuario
+ * Optimizado: revalida raramente, usa caché agresivo
  */
 export function useUserFavorites(userId: string | null) {
   return useSWR<string[]>(
@@ -526,7 +527,9 @@ export function useUserFavorites(userId: string | null) {
     () => getUserFavoriteIds(userId!),
     {
       revalidateOnFocus: false,
-      dedupingInterval: 10000,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60000, // 1 minuto de deduplicación
+      revalidateIfStale: false, // No revalidar automáticamente
     }
   );
 }
@@ -555,7 +558,8 @@ export function useFavoriteProducts(userId: string | null) {
     },
     {
       revalidateOnFocus: false,
-      dedupingInterval: 10000,
+      revalidateOnReconnect: false,
+      dedupingInterval: 60000,
     }
   );
 }
