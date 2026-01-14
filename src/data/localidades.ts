@@ -380,4 +380,134 @@ export const localidades: Localidad[] = [
   { ciudad: 'Mărășești', judet: 'Vrancea' },
   { ciudad: 'Panciu', judet: 'Vrancea' },
   { ciudad: 'Odobești', judet: 'Vrancea' },
+  
+  // === LOCALIDADES ADICIONALES ===
+  
+  // Más localidades de Cluj
+  { ciudad: 'Zorilor', judet: 'Cluj' },
+  { ciudad: 'Mănăștur', judet: 'Cluj' },
+  { ciudad: 'Gheorgheni', judet: 'Cluj' },
+  { ciudad: 'Mărăști', judet: 'Cluj' },
+  { ciudad: 'Bună Ziua', judet: 'Cluj' },
+  { ciudad: 'Borhanci', judet: 'Cluj' },
+  { ciudad: 'Sopor', judet: 'Cluj' },
+  { ciudad: 'Feleacu', judet: 'Cluj' },
+  
+  // Más localidades de București/Ilfov
+  { ciudad: 'Pipera', judet: 'București' },
+  { ciudad: 'Drumul Taberei', judet: 'București' },
+  { ciudad: 'Militari', judet: 'București' },
+  { ciudad: 'Titan', judet: 'București' },
+  { ciudad: 'Colentina', judet: 'București' },
+  { ciudad: 'Rahova', judet: 'București' },
+  { ciudad: 'Ferentari', judet: 'București' },
+  { ciudad: 'Obor', judet: 'București' },
+  { ciudad: 'Dristor', judet: 'București' },
+  { ciudad: 'Tineretului', judet: 'București' },
+  { ciudad: 'Unirii', judet: 'București' },
+  { ciudad: 'Victoriei', judet: 'București' },
+  { ciudad: 'Aviatorilor', judet: 'București' },
+  { ciudad: 'Dorobanți', judet: 'București' },
+  { ciudad: 'Floreasca', judet: 'București' },
+  { ciudad: 'Primăverii', judet: 'București' },
+  { ciudad: 'Herăstrău', judet: 'București' },
+  { ciudad: 'Băneasa', judet: 'București' },
+  { ciudad: 'Grivița', judet: 'București' },
+  { ciudad: 'Crângași', judet: 'București' },
+  { ciudad: 'Giulești', judet: 'București' },
+  { ciudad: 'Cotroceni', judet: 'București' },
+  { ciudad: 'Cișmigiu', judet: 'București' },
+  { ciudad: 'Izvor', judet: 'București' },
+  { ciudad: 'Văcărești', judet: 'București' },
+  
+  // Más localidades de Timiș
+  { ciudad: 'Giroc', judet: 'Timiș' },
+  { ciudad: 'Moșnița Nouă', judet: 'Timiș' },
+  { ciudad: 'Dumbrăvița', judet: 'Timiș' },
+  { ciudad: 'Ghiroda', judet: 'Timiș' },
+  { ciudad: 'Sânandrei', judet: 'Timiș' },
+  { ciudad: 'Săcălaz', judet: 'Timiș' },
+  
+  // Más localidades de Constanța
+  { ciudad: 'Agigea', judet: 'Constanța' },
+  { ciudad: 'Cumpăna', judet: 'Constanța' },
+  { ciudad: 'Lumina', judet: 'Constanța' },
+  { ciudad: 'Corbu', judet: 'Constanța' },
+  { ciudad: 'Năvodari', judet: 'Constanța' },
+  { ciudad: 'Poarta Albă', judet: 'Constanța' },
+  { ciudad: 'Murfatlar', judet: 'Constanța' },
+  { ciudad: 'Hârșova', judet: 'Constanța' },
+  
+  // Más localidades de Brașov
+  { ciudad: 'Sânpetru', judet: 'Brașov' },
+  { ciudad: 'Hărman', judet: 'Brașov' },
+  { ciudad: 'Cristian', judet: 'Brașov' },
+  { ciudad: 'Bod', judet: 'Brașov' },
+  { ciudad: 'Prejmer', judet: 'Brașov' },
+  { ciudad: 'Moieciu', judet: 'Brașov' },
+  { ciudad: 'Vulcan', judet: 'Brașov' },
+  
+  // Más localidades de Sibiu
+  { ciudad: 'Șelimbăr', judet: 'Sibiu' },
+  { ciudad: 'Cristian', judet: 'Sibiu' },
+  { ciudad: 'Tălmaciu', judet: 'Sibiu' },
+  { ciudad: 'Ocna Sibiului', judet: 'Sibiu' },
+  { ciudad: 'Șura Mică', judet: 'Sibiu' },
+  
+  // Más localidades de Iași
+  { ciudad: 'Miroslava', judet: 'Iași' },
+  { ciudad: 'Ciurea', judet: 'Iași' },
+  { ciudad: 'Tomești', judet: 'Iași' },
+  { ciudad: 'Rediu', judet: 'Iași' },
+  { ciudad: 'Bârnova', judet: 'Iași' },
+  { ciudad: 'Bucium', judet: 'Iași' },
+  { ciudad: 'Copou', judet: 'Iași' },
+  { ciudad: 'Tătărași', judet: 'Iași' },
+  { ciudad: 'Nicolina', judet: 'Iași' },
+  { ciudad: 'Podu Roș', judet: 'Iași' },
+  { ciudad: 'Alexandru cel Bun', judet: 'Iași' },
+  { ciudad: 'Dacia', judet: 'Iași' },
+  
+  // Más localidades de Dolj
+  { ciudad: 'Malu Mare', judet: 'Dolj' },
+  { ciudad: 'Podari', judet: 'Dolj' },
+  { ciudad: 'Cârcea', judet: 'Dolj' },
+  
+  // Más localidades de Prahova
+  { ciudad: 'Blejoi', judet: 'Prahova' },
+  { ciudad: 'Bucov', judet: 'Prahova' },
+  { ciudad: 'Strejnic', judet: 'Prahova' },
+  { ciudad: 'Păulești', judet: 'Prahova' },
+  
+  // Más localidades de Arad
+  { ciudad: 'Vladimirescu', judet: 'Arad' },
+  { ciudad: 'Sântana', judet: 'Arad' },
+  { ciudad: 'Felnac', judet: 'Arad' },
+  { ciudad: 'Zimandu Nou', judet: 'Arad' },
+  
+  // Más localidades de Bihor
+  { ciudad: 'Paleu', judet: 'Bihor' },
+  { ciudad: 'Sânmartin', judet: 'Bihor' },
+  { ciudad: 'Biharia', judet: 'Bihor' },
+  { ciudad: 'Oșorhei', judet: 'Bihor' },
+  { ciudad: 'Nojorid', judet: 'Bihor' },
+  
+  // Más localidades de Mureș
+  { ciudad: 'Sâncraiu de Mureș', judet: 'Mureș' },
+  { ciudad: 'Sângeorgiu de Mureș', judet: 'Mureș' },
+  { ciudad: 'Corunca', judet: 'Mureș' },
+  { ciudad: 'Livezeni', judet: 'Mureș' },
+  
+  // Localidades de Galați
+  { ciudad: 'Șendreni', judet: 'Galați' },
+  { ciudad: 'Vânători', judet: 'Galați' },
+  { ciudad: 'Braniștea', judet: 'Galați' },
+  
+  // Localidades turísticas adicionales
+  { ciudad: 'Băile Tușnad', judet: 'Harghita' },
+  { ciudad: 'Lacu Roșu', judet: 'Harghita' },
+  { ciudad: 'Praid', judet: 'Harghita' },
+  { ciudad: 'Corund', judet: 'Harghita' },
+  { ciudad: 'Borsec', judet: 'Harghita' },
+  { ciudad: 'Izvoru Mureșului', judet: 'Harghita' },
 ];
