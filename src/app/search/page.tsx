@@ -89,10 +89,12 @@ function SearchResults() {
 
   // Filtering Logic
   const filteredProducts = products.filter((product) => {
-    // Text Search
+    // Text Search - buscar en título, descripción Y ubicación
+    const searchQuery = query.toLowerCase();
     const matchesText = 
-        product.title.toLowerCase().includes(query.toLowerCase()) || 
-        product.description.toLowerCase().includes(query.toLowerCase());
+        product.title.toLowerCase().includes(searchQuery) || 
+        product.description.toLowerCase().includes(searchQuery) ||
+        product.location.toLowerCase().includes(searchQuery);
     
     // Currency filter - if filtering by price, only show products in that currency
     const productCurrency = product.currency || 'RON';

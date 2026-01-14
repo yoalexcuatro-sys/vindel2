@@ -1,9 +1,10 @@
 
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Search, X, Clock, TrendingUp } from 'lucide-react';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { Search, X, Clock, TrendingUp, MapPin } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { localidades } from '@/data/localidades';
 
 interface SearchBarProps {
   className?: string;
@@ -141,7 +142,26 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
                     <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2.5 sm:mr-3" />
                     <span className="text-sm sm:text-base">Caută &quot;{query}&quot;</span>
                 </button>
-                {['iphone', 'bicicleta', 'sofa'].filter(t => t.includes(query.toLowerCase()) && t !== query.toLowerCase()).map(term => (
+                
+                {/* Sugerencias de localidades */}
+                {localidades
+                  .filter(loc => loc.ciudad.toLowerCase().includes(query.toLowerCase()))
+                  .slice(0, 3)
+                  .map(loc => (
+                    <button
+                      key={`${loc.ciudad}-${loc.judet}`}
+                      onClick={() => { setQuery(loc.ciudad); handleSearch(loc.ciudad); }}
+                      className="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-gray-50 flex items-center group"
+                    >
+                      <MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 mr-2.5 sm:mr-3 group-hover:text-[#13C1AC]" />
+                      <span className="text-sm sm:text-base text-gray-700">{loc.ciudad}</span>
+                      <span className="ml-2 text-xs text-gray-400">{loc.judet}</span>
+                    </button>
+                  ))
+                }
+                
+                {/* Sugerencias populares */}
+                {['iphone', 'bicicleta', 'sofa', 'laptop', 'masina'].filter(t => t.includes(query.toLowerCase()) && t !== query.toLowerCase()).slice(0, 2).map(term => (
                      <button
                         key={term}
                         onClick={() => { setQuery(term); handleSearch(term); }}
