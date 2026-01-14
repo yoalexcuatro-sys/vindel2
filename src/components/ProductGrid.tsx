@@ -49,7 +49,7 @@ export default function ProductGrid() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 py-6 sm:py-8 md:py-10 bg-gray-50">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 py-4 sm:py-6 md:py-8 bg-gray-50">
       <style jsx>{`
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(20px); }
@@ -111,7 +111,7 @@ export default function ProductGrid() {
           
           {/* Load More - Mobile friendly */}
           {products.length >= 12 && (
-            <div className="mt-8 sm:mt-10 text-center animate-fadeInUp" style={{ animationDelay: '0.5s', opacity: 0 }}>
+            <div className="mt-6 sm:mt-8 text-center animate-fadeInUp" style={{ animationDelay: '0.5s', opacity: 0 }}>
               <a 
                 href="/search" 
                 className="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-[#13C1AC] text-[#13C1AC] font-semibold rounded-full hover:bg-[#13C1AC] hover:text-white transition-all active:scale-95 text-sm sm:text-base"
