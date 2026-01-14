@@ -185,11 +185,14 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const ImageCarousel = ({ heightClass = "h-56" }: { heightClass?: string }) => (
     <div 
-      className={`relative ${heightClass} w-full overflow-hidden`}
+      className={`relative ${heightClass} w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200`}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
+        {/* Shimmer loading effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite] z-0" />
+        
         {/* Precargar todas las imágenes */}
         {allImages.slice(0, 5).map((img, idx) => (
           <Image
@@ -205,6 +208,8 @@ export default function ProductCard({ product }: { product: Product }) {
             priority={idx === 0}
             loading={idx === 0 ? 'eager' : 'lazy'}
             quality={75}
+            placeholder="blur"
+            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAAAAUH/8QAIhAAAgEDAwUBAAAAAAAAAAAAAQIDAAQRBRIhBhMxQVFh/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAZEQACAwEAAAAAAAAAAAAAAAABAgADESH/2gAMAwEAAhEDEEA/AKei6jPZahHdQkB4zlSRkHIPB/ayLr7Xr3WtUe6vJN0jADA4AA8AD4BSlaKxUDc+T//Z"
           />
         ))}
 
