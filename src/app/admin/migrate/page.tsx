@@ -1,18 +1,67 @@
 'use client';
 
 import { useState } from 'react';
-import { collection, getDocs, updateDoc, doc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
-import { Loader2, CheckCircle2, AlertCircle, Database, ArrowLeft } from 'lucide-react';
+import { Loader2, CheckCircle2, AlertCircle, Database, ArrowLeft, Search, Eye } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MigratePage() {
   const { user, userProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: number; errors: number; message: string } | null>(null);
+  const [productId, setProductId] = useState('');
+  const [productData, setProductData] = useState<any>(null);
 
   const isAdmin = userProfile?.role === 'admin';
+
+  // Ver datos de un producto específico
+  const viewProduct = async () => {
+    if (!productId.trim()) return;
+    
+    setLoading(true);
+    setProductData(null);
+    
+    try {
+      const docRef = doc(db, 'products', productId.trim());
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        setProductData({ id: docSnap.id, ...docSnap.data() });
+      } else {
+        setResult({ success: 0, errors: 1, message: 'Producto no encontrado' });
+      }
+    } catch (error: any) {
+      setResult({ success: 0, errors: 1, message: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Ver todos los productos con sus campos
+  const viewAllProducts = async () => {
+    setLoading(true);
+    setProductData(null);
+    
+    try {
+      const productsRef = collection(db, 'products');
+      const snapshot = await getDocs(productsRef);
+      
+      const products = snapshot.docs.map(doc => ({
+        id: doc.id,
+        condition: doc.data().condition,
+        negotiable: doc.data().negotiable,
+        title: doc.data().title?.substring(0, 30),
+      }));
+      
+      setProductData(products);
+    } catch (error: any) {
+      setResult({ success: 0, errors: 1, message: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const migrateNegotiable = async () => {
     if (!isAdmin) return;
@@ -174,6 +223,46 @@ export default function MigratePage() {
           </div>
 
           <div className="space-y-4">
+            {/* View Products */}
+            <div className="border border-gray-200 rounded-xl p-5">
+              <h3 className="font-semibold text-gray-800 mb-2">🔍 Vezi date produse</h3>
+              <p className="text-gray-500 text-sm mb-4">
+                Verifică ce valori au produsele în baza de date
+              </p>
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  value={productId}
+                  onChange={(e) => setProductId(e.target.value)}
+                  placeholder="ID produs (opțional)"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#13C1AC] focus:border-transparent"
+                />
+                <button
+                  onClick={viewProduct}
+                  disabled={loading || !productId.trim()}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Search className="w-5 h-5" />
+                </button>
+              </div>
+              <button
+                onClick={viewAllProducts}
+                disabled={loading}
+                className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Eye className="w-5 h-5" />}
+                Vezi toate produsele
+              </button>
+              
+              {productData && (
+                <div className="mt-4 bg-gray-50 rounded-lg p-4 max-h-96 overflow-auto">
+                  <pre className="text-xs text-gray-700 whitespace-pre-wrap">
+                    {JSON.stringify(productData, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+
             {/* Migrate Negotiable */}
             <div className="border border-gray-200 rounded-xl p-5">
               <h3 className="font-semibold text-gray-800 mb-2">1. Adaugă câmp "negotiable"</h3>

@@ -510,3 +510,52 @@ export function invalidateAdminCache() {
     window.dispatchEvent(event);
   }
 }
+
+// ============================================
+// FAVORITES HOOKS
+// ============================================
+
+import { getUserFavoriteIds } from './favorites-service';
+
+/**
+ * Hook para obtener IDs de favoritos del usuario
+ */
+export function useUserFavorites(userId: string | null) {
+  return useSWR<string[]>(
+    userId ? `favorites-${userId}` : null,
+    () => getUserFavoriteIds(userId!),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 10000,
+    }
+  );
+}
+
+/**
+ * Hook para obtener productos favoritos completos
+ */
+export function useFavoriteProducts(userId: string | null) {
+  const { data: favoriteIds, mutate: mutateFavorites } = useUserFavorites(userId);
+  
+  return useSWR<Product[]>(
+    favoriteIds && favoriteIds.length > 0 ? `favorite-products-${userId}` : null,
+    async () => {
+      if (!favoriteIds || favoriteIds.length === 0) return [];
+      
+      // Cargar productos favoritos
+      const products: Product[] = [];
+      for (const productId of favoriteIds) {
+        const docRef = doc(db, 'products', productId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          products.push({ id: docSnap.id, ...docSnap.data() } as Product);
+        }
+      }
+      return products;
+    },
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 10000,
+    }
+  );
+}

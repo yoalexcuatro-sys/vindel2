@@ -123,15 +123,94 @@ export async function deleteProduct(productId: string): Promise<void> {
   await deleteDoc(docRef);
 }
 
-// Increment product views
-export async function incrementProductViews(productId: string): Promise<void> {
-  const docRef = doc(db, PRODUCTS_COLLECTION, productId);
-  const docSnap = await getDoc(docRef);
+// Increment product views (only counts unique visitors)
+export async function incrementProductViews(productId: string, visitorId?: string): Promise<boolean> {
+  // Generar ID único del visitante (userId si está logueado, o fingerprint del navegador)
+  const getVisitorFingerprint = (): string => {
+    if (typeof window === 'undefined') return '';
+    
+    // Si hay visitorId (userId), usarlo
+    if (visitorId) return visitorId;
+    
+    // Para visitantes anónimos, crear/obtener un fingerprint único
+    try {
+      let fingerprint = localStorage.getItem('visitor_fingerprint');
+      if (!fingerprint) {
+        fingerprint = 'anon_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem('visitor_fingerprint', fingerprint);
+      }
+      return fingerprint;
+    } catch {
+      return 'anon_' + Math.random().toString(36).substring(2);
+    }
+  };
   
-  if (docSnap.exists()) {
-    const currentViews = docSnap.data().views || 0;
-    await updateDoc(docRef, { views: currentViews + 1 });
+  const fingerprintId = getVisitorFingerprint();
+  if (!fingerprintId) return false;
+  
+  const now = Date.now();
+  const twentyFourHours = 24 * 60 * 60 * 1000;
+  
+  try {
+    // Verificar si este visitante ya vio este producto
+    const viewedKey = `viewed_products`;
+    let viewedProducts: Record<string, number> = {};
+    
+    try {
+      viewedProducts = JSON.parse(localStorage.getItem(viewedKey) || '{}');
+    } catch {
+      viewedProducts = {};
+    }
+    
+    // Si ya lo vio en las últimas 24h, no incrementar
+    const lastViewed = viewedProducts[productId];
+    if (lastViewed && (now - lastViewed) < twentyFourHours) {
+      return false;
+    }
+    
+    // Limpiar entradas antiguas (más de 24h) para evitar que crezca indefinidamente
+    const cleanedProducts: Record<string, number> = {};
+    let entryCount = 0;
+    const maxEntries = 100; // Limitar a 100 productos más recientes
+    
+    // Ordenar por timestamp y quedarse solo con los más recientes
+    const entries = Object.entries(viewedProducts)
+      .filter(([, timestamp]) => (now - timestamp) < twentyFourHours)
+      .sort((a, b) => b[1] - a[1]) // Más recientes primero
+      .slice(0, maxEntries - 1); // Dejar espacio para el nuevo
+    
+    for (const [id, timestamp] of entries) {
+      cleanedProducts[id] = timestamp;
+      entryCount++;
+    }
+    
+    // Añadir el producto actual
+    cleanedProducts[productId] = now;
+    
+    // Guardar en localStorage con manejo de errores
+    try {
+      localStorage.setItem(viewedKey, JSON.stringify(cleanedProducts));
+    } catch (e) {
+      // Si falla por quota, limpiar todo y empezar de nuevo
+      console.warn('localStorage quota exceeded, clearing viewed_products');
+      localStorage.removeItem(viewedKey);
+      localStorage.setItem(viewedKey, JSON.stringify({ [productId]: now }));
+    }
+    
+    // Incrementar contador en Firestore
+    const docRef = doc(db, PRODUCTS_COLLECTION, productId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const currentViews = docSnap.data().views || 0;
+      await updateDoc(docRef, { views: currentViews + 1 });
+      return true;
+    }
+  } catch (error) {
+    console.error('Error incrementing views:', error);
   }
+  
+  return false;
 }
 
 // Get all products with optional filters

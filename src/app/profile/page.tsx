@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getUserProducts, Product, deleteProduct } from '@/lib/products-service';
 import { uploadAvatar } from '@/lib/storage-service';
+import { useFavoriteProducts } from '@/lib/swr-hooks';
+import ProductCard from '@/components/ProductCard';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -37,6 +39,9 @@ export default function ProfilePage() {
   const [themeInitialized, setThemeInitialized] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [productsLoading, setProductsLoading] = useState(true);
+  
+  // Cargar productos favoritos
+  const { data: favoriteProducts, isLoading: favoritesLoading } = useFavoriteProducts(user?.uid || null);
   
   const isBusiness = userProfile?.accountType === 'business';
 
@@ -130,8 +135,53 @@ export default function ProfilePage() {
   // Show loading while auth is checking
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#13C1AC]" />
+      <div className="min-h-screen bg-gray-50">
+        <style jsx>{`
+          @keyframes shimmer {
+            0% { background-position: -1000px 0; }
+            100% { background-position: 1000px 0; }
+          }
+          .skeleton-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 1000px 100%;
+            animation: shimmer 2s infinite;
+          }
+        `}</style>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Sidebar Skeleton */}
+            <aside className="w-full lg:w-64 shrink-0">
+              <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                <div className="text-center pb-5 border-b border-gray-100">
+                  <div className="w-20 h-20 mx-auto mb-3 rounded-full skeleton-shimmer"></div>
+                  <div className="h-5 w-32 mx-auto skeleton-shimmer rounded mb-2"></div>
+                  <div className="h-4 w-24 mx-auto skeleton-shimmer rounded"></div>
+                </div>
+                <nav className="mt-5 space-y-2">
+                  {[...Array(7)].map((_, i) => (
+                    <div key={i} className="h-11 skeleton-shimmer rounded-xl"></div>
+                  ))}
+                </nav>
+              </div>
+            </aside>
+            {/* Main Content Skeleton */}
+            <main className="flex-1">
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+                <div className="h-8 w-64 skeleton-shimmer rounded mb-2"></div>
+                <div className="h-4 w-48 skeleton-shimmer rounded"></div>
+              </div>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="bg-white rounded-2xl border border-gray-200 p-5">
+                    <div className="w-10 h-10 skeleton-shimmer rounded-xl mb-3"></div>
+                    <div className="h-7 w-20 skeleton-shimmer rounded mb-2"></div>
+                    <div className="h-4 w-24 skeleton-shimmer rounded"></div>
+                  </div>
+                ))}
+              </div>
+            </main>
+          </div>
+        </div>
       </div>
     );
   }
@@ -140,8 +190,41 @@ export default function ProfilePage() {
   if (!user) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-[#13C1AC]" />
+        <div className="min-h-screen bg-gray-50">
+          <style jsx>{`
+            @keyframes shimmer {
+              0% { background-position: -1000px 0; }
+              100% { background-position: 1000px 0; }
+            }
+            .skeleton-shimmer {
+              background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+              background-size: 1000px 100%;
+              animation: shimmer 2s infinite;
+            }
+          `}</style>
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="flex flex-col lg:flex-row gap-6">
+              <aside className="w-full lg:w-64 shrink-0">
+                <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                  <div className="text-center pb-5 border-b border-gray-100">
+                    <div className="w-20 h-20 mx-auto mb-3 rounded-full skeleton-shimmer"></div>
+                    <div className="h-5 w-32 mx-auto skeleton-shimmer rounded mb-2"></div>
+                  </div>
+                  <nav className="mt-5 space-y-2">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className="h-11 skeleton-shimmer rounded-xl"></div>
+                    ))}
+                  </nav>
+                </div>
+              </aside>
+              <main className="flex-1">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                  <div className="h-8 w-64 skeleton-shimmer rounded mb-2"></div>
+                  <div className="h-4 w-48 skeleton-shimmer rounded"></div>
+                </div>
+              </main>
+            </div>
+          </div>
         </div>
       </ProtectedRoute>
     );
@@ -151,10 +234,55 @@ export default function ProfilePage() {
   if (profileLoading) {
     return (
       <ProtectedRoute>
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-[#13C1AC] mx-auto mb-4" />
-            <p className="text-gray-500">Încărcăm profilul...</p>
+        <div className="min-h-screen bg-gray-50">
+          <style jsx>{`
+            @keyframes shimmer {
+              0% { background-position: -1000px 0; }
+              100% { background-position: 1000px 0; }
+            }
+            .skeleton-shimmer {
+              background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+              background-size: 1000px 100%;
+              animation: shimmer 2s infinite;
+            }
+          `}</style>
+          <div className="max-w-7xl mx-auto px-4 py-8">
+            <div className="flex flex-col lg:flex-row gap-6">
+              <aside className="w-full lg:w-64 shrink-0">
+                <div className="bg-white rounded-2xl border border-gray-200 p-5">
+                  <div className="text-center pb-5 border-b border-gray-100">
+                    <div className="w-20 h-20 mx-auto mb-3 rounded-full skeleton-shimmer"></div>
+                    <div className="h-5 w-32 mx-auto skeleton-shimmer rounded mb-2"></div>
+                    <div className="h-4 w-24 mx-auto skeleton-shimmer rounded"></div>
+                  </div>
+                  <nav className="mt-5 space-y-2">
+                    {[...Array(7)].map((_, i) => (
+                      <div key={i} className="h-11 skeleton-shimmer rounded-xl"></div>
+                    ))}
+                  </nav>
+                </div>
+              </aside>
+              <main className="flex-1">
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 mb-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="h-8 w-64 skeleton-shimmer rounded mb-2"></div>
+                      <div className="h-4 w-48 skeleton-shimmer rounded"></div>
+                    </div>
+                    <div className="h-10 w-32 skeleton-shimmer rounded-xl"></div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="bg-white rounded-2xl border border-gray-200 p-5">
+                      <div className="w-10 h-10 skeleton-shimmer rounded-xl mb-3"></div>
+                      <div className="h-7 w-20 skeleton-shimmer rounded mb-2"></div>
+                      <div className="h-4 w-24 skeleton-shimmer rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              </main>
+            </div>
           </div>
         </div>
       </ProtectedRoute>
@@ -187,22 +315,109 @@ export default function ProfilePage() {
 
   return (
     <div className={isBusiness ? 'min-h-screen bg-slate-900' : 'min-h-screen bg-gray-50 relative'}>
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInLeft {
+          from { opacity: 0; transform: translateX(-20px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes fadeInScale {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fadeInUp { animation: fadeInUp 0.5s ease-out forwards; }
+        .animate-fadeInLeft { animation: fadeInLeft 0.4s ease-out forwards; }
+        .animate-fadeInScale { animation: fadeInScale 0.4s ease-out forwards; }
+        .animate-delay-100 { animation-delay: 0.1s; opacity: 0; }
+        .animate-delay-200 { animation-delay: 0.2s; opacity: 0; }
+        .animate-delay-300 { animation-delay: 0.3s; opacity: 0; }
+        .animate-delay-400 { animation-delay: 0.4s; opacity: 0; }
+        
+        /* Hide scrollbar */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
       {/* Background Waves for entire page */}
       {!isBusiness && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <svg viewBox="0 0 1440 320" preserveAspectRatio="none" className="absolute top-0 w-full h-64">
+          <svg viewBox="0 0 1440 320" preserveAspectRatio="none" className="absolute top-0 w-full h-64 hidden sm:block">
             <path fill="#13C1AC" fillOpacity="0.05" d="M0,160L48,170.7C96,181,192,203,288,186.7C384,171,480,117,576,112C672,107,768,149,864,165.3C960,181,1056,171,1152,144C1248,117,1344,75,1392,53.3L1440,32L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
           </svg>
-          <svg viewBox="0 0 1440 320" preserveAspectRatio="none" className="absolute top-0 w-full h-48">
+          <svg viewBox="0 0 1440 320" preserveAspectRatio="none" className="absolute top-0 w-full h-48 hidden sm:block">
             <path fill="#13C1AC" fillOpacity="0.08" d="M0,96L48,112C96,128,192,160,288,165.3C384,171,480,149,576,128C672,107,768,85,864,90.7C960,96,1056,128,1152,138.7C1248,149,1344,139,1392,133.3L1440,128L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"></path>
           </svg>
         </div>
       )}
-      <div className="max-w-7xl mx-auto px-4 py-8 relative z-10">
+
+      {/* ===== MOBILE HEADER ===== */}
+      <div className="lg:hidden bg-white border-b border-gray-100 sticky top-16 z-40">
+        {/* User Info Bar */}
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {userProfile.photoURL ? (
+              <Image src={userProfile.photoURL} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100" />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-[#13C1AC] flex items-center justify-center">
+                <span className="text-sm font-bold text-white">
+                  {(userProfile.displayName || userProfile.email || 'U')[0].toUpperCase()}
+                </span>
+              </div>
+            )}
+            <div>
+              <h2 className="font-semibold text-gray-900 text-sm">{userProfile.displayName || 'Utilizator'}</h2>
+              {userProfile.verified && (
+                <span className="inline-flex items-center gap-1 text-[10px] text-[#13C1AC] font-medium">
+                  <BadgeCheck className="w-3 h-3" />
+                  Verificat
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link 
+              href="/publish"
+              className="p-2 bg-[#13C1AC] text-white rounded-full"
+            >
+              <Package className="w-4 h-4" />
+            </Link>
+            <button 
+              onClick={handleLogout}
+              className="p-2 text-gray-400 hover:text-red-500"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        
+        {/* Mobile Tabs */}
+        <div className="overflow-x-auto scrollbar-hide">
+          <div className="flex px-2 pb-2 gap-1 min-w-max">
+            {menuItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setActiveView(item.id as ViewType)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+                  activeView === item.id
+                    ? 'bg-[#13C1AC] text-white'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                <item.icon className="w-3.5 h-3.5" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 py-4 sm:py-8 relative z-10">
         <div className="flex flex-col lg:flex-row gap-6">
           
-          {/* ===== SIDEBAR ===== */}
-          <aside className="w-full lg:w-64 shrink-0">
+          {/* ===== SIDEBAR (Hidden on mobile) ===== */}
+          <aside className="hidden lg:block w-64 shrink-0 animate-fadeInLeft">
             <div className={`rounded-2xl overflow-hidden relative ${isBusiness ? 'bg-slate-800' : 'bg-white border border-gray-200 shadow-sm'}`}>
               
               {/* Decorative Waves Background in Sidebar */}
@@ -289,22 +504,22 @@ export default function ProfilePage() {
             
             {/* ========== DASHBOARD ========== */}
             {activeView === 'dashboard' && (
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 
                 {/* Welcome Banner */}
-                <div className={`rounded-2xl p-6 ${isBusiness ? 'bg-gradient-to-r from-teal-600 to-teal-500' : 'bg-white border border-gray-200'}`}>
-                  <div className="flex items-center justify-between">
+                <div className={`rounded-xl sm:rounded-2xl p-4 sm:p-6 animate-fadeInUp ${isBusiness ? 'bg-gradient-to-r from-teal-600 to-teal-500' : 'bg-white border border-gray-200'}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <h1 className={`text-2xl font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                      <h1 className={`text-lg sm:text-2xl font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
                         Salut, {(userProfile.displayName || 'Utilizator').split(' ')[0]}! 👋
                       </h1>
-                      <p className={`mt-1 ${isBusiness ? 'text-teal-100' : 'text-gray-500'}`}>
+                      <p className={`mt-0.5 sm:mt-1 text-sm sm:text-base ${isBusiness ? 'text-teal-100' : 'text-gray-500'}`}>
                         {isBusiness ? 'Iată performanța afacerii tale' : 'Iată un rezumat al activității tale'}
                       </p>
                     </div>
                     <Link 
                       href="/publish"
-                      className={`px-5 py-2.5 rounded-xl font-semibold transition-colors ${
+                      className={`hidden sm:inline-flex px-5 py-2.5 rounded-xl font-semibold transition-colors ${
                         isBusiness ? 'bg-white text-teal-600 hover:bg-teal-50' : 'bg-teal-500 text-white hover:bg-teal-600'
                       }`}
                     >
@@ -317,7 +532,7 @@ export default function ProfilePage() {
                 {isBusiness && (
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     {/* Venituri */}
-                    <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
+                    <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700 animate-fadeInScale animate-delay-100">
                       <div className="flex items-center justify-between mb-3">
                         <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
                           <Euro className="w-5 h-5 text-emerald-400" />
@@ -332,7 +547,7 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Comenzi */}
-                    <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
+                    <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700 animate-fadeInScale animate-delay-200">
                       <div className="flex items-center justify-between mb-3">
                         <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
                           <ShoppingBag className="w-5 h-5 text-blue-400" />
@@ -347,7 +562,7 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Vizualizări */}
-                    <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
+                    <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700 animate-fadeInScale animate-delay-300">
                       <div className="flex items-center justify-between mb-3">
                         <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
                           <Eye className="w-5 h-5 text-purple-400" />
@@ -362,7 +577,7 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Conversie */}
-                    <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700">
+                    <div className="bg-slate-800 rounded-2xl p-5 border border-slate-700 animate-fadeInScale animate-delay-400">
                       <div className="flex items-center justify-between mb-3">
                         <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
                           <Activity className="w-5 h-5 text-amber-400" />
@@ -380,79 +595,81 @@ export default function ProfilePage() {
 
                 {/* Stats Grid - PERSONAL */}
                 {!isBusiness && (
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     {/* Active Products */}
-                    <div className="group relative bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-[#13C1AC]/5 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                    <div className="group relative bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden animate-fadeInScale animate-delay-100">
+                        <div className="absolute top-0 right-0 w-16 sm:w-24 h-16 sm:h-24 bg-[#13C1AC]/5 rounded-bl-full -mr-2 sm:-mr-4 -mt-2 sm:-mt-4 transition-transform group-hover:scale-110"></div>
                         <div className="relative flex flex-col h-full justify-between">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="p-3 bg-[#13C1AC]/10 rounded-xl text-[#13C1AC] group-hover:bg-[#13C1AC] group-hover:text-white transition-colors duration-300">
-                                    <Package className="w-6 h-6" />
+                            <div className="flex items-start justify-between mb-2 sm:mb-4">
+                                <div className="p-2 sm:p-3 bg-[#13C1AC]/10 rounded-lg sm:rounded-xl text-[#13C1AC] group-hover:bg-[#13C1AC] group-hover:text-white transition-colors duration-300">
+                                    <Package className="w-4 h-4 sm:w-6 sm:h-6" />
                                 </div>
-                                <span className="flex items-center text-[10px] font-bold text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded-full uppercase tracking-wider">
+                                <span className="hidden sm:flex items-center text-[10px] font-bold text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded-full uppercase tracking-wider">
                                     Activ
                                 </span>
                             </div>
                             <div>
-                                <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{myProducts.length}</h3>
-                                <p className="text-sm font-medium text-gray-500 mt-1">Anunțuri active</p>
+                                <h3 className="text-xl sm:text-3xl font-bold text-gray-900 tracking-tight">{myProducts.length}</h3>
+                                <p className="text-xs sm:text-sm font-medium text-gray-500 mt-0.5 sm:mt-1">Anunțuri active</p>
                             </div>
                         </div>
                     </div>
 
                     {/* Sold */}
-                    <div className="group relative bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-purple-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                    <div className="group relative bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden animate-fadeInScale animate-delay-200">
+                        <div className="absolute top-0 right-0 w-16 sm:w-24 h-16 sm:h-24 bg-purple-50 rounded-bl-full -mr-2 sm:-mr-4 -mt-2 sm:-mt-4 transition-transform group-hover:scale-110"></div>
                         <div className="relative flex flex-col h-full justify-between">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="p-3 bg-purple-50 rounded-xl text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300">
-                                    <CheckCircle2 className="w-6 h-6" />
+                            <div className="flex items-start justify-between mb-2 sm:mb-4">
+                                <div className="p-2 sm:p-3 bg-purple-50 rounded-lg sm:rounded-xl text-purple-600 group-hover:bg-purple-600 group-hover:text-white transition-colors duration-300">
+                                    <CheckCircle2 className="w-4 h-4 sm:w-6 sm:h-6" />
                                 </div>
                             </div>
                             <div>
-                                <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{userProfile.stats.sold}</h3>
-                                <p className="text-sm font-medium text-gray-500 mt-1">Produse vândute</p>
+                                <h3 className="text-xl sm:text-3xl font-bold text-gray-900 tracking-tight">{userProfile.stats.sold}</h3>
+                                <p className="text-xs sm:text-sm font-medium text-gray-500 mt-0.5 sm:mt-1">Produse vândute</p>
                             </div>
                         </div>
                     </div>
 
                     {/* Favorites */}
-                    <div className="group relative bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-red-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                    <div className="group relative bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden animate-fadeInScale animate-delay-300">
+                        <div className="absolute top-0 right-0 w-16 sm:w-24 h-16 sm:h-24 bg-red-50 rounded-bl-full -mr-2 sm:-mr-4 -mt-2 sm:-mt-4 transition-transform group-hover:scale-110"></div>
                         <div className="relative flex flex-col h-full justify-between">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="p-3 bg-red-50 rounded-xl text-red-500 group-hover:bg-red-500 group-hover:text-white transition-colors duration-300">
-                                    <Heart className="w-6 h-6" />
+                            <div className="flex items-start justify-between mb-2 sm:mb-4">
+                                <div className="p-2 sm:p-3 bg-red-50 rounded-lg sm:rounded-xl text-red-500 group-hover:bg-red-500 group-hover:text-white transition-colors duration-300">
+                                    <Heart className="w-4 h-4 sm:w-6 sm:h-6" />
                                 </div>
-                                <span className="flex items-center text-[10px] font-bold text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded-full uppercase tracking-wider">
-                                    +12%
-                                </span>
+                                {favoriteProducts && favoriteProducts.length > 0 && (
+                                  <span className="hidden sm:flex items-center text-[10px] font-bold text-red-600 bg-red-50 border border-red-100 px-2 py-1 rounded-full uppercase tracking-wider">
+                                      Salvate
+                                  </span>
+                                )}
                             </div>
                             <div>
-                                <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{userProfile.stats.favorites}</h3>
-                                <p className="text-sm font-medium text-gray-500 mt-1">Aprecieri totale</p>
+                                <h3 className="text-xl sm:text-3xl font-bold text-gray-900 tracking-tight">{favoriteProducts?.length || 0}</h3>
+                                <p className="text-xs sm:text-sm font-medium text-gray-500 mt-0.5 sm:mt-1">Favorite salvate</p>
                             </div>
                         </div>
                     </div>
 
                     {/* Rating */}
-                    <div className="group relative bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-amber-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                    <div className="group relative bg-white p-3 sm:p-5 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden animate-fadeInScale animate-delay-400">
+                        <div className="absolute top-0 right-0 w-16 sm:w-24 h-16 sm:h-24 bg-amber-50 rounded-bl-full -mr-2 sm:-mr-4 -mt-2 sm:-mt-4 transition-transform group-hover:scale-110"></div>
                         <div className="relative flex flex-col h-full justify-between">
-                            <div className="flex items-start justify-between mb-4">
-                                <div className="p-3 bg-amber-50 rounded-xl text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors duration-300">
-                                    <Star className="w-6 h-6" />
+                            <div className="flex items-start justify-between mb-2 sm:mb-4">
+                                <div className="p-2 sm:p-3 bg-amber-50 rounded-lg sm:rounded-xl text-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-colors duration-300">
+                                    <Star className="w-4 h-4 sm:w-6 sm:h-6" />
                                 </div>
-                                <span className="flex items-center text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1 rounded-full uppercase tracking-wider">
+                                <span className="hidden sm:flex items-center text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-100 px-2 py-1 rounded-full uppercase tracking-wider">
                                     Top Seller
                                 </span>
                             </div>
                             <div>
                                 <div className="flex items-baseline gap-1">
-                                    <h3 className="text-3xl font-bold text-gray-900 tracking-tight">{userProfile.rating}</h3>
-                                    <span className="text-sm text-gray-400 font-medium">/ 5.0</span>
+                                    <h3 className="text-xl sm:text-3xl font-bold text-gray-900 tracking-tight">{userProfile.rating}</h3>
+                                    <span className="text-xs sm:text-sm text-gray-400 font-medium">/ 5.0</span>
                                 </div>
-                                <p className="text-sm font-medium text-gray-500 mt-1">Rating vânzător</p>
+                                <p className="text-xs sm:text-sm font-medium text-gray-500 mt-0.5 sm:mt-1">Rating vânzător</p>
                             </div>
                         </div>
                     </div>
@@ -878,9 +1095,9 @@ export default function ProfilePage() {
 
             {/* ========== PRODUCTS ========== */}
             {activeView === 'products' && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[600px] relative">
+              <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 overflow-hidden min-h-[400px] sm:min-h-[600px] relative">
                 {/* Decorative Waves */}
-                <div className="absolute top-0 left-0 right-0 h-32 overflow-hidden pointer-events-none">
+                <div className="absolute top-0 left-0 right-0 h-32 overflow-hidden pointer-events-none hidden sm:block">
                   <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute w-full h-full">
                     <path d="M0,60 C300,100 600,20 900,60 C1050,80 1150,40 1200,60 L1200,0 L0,0 Z" fill="#9CA3AF" fillOpacity="0.12"></path>
                   </svg>
@@ -889,13 +1106,13 @@ export default function ProfilePage() {
                   </svg>
                 </div>
                 
-                <div className="p-8 border-b border-gray-100 relative z-10">
-                  <h2 className="text-xl font-bold text-gray-900">Anunțurile Mele</h2>
-                  <p className="text-sm text-gray-500 mt-1">Gestionează starea produselor tale</p>
+                <div className="p-4 sm:p-8 border-b border-gray-100 relative z-10">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">Anunțurile Mele</h2>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">Gestionează starea produselor tale</p>
                 </div>
                 
                 {/* Product Status Tabs */}
-                <div className="flex border-b border-gray-100 overflow-x-auto bg-gray-50/30 relative z-10">
+                <div className="flex border-b border-gray-100 overflow-x-auto scrollbar-hide bg-gray-50/30 relative z-10">
                   {[
                     { id: 'active', label: 'Activ', icon: Package },
                     { id: 'pending', label: 'În așteptare', icon: Clock },
@@ -905,24 +1122,24 @@ export default function ProfilePage() {
                     <button
                       key={tab.id}
                       onClick={() => setProductFilter(tab.id as any)}
-                      className={`flex flex-1 items-center justify-center px-6 py-4 text-sm font-semibold border-b-2 transition-all min-w-[120px] ${
+                      className={`flex flex-1 items-center justify-center px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm font-semibold border-b-2 transition-all min-w-[80px] sm:min-w-[120px] ${
                         productFilter === tab.id
                           ? 'border-[#13C1AC] text-[#13C1AC] bg-white'
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-white/50'
                       }`}
                     >
-                      <tab.icon className={`h-4 w-4 mr-2.5 ${productFilter === tab.id ? 'text-[#13C1AC]' : 'text-gray-400'}`} />
-                      {tab.label}
+                      <tab.icon className={`h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2.5 ${productFilter === tab.id ? 'text-[#13C1AC]' : 'text-gray-400'}`} />
+                      <span className="truncate">{tab.label}</span>
                     </button>
                   ))}
                 </div>
 
                 {/* Product List */}
-                <div className="p-4 relative z-10">
+                <div className="p-3 sm:p-4 relative z-10">
                   {productsLoading ? (
-                    <div className="flex flex-col items-center justify-center py-16">
-                      <Loader2 className="h-8 w-8 animate-spin text-[#13C1AC] mb-4" />
-                      <p className="text-gray-500">Se încarcă anunțurile...</p>
+                    <div className="flex flex-col items-center justify-center py-12 sm:py-16">
+                      <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-[#13C1AC] mb-3 sm:mb-4" />
+                      <p className="text-sm text-gray-500">Se încarcă anunțurile...</p>
                     </div>
                   ) : myProducts.filter(p => {
                     const now = new Date();
@@ -936,7 +1153,7 @@ export default function ProfilePage() {
                     if (productFilter === 'rejected') return isRejected;
                     return false;
                   }).length > 0 ? (
-                    <div className="space-y-2.5">
+                    <div className="space-y-2 sm:space-y-2.5">
                       {myProducts.filter(p => {
                         const now = new Date();
                         const isPending = p.status === 'pending' && p.pendingUntil && new Date(p.pendingUntil.seconds * 1000) > now;
@@ -949,20 +1166,22 @@ export default function ProfilePage() {
                         if (productFilter === 'rejected') return isRejected;
                         return false;
                       }).map((product) => (
-                        <div key={product.id} className="flex items-center gap-4 p-4 bg-gradient-to-r from-white to-gray-50/50 rounded-xl border border-gray-200/60 hover:border-[#13C1AC]/30 hover:bg-[#13C1AC]/5 transition-all duration-300 group cursor-pointer">
+                        <div key={product.id} className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-gradient-to-r from-white to-gray-50/50 rounded-lg sm:rounded-xl border border-gray-200/60 hover:border-[#13C1AC]/30 hover:bg-[#13C1AC]/5 transition-all duration-300 group cursor-pointer">
                           {/* Product Image */}
-                          <div className="h-16 w-16 flex-shrink-0 relative rounded-lg overflow-hidden ring-1 ring-gray-200 shadow-sm">
-                            <img className="h-16 w-16 object-cover bg-gray-100 group-hover:scale-105 transition-transform duration-300" src={product.image} alt="" />
+                          <div className="h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 relative rounded-lg overflow-hidden ring-1 ring-gray-200 shadow-sm">
+                            <img className="h-full w-full object-cover bg-gray-100 group-hover:scale-105 transition-transform duration-300" src={product.image} alt="" />
                           </div>
 
                           {/* Product Info */}
                           <div className="flex-1 min-w-0">
-                            <h3 className="text-sm font-medium text-gray-900 line-clamp-1 group-hover:text-[#13C1AC] transition-colors">{product.title}</h3>
-                            <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{product.location}</p>
+                            <h3 className="text-xs sm:text-sm font-medium text-gray-900 line-clamp-1 group-hover:text-[#13C1AC] transition-colors">{product.title}</h3>
+                            <p className="text-[10px] sm:text-xs text-gray-500 line-clamp-1 mt-0.5">{product.location}</p>
+                            {/* Mobile Price */}
+                            <p className="sm:hidden text-xs font-bold text-[#13C1AC] mt-1">{product.price} lei</p>
                           </div>
 
-                          {/* Price */}
-                          <div className="flex-shrink-0 text-center px-3 py-1.5 bg-yellow-50 rounded-lg border border-yellow-200">
+                          {/* Price - Desktop only */}
+                          <div className="hidden sm:block flex-shrink-0 text-center px-3 py-1.5 bg-yellow-50 rounded-lg border border-yellow-200">
                             <div className="text-sm font-bold text-yellow-700">{product.price} lei</div>
                           </div>
 
@@ -1051,9 +1270,9 @@ export default function ProfilePage() {
 
             {/* ========== PROFILE ========== */}
             {activeView === 'profile' && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
+              <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 overflow-hidden relative">
                 {/* Decorative Waves */}
-                <div className="absolute top-0 left-0 right-0 h-32 overflow-hidden pointer-events-none">
+                <div className="absolute top-0 left-0 right-0 h-32 overflow-hidden pointer-events-none hidden sm:block">
                   <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="absolute w-full h-full">
                     <path d="M0,60 C300,100 600,20 900,60 C1050,80 1150,40 1200,60 L1200,0 L0,0 Z" fill="#9CA3AF" fillOpacity="0.12"></path>
                   </svg>
@@ -1062,18 +1281,18 @@ export default function ProfilePage() {
                   </svg>
                 </div>
                 
-                <div className="p-8 border-b border-gray-100 relative z-10">
-                  <h2 className="text-xl font-bold text-gray-900">Datele Mele</h2>
-                  <p className="text-sm text-gray-500 mt-1">Informații personale și de contact</p>
+                <div className="p-4 sm:p-8 border-b border-gray-100 relative z-10">
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900">Datele Mele</h2>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">Informații personale și de contact</p>
                 </div>
                 
-                <div className="p-8 relative z-10">
-                  <form className="space-y-8">
+                <div className="p-4 sm:p-8 relative z-10">
+                  <form className="space-y-6 sm:space-y-8">
                     {/* Section: Public Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
                       <div className="md:col-span-1">
-                        <h3 className="text-base font-semibold text-gray-900">Profil Public</h3>
-                        <p className="text-sm text-gray-500 mt-1">Cum te văd alți utilizatori pe platformă.</p>
+                        <h3 className="text-sm sm:text-base font-semibold text-gray-900">Profil Public</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 mt-1">Cum te văd alți utilizatori pe platformă.</p>
                         
                         <div className="mt-4 flex justify-center md:justify-start">
                           <input
@@ -1088,41 +1307,41 @@ export default function ProfilePage() {
                             onClick={() => !uploadingPhoto && fileInputRef.current?.click()}
                           >
                             {uploadingPhoto ? (
-                              <div className="h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center ring-4 ring-gray-100">
-                                <Loader2 className="w-8 h-8 animate-spin text-[#13C1AC]" />
+                              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-gray-100 flex items-center justify-center ring-4 ring-gray-100">
+                                <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin text-[#13C1AC]" />
                               </div>
                             ) : userProfile.photoURL ? (
-                              <Image src={userProfile.photoURL} alt="Avatar" width={96} height={96} className="h-24 w-24 rounded-full object-cover group-hover:opacity-75 transition-opacity ring-4 ring-gray-100" />
+                              <Image src={userProfile.photoURL} alt="Avatar" width={96} height={96} className="h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover group-hover:opacity-75 transition-opacity ring-4 ring-gray-100" />
                             ) : (
-                              <div className="h-24 w-24 rounded-full bg-[#13C1AC] flex items-center justify-center ring-4 ring-gray-100 group-hover:opacity-75 transition-opacity">
-                                <span className="text-2xl font-bold text-white">{(userProfile.displayName || userProfile.email || 'U')[0].toUpperCase()}</span>
+                              <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-[#13C1AC] flex items-center justify-center ring-4 ring-gray-100 group-hover:opacity-75 transition-opacity">
+                                <span className="text-xl sm:text-2xl font-bold text-white">{(userProfile.displayName || userProfile.email || 'U')[0].toUpperCase()}</span>
                               </div>
                             )}
                             {!uploadingPhoto && (
                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-full bg-black/40 transition-opacity">
-                                <Camera className="w-6 h-6 text-white" />
+                                <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                               </div>
                             )}
-                            <div className="absolute -bottom-1 -right-1 bg-[#13C1AC] rounded-full p-1.5 shadow-lg border-2 border-white">
-                              <Camera className="w-3.5 h-3.5 text-white" />
+                            <div className="absolute -bottom-1 -right-1 bg-[#13C1AC] rounded-full p-1 sm:p-1.5 shadow-lg border-2 border-white">
+                              <Camera className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />
                             </div>
                           </div>
                         </div>
-                        <p className="text-xs text-gray-400 mt-2 text-center md:text-left">Click pentru a schimba</p>
+                        <p className="text-[10px] sm:text-xs text-gray-400 mt-2 text-center md:text-left">Click pentru a schimba</p>
                       </div>
 
-                      <div className="md:col-span-2 space-y-6">
+                      <div className="md:col-span-2 space-y-4 sm:space-y-6">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Nume utilizator</label>
-                          <input type="text" defaultValue={userProfile.displayName || ''} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-gray-50" />
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Nume utilizator</label>
+                          <input type="text" defaultValue={userProfile.displayName || ''} className="block w-full rounded-lg sm:rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-2.5 sm:p-3 bg-gray-50" />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                          <textarea rows={3} defaultValue={userProfile.bio || ''} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-gray-50" />
-                          <p className="text-xs text-gray-500 mt-1">Descriere scurtă care va apărea în profilul tău.</p>
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Bio</label>
+                          <textarea rows={3} defaultValue={userProfile.bio || ''} className="block w-full rounded-lg sm:rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-2.5 sm:p-3 bg-gray-50" />
+                          <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Descriere scurtă care va apărea în profilul tău.</p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Localitate</label>
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Localitate</label>
                           <div className="relative">
                             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                               <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1130,7 +1349,7 @@ export default function ProfilePage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                               </svg>
                             </div>
-                            <input type="text" defaultValue={userProfile.location || ''} className="block w-full pl-10 rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-gray-50" />
+                            <input type="text" defaultValue={userProfile.location || ''} className="block w-full pl-10 rounded-lg sm:rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-2.5 sm:p-3 bg-gray-50" />
                           </div>
                         </div>
                       </div>
@@ -1139,32 +1358,32 @@ export default function ProfilePage() {
                     <hr className="border-gray-200" />
 
                     {/* Section: Private Info */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
                       <div className="md:col-span-1">
-                        <h3 className="text-base font-semibold text-gray-900">Date Personale</h3>
-                        <p className="text-sm text-gray-500 mt-1">Informații private pentru gestionarea contului și verificare.</p>
+                        <h3 className="text-sm sm:text-base font-semibold text-gray-900">Date Personale</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 mt-1">Informații private pentru gestionarea contului și verificare.</p>
                       </div>
 
-                      <div className="md:col-span-2 space-y-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="md:col-span-2 space-y-4 sm:space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input type="email" defaultValue={userProfile.email || ''} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-white" />
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" defaultValue={userProfile.email || ''} className="block w-full rounded-lg sm:rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-2.5 sm:p-3 bg-white" />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
-                            <input type="tel" defaultValue={userProfile.phone || ''} className="block w-full rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-3 bg-white" />
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Telefon</label>
+                            <input type="tel" defaultValue={userProfile.phone || ''} className="block w-full rounded-lg sm:rounded-xl border border-gray-200 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm p-2.5 sm:p-3 bg-white" />
                           </div>
                         </div>
 
                         <div className="space-y-3">
-                          <label className="block text-sm font-medium text-gray-700">Verificări</label>
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700">Verificări</label>
                           
                           {/* Email Verification */}
-                          <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center justify-between">
+                          <div className="bg-green-50 border border-green-200 rounded-lg sm:rounded-xl p-3 sm:p-4 flex items-center justify-between">
                             <div className="flex items-center">
-                              <div className="bg-white p-2 rounded-full mr-4 border border-green-100 shadow-sm">
-                                <svg className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <div className="bg-white p-1.5 sm:p-2 rounded-full mr-3 sm:mr-4 border border-green-100 shadow-sm">
+                                <svg className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                 </svg>
                               </div>
@@ -1216,110 +1435,125 @@ export default function ProfilePage() {
 
             {/* ========== FAVORITES ========== */}
             {activeView === 'favorites' && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="p-8 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="p-4 sm:p-8 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                   <div>
-                    <h1 className="text-xl font-bold text-gray-900">Favoritele Mele ❤️</h1>
-                    <p className="text-sm text-gray-500 mt-1">Produse pe care le-ai salvat pentru mai târziu.</p>
+                    <h1 className="text-lg sm:text-xl font-bold text-gray-900">Favoritele Mele ❤️</h1>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">Produse pe care le-ai salvat pentru mai târziu.</p>
                   </div>
                   
                   {/* View Toggle */}
-                  <div className="flex bg-gray-100 p-1 rounded-xl">
+                  <div className="flex bg-gray-100 p-1 rounded-lg sm:rounded-xl self-start sm:self-auto">
                     <button
                       onClick={() => setFavoritesViewMode('grid')}
-                      className={`p-2 rounded-lg transition-all ${favoritesViewMode === 'grid' ? 'bg-white text-[#13C1AC] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                      className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg transition-all ${favoritesViewMode === 'grid' ? 'bg-white text-[#13C1AC] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                       title="Vizualizare Grilă"
                     >
-                      <LayoutGrid className="w-5 h-5" />
+                      <LayoutGrid className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                     <button
                       onClick={() => setFavoritesViewMode('list')}
-                      className={`p-2 rounded-lg transition-all ${favoritesViewMode === 'list' ? 'bg-white text-[#13C1AC] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                      className={`p-1.5 sm:p-2 rounded-md sm:rounded-lg transition-all ${favoritesViewMode === 'list' ? 'bg-white text-[#13C1AC] shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
                       title="Vizualizare Listă"
                     >
-                      <List className="w-5 h-5" />
+                      <List className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                   </div>
                 </div>
 
                 {/* Favorites Grid/List */}
-                <div className="p-8">
-                  {/* Empty state - no favorites yet */}
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="h-20 w-20 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-300">
-                      <Heart className="h-10 w-10" />
+                <div className="p-4 sm:p-8">
+                  {favoritesLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-8 h-8 animate-spin text-[#13C1AC]" />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900">Nu ai favorite încă</h3>
-                    <p className="text-gray-500 mt-1 max-w-sm text-sm">Apasă pe inimă pentru a salva produsele care îți plac.</p>
-                    <Link href="/" className="mt-6 px-6 py-2.5 bg-[#13C1AC] text-white rounded-xl font-semibold hover:bg-[#0ea896] transition-colors">
-                      Explorează produse
-                    </Link>
-                  </div>
+                  ) : favoriteProducts && favoriteProducts.length > 0 ? (
+                    <div className={favoritesViewMode === 'grid' 
+                      ? "grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6" 
+                      : "space-y-4"
+                    }>
+                      {favoriteProducts.map((product) => (
+                        <ProductCard key={product.id} product={product} />
+                      ))}
+                    </div>
+                  ) : (
+                    /* Empty state - no favorites yet */
+                    <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
+                      <div className="h-16 w-16 sm:h-20 sm:w-20 bg-gray-50 rounded-full flex items-center justify-center mb-3 sm:mb-4 text-gray-300">
+                        <Heart className="h-8 w-8 sm:h-10 sm:w-10" />
+                      </div>
+                      <h3 className="text-base sm:text-lg font-medium text-gray-900">Nu ai favorite încă</h3>
+                      <p className="text-gray-500 mt-1 max-w-sm text-xs sm:text-sm px-4">Apasă pe inimă pentru a salva produsele care îți plac.</p>
+                      <Link href="/" className="mt-4 sm:mt-6 px-5 sm:px-6 py-2 sm:py-2.5 bg-[#13C1AC] text-white rounded-lg sm:rounded-xl font-semibold text-sm hover:bg-[#0ea896] transition-colors">
+                        Explorează produse
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
             {/* ========== INVOICES ========== */}
             {activeView === 'invoices' && (
-              <div className={`rounded-2xl overflow-hidden ${isBusiness ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'}`}>
-                <div className={`p-6 border-b ${isBusiness ? 'border-slate-700' : 'border-gray-200'}`}>
-                  <h2 className={`text-xl font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Facturi</h2>
+              <div className={`rounded-xl sm:rounded-2xl overflow-hidden ${isBusiness ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'}`}>
+                <div className={`p-4 sm:p-6 border-b ${isBusiness ? 'border-slate-700' : 'border-gray-200'}`}>
+                  <h2 className={`text-lg sm:text-xl font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Facturi</h2>
                 </div>
                 
                 {/* Empty state - no invoices yet */}
-                <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <div className={`h-20 w-20 rounded-full flex items-center justify-center mb-4 ${isBusiness ? 'bg-slate-700 text-slate-500' : 'bg-gray-50 text-gray-300'}`}>
-                    <FileText className="h-10 w-10" />
+                <div className="flex flex-col items-center justify-center py-12 sm:py-16 text-center">
+                  <div className={`h-16 w-16 sm:h-20 sm:w-20 rounded-full flex items-center justify-center mb-3 sm:mb-4 ${isBusiness ? 'bg-slate-700 text-slate-500' : 'bg-gray-50 text-gray-300'}`}>
+                    <FileText className="h-8 w-8 sm:h-10 sm:w-10" />
                   </div>
-                  <h3 className={`text-lg font-medium ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Nu ai facturi încă</h3>
-                  <p className={`mt-1 max-w-sm text-sm ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Facturile pentru tranzacțiile tale vor apărea aici.</p>
+                  <h3 className={`text-base sm:text-lg font-medium ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Nu ai facturi încă</h3>
+                  <p className={`mt-1 max-w-sm text-xs sm:text-sm px-4 ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Facturile pentru tranzacțiile tale vor apărea aici.</p>
                 </div>
               </div>
             )}
 
             {/* ========== PROMOTION ========== */}
             {activeView === 'promotion' && (
-              <div className="space-y-6">
-                <div className="bg-gradient-to-r from-teal-600 to-teal-500 rounded-2xl p-8 text-white">
-                  <div className="flex items-center gap-4">
-                    <Megaphone className="w-10 h-10" />
+              <div className="space-y-4 sm:space-y-6">
+                <div className="bg-gradient-to-r from-teal-600 to-teal-500 rounded-xl sm:rounded-2xl p-4 sm:p-8 text-white">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <Megaphone className="w-8 h-8 sm:w-10 sm:h-10 shrink-0" />
                     <div>
-                      <h2 className="text-2xl font-bold">Promovează-ți Anunțurile</h2>
-                      <p className="text-teal-100">Vinde de până la 3x mai rapid cu promovare</p>
+                      <h2 className="text-lg sm:text-2xl font-bold">Promovează-ți Anunțurile</h2>
+                      <p className="text-teal-100 text-xs sm:text-base">Vinde de până la 3x mai rapid cu promovare</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                   {[
                     { name: 'Zilnic', price: '9.99', period: 'zi', features: ['Top 24h', 'Badge "Promovat"'] },
                     { name: 'Săptămânal', price: '39.99', period: 'săptămână', features: ['Top 7 zile', 'Badge Premium', 'Pagina principală'], popular: true },
                     { name: 'Lunar', price: '99.99', period: 'lună', features: ['Top 30 zile', 'Badge VIP', 'Toate beneficiile'] },
                   ].map((plan, i) => (
-                    <div key={i} className={`relative rounded-2xl p-6 ${
+                    <div key={i} className={`relative rounded-xl sm:rounded-2xl p-4 sm:p-6 ${
                       plan.popular 
                         ? isBusiness ? 'bg-slate-900 border-2 border-teal-500' : 'bg-white border-2 border-teal-500'
                         : isBusiness ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'
                     }`}>
                       {plan.popular && (
-                        <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-teal-500 text-white text-xs font-bold rounded-full">
+                        <span className="absolute -top-2.5 sm:-top-3 left-1/2 -translate-x-1/2 px-2 sm:px-3 py-0.5 sm:py-1 bg-teal-500 text-white text-[10px] sm:text-xs font-bold rounded-full">
                           Popular
                         </span>
                       )}
-                      <h3 className={`text-lg font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
-                      <div className="mt-4 mb-6">
-                        <span className={`text-3xl font-black ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{plan.price}</span>
-                        <span className={isBusiness ? 'text-slate-400' : 'text-gray-500'}> lei/{plan.period}</span>
+                      <h3 className={`text-base sm:text-lg font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
+                      <div className="mt-3 sm:mt-4 mb-4 sm:mb-6">
+                        <span className={`text-2xl sm:text-3xl font-black ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{plan.price}</span>
+                        <span className={`text-xs sm:text-sm ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}> lei/{plan.period}</span>
                       </div>
-                      <ul className="space-y-2 mb-6">
+                      <ul className="space-y-1.5 sm:space-y-2 mb-4 sm:mb-6">
                         {plan.features.map((f, j) => (
-                          <li key={j} className={`flex items-center gap-2 text-sm ${isBusiness ? 'text-slate-300' : 'text-gray-600'}`}>
-                            <CheckCircle2 className="w-4 h-4 text-teal-500" />
+                          <li key={j} className={`flex items-center gap-2 text-xs sm:text-sm ${isBusiness ? 'text-slate-300' : 'text-gray-600'}`}>
+                            <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal-500 shrink-0" />
                             {f}
                           </li>
                         ))}
                       </ul>
-                      <button className={`w-full py-2.5 rounded-xl font-semibold transition-colors ${
+                      <button className={`w-full py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold text-sm transition-colors ${
                         plan.popular 
                           ? 'bg-teal-500 text-white hover:bg-teal-600' 
                           : isBusiness ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -1334,21 +1568,21 @@ export default function ProfilePage() {
 
             {/* ========== SETTINGS ========== */}
             {activeView === 'settings' && (
-              <div className={`rounded-2xl overflow-hidden ${isBusiness ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'}`}>
-                <div className={`p-6 border-b ${isBusiness ? 'border-slate-700' : 'border-gray-200'}`}>
-                  <h2 className={`text-xl font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Setări</h2>
+              <div className={`rounded-xl sm:rounded-2xl overflow-hidden ${isBusiness ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'}`}>
+                <div className={`p-4 sm:p-6 border-b ${isBusiness ? 'border-slate-700' : 'border-gray-200'}`}>
+                  <h2 className={`text-lg sm:text-xl font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Setări</h2>
                 </div>
                 
-                <div className="p-6 space-y-8">
+                <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
                   {/* Theme Selection */}
                   <div>
-                    <h3 className={`flex items-center gap-2 font-semibold mb-6 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
-                      <LayoutGrid className="w-5 h-5 text-slate-400" />
+                    <h3 className={`flex items-center gap-2 font-semibold text-sm sm:text-base mb-4 sm:mb-6 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                      <LayoutGrid className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
                       Aspect Card Produs
                     </h3>
-                    <p className={`text-sm mb-4 ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Alege stilul de afișare pentru anunțurile din platformă.</p>
+                    <p className={`text-xs sm:text-sm mb-3 sm:mb-4 ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Alege stilul de afișare pentru anunțurile din platformă.</p>
                     
-                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                         {/* DESIGN 6: Social Market (Vinted Style) */}
                         <div 
                            onClick={() => setSelectedCardTheme(6)}

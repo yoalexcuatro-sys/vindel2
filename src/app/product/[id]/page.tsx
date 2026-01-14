@@ -1,6 +1,6 @@
 'use client';
 
-import { Heart, Share2, Eye, Flag, MessageCircle, MapPin, ShieldCheck, ChevronLeft, ChevronRight, Tag, Gauge, Ruler, Calendar, Hash, Car, CircleDot, Package, Settings, Zap, Thermometer, Clock, CheckCircle, Info, X, Home, Bed, Bath, Building, Sofa, Waves, ParkingCircle, Trees } from 'lucide-react';
+import { Heart, Share2, Eye, Flag, MessageCircle, MapPin, ShieldCheck, ChevronLeft, ChevronRight, Tag, Gauge, Ruler, Calendar, Hash, Car, CircleDot, Package, Settings, Zap, Thermometer, Clock, CheckCircle, Info, X, Home, Bed, Bath, Building, Sofa, Waves, ParkingCircle, Trees, Star, Sparkles, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound, useParams, useRouter } from 'next/navigation';
@@ -10,6 +10,40 @@ import { createOrGetConversation } from '@/lib/messages';
 import ProductCard from '@/components/ProductCard';
 import { extractIdFromSlug } from '@/lib/slugs';
 import Avatar from '@/components/Avatar';
+
+// Helper para obtener info de condición
+const getConditionInfo = (condition?: string): { label: string; color: string; icon: any } | null => {
+  if (!condition) return null;
+  const conditions: Record<string, { label: string; color: string; icon: any }> = {
+    // Valores antiguos (compatibilidad)
+    'new': { label: 'Nou', color: 'bg-emerald-500 text-white', icon: Star },
+    'like-new': { label: 'Ca nou', color: 'bg-cyan-500 text-white', icon: Sparkles },
+    'good': { label: 'Bună stare', color: 'bg-blue-500 text-white', icon: CheckCircle },
+    'fair': { label: 'Folosit', color: 'bg-gray-500 text-white', icon: CheckCircle },
+    // Electronice / Gaming
+    'nou-sigilat': { label: 'Sigilat', color: 'bg-emerald-500 text-white', icon: Package },
+    'nou-desigilat': { label: 'Nou', color: 'bg-blue-500 text-white', icon: Star },
+    'ca-nou': { label: 'Ca nou', color: 'bg-cyan-500 text-white', icon: Sparkles },
+    'folosit-functional': { label: 'Folosit', color: 'bg-gray-500 text-white', icon: CheckCircle },
+    'defect': { label: 'Defect', color: 'bg-orange-500 text-white', icon: AlertTriangle },
+    // General
+    'nou': { label: 'Nou', color: 'bg-emerald-500 text-white', icon: Star },
+    'folosit': { label: 'Folosit', color: 'bg-gray-500 text-white', icon: CheckCircle },
+    // Auto-moto
+    'accidentat': { label: 'Accidentat', color: 'bg-red-500 text-white', icon: AlertTriangle },
+    'pentru-piese': { label: 'Pentru piese', color: 'bg-orange-500 text-white', icon: AlertTriangle },
+    // Modă / Copii
+    'nou-eticheta': { label: 'Nou cu etichetă', color: 'bg-emerald-500 text-white', icon: Package },
+    'nou-fara-eticheta': { label: 'Nou', color: 'bg-blue-500 text-white', icon: Star },
+    'vintage': { label: 'Vintage', color: 'bg-amber-600 text-white', icon: Clock },
+    // Casă & Grădină
+    'renovat': { label: 'Recondiționat', color: 'bg-indigo-500 text-white', icon: Sparkles },
+    // Animale
+    'disponibil': { label: 'Disponibil', color: 'bg-green-500 text-white', icon: CheckCircle },
+    'rezervat': { label: 'Rezervat', color: 'bg-yellow-500 text-white', icon: Clock },
+  };
+  return conditions[condition] || null;
+};
 
 export default function ProductPage() {
   const params = useParams();
@@ -31,6 +65,15 @@ export default function ProductPage() {
           const foundProduct = await getProduct(productId);
           if (foundProduct) {
             setProduct(foundProduct);
+            
+            // Debug: ver qué datos tiene el producto
+            console.log('Product data:', {
+              id: foundProduct.id,
+              condition: foundProduct.condition,
+              negotiable: foundProduct.negotiable,
+              category: foundProduct.category,
+              subcategory: foundProduct.subcategory
+            });
             
             // Dynamic Title for SEO & UX
             document.title = `${foundProduct.title} | Vindel`;
@@ -181,20 +224,140 @@ export default function ProductPage() {
                 </div>
 
                 {/* Detalii / Caracteristici Card */}
-                {(product as any).detallesExtra && Object.keys((product as any).detallesExtra).length > 0 && (
+                {product.customFields && Object.keys(product.customFields).length > 0 && (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden description-text text-[0.9rem]">
                     <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
                       <div className="w-8 h-8 bg-gradient-to-br from-[#13C1AC] to-emerald-500 rounded-lg flex items-center justify-center">
                         <Tag className="w-4 h-4 text-white" />
                       </div>
                       <h2 className="text-[0.95rem] font-semibold text-gray-900">
-                        {(product as any).subcategory || 'Detalii produs'}
+                        {product.subcategory || 'Detalii produs'}
                       </h2>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2">
-                      {Object.entries((product as any).detallesExtra).map(([key, value], idx, arr) => {
+                      {Object.entries(product.customFields).map(([key, value], idx, arr) => {
+                        // Mapeo de IDs a etiquetas legibles
+                        const fieldLabels: Record<string, string> = {
+                          // Auto
+                          'marca': 'Marcă',
+                          'model': 'Model',
+                          'anFabricatie': 'An fabricație',
+                          'km': 'Kilometraj',
+                          'combustibil': 'Combustibil',
+                          'capacitate': 'Capacitate cilindrică',
+                          'putere': 'Putere',
+                          'cutie': 'Cutie de viteze',
+                          'tractiune': 'Tracțiune',
+                          'caroserie': 'Caroserie',
+                          'culoare': 'Culoare',
+                          'nrUsi': 'Număr uși',
+                          'normaEuro': 'Normă poluare',
+                          'vin': 'Serie șasiu (VIN)',
+                          'inmatriculat': 'Înmatriculat RO',
+                          'serviceBook': 'Carte service',
+                          'primaInmatriculare': 'Prima înmatriculare',
+                          'stareTehnica': 'Stare tehnică',
+                          // Moto
+                          'tipMoto': 'Tip',
+                          // Anvelope
+                          'tipAnvelopa': 'Tip anvelopă',
+                          'marcaAnvelopa': 'Marcă',
+                          'latime': 'Lățime',
+                          'inaltime': 'Înălțime profil',
+                          'diametru': 'Diametru jantă',
+                          'dimensiuneCompleta': 'Dimensiune',
+                          'indiceIncarcatura': 'Indice încărcătură',
+                          'indiceViteza': 'Indice viteză',
+                          'dotAnvelopa': 'DOT',
+                          'uzura': 'Uzură',
+                          'bucati': 'Bucăți',
+                          'runflat': 'Run Flat',
+                          'ranforsat': 'Ranforsat',
+                          'tipVehicul': 'Tip vehicul',
+                          // Jante
+                          'tipJanta': 'Tip jantă',
+                          'marcaJanta': 'Marcă jantă',
+                          'diametruJanta': 'Diametru',
+                          'latimeJanta': 'Lățime',
+                          'et': 'ET (Offset)',
+                          'pcd': 'PCD (găuri)',
+                          'diametruCentral': 'Diametru central',
+                          'stareJanta': 'Stare',
+                          'bucatiJante': 'Bucăți',
+                          'cuAnvelope': 'Cu anvelope',
+                          'marcaAuto': 'Marcă auto',
+                          'modelCompatibil': 'Modele compatibile',
+                          // Piese
+                          'categoriePiesa': 'Categorie',
+                          'tipPiesa': 'Tip piesă',
+                          'compatibilitate': 'Compatibilitate',
+                          'modelAuto': 'Model auto',
+                          'codPiesa': 'Cod piesă / OEM',
+                          'garantie': 'Garanție',
+                          'producator': 'Producător',
+                          // Imobiliare
+                          'tipProprietate': 'Tip proprietate',
+                          'camere': 'Număr camere',
+                          'suprafata': 'Suprafață',
+                          'etaj': 'Etaj',
+                          'anConstructie': 'An construcție',
+                          'mobilat': 'Mobilat',
+                          'bai': 'Băi',
+                          'parcare': 'Parcare',
+                          'perioadaInchiriere': 'Perioadă',
+                          'perioadaMinima': 'Perioadă minimă',
+                          'tipCamera': 'Tip cameră',
+                          'baieProprie': 'Baie proprie',
+                          // Telefoane
+                          'stareEcran': 'Stare ecran',
+                          'stareBaterie': 'Stare baterie',
+                          'memorieInterna': 'Memorie internă',
+                          'memorieRAM': 'Memorie RAM',
+                          'reteleMobile': 'Rețele mobile',
+                          'incarcatorOriginal': 'Încărcător original',
+                          'cutieOriginala': 'Cutie originală',
+                          'durataBaterie': 'Durată baterie',
+                          // Electronice
+                          'diagonala': 'Diagonală',
+                          'rezolutie': 'Rezoluție',
+                          'tipDisplay': 'Tip display',
+                          'procesor': 'Procesor',
+                          'placaVideo': 'Placă video',
+                          'stocare': 'Stocare',
+                          'tipStorare': 'Tip stocare',
+                          // Job
+                          'tipOferta': 'Tip ofertă',
+                          'pozitie': 'Poziție',
+                          'tipContract': 'Tip contract',
+                          'nivelExperienta': 'Experiență',
+                          'salariu': 'Salariu',
+                          // Generic
+                          'stare': 'Stare',
+                          'marime': 'Mărime',
+                          'material': 'Material',
+                          'dimensiune': 'Dimensiune',
+                          'greutate': 'Greutate',
+                          'varsta': 'Vârstă',
+                          'sex': 'Sex',
+                          'rasa': 'Rasă',
+                          'vaccin': 'Vaccinat',
+                        };
+                        
+                        const getLabel = (fieldKey: string): string => {
+                          return fieldLabels[fieldKey] || fieldKey.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+                        };
+                        
                         const getIcon = (fieldKey: string) => {
                           const k = fieldKey.toLowerCase();
+                          // Auto - específicos primero
+                          if (k === 'km') return <Gauge className="w-4 h-4" />;
+                          if (k === 'combustibil') return <Zap className="w-4 h-4" />;
+                          if (k === 'putere') return <Gauge className="w-4 h-4" />;
+                          if (k === 'cutie') return <Settings className="w-4 h-4" />;
+                          if (k === 'tractiune') return <Car className="w-4 h-4" />;
+                          if (k === 'caroserie') return <Car className="w-4 h-4" />;
+                          if (k === 'capacitate') return <Gauge className="w-4 h-4" />;
+                          if (k === 'model') return <Tag className="w-4 h-4" />;
                           // Inmobiliaria
                           if (k.includes('camere') || k.includes('dormitor') || k.includes('habitacion')) return <Bed className="w-4 h-4" />;
                           if (k.includes('suprafata') || k.includes('superficie') || k.includes('mp') || k.includes('metri')) return <Ruler className="w-4 h-4" />;
@@ -217,6 +380,7 @@ export default function ProductPage() {
                           if (k.includes('vehicul') || k.includes('auto')) return <Car className="w-4 h-4" />;
                           if (k.includes('runflat') || k.includes('ranforsat')) return <CheckCircle className="w-4 h-4" />;
                           if (k.includes('indice')) return <Hash className="w-4 h-4" />;
+                          if (k.includes('culoare')) return <CircleDot className="w-4 h-4" />;
                           return <Info className="w-4 h-4" />;
                         };
                         return (
@@ -233,7 +397,7 @@ export default function ProductPage() {
                                 {getIcon(key)}
                               </div>
                               <span className="text-gray-500">
-                                {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                                {getLabel(key)}
                               </span>
                             </div>
                             <span className="text-gray-900 font-medium border border-[#13C1AC]/30 bg-[#13C1AC]/5 px-2.5 py-0.5 rounded-full text-xs">
@@ -242,6 +406,51 @@ export default function ProductPage() {
                           </div>
                         );
                       })}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Información básica cuando no hay customFields */}
+                {(!product.customFields || Object.keys(product.customFields).length === 0) && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden description-text text-[0.9rem]">
+                    <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gradient-to-br from-[#13C1AC] to-emerald-500 rounded-lg flex items-center justify-center">
+                        <Tag className="w-4 h-4 text-white" />
+                      </div>
+                      <h2 className="text-[0.95rem] font-semibold text-gray-900">
+                        Detalii produs
+                      </h2>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2">
+                      <div className="px-6 py-4 flex justify-between items-center hover:bg-[#13C1AC]/5 transition-colors md:border-r border-gray-100 border-b">
+                        <div className="flex items-center gap-3">
+                          <div className="text-[#13C1AC]"><Tag className="w-4 h-4" /></div>
+                          <span className="text-gray-500">Categorie</span>
+                        </div>
+                        <span className="text-gray-900 font-medium border border-[#13C1AC]/30 bg-[#13C1AC]/5 px-2.5 py-0.5 rounded-full text-xs">
+                          {product.category}
+                        </span>
+                      </div>
+                      {product.subcategory && (
+                        <div className="px-6 py-4 flex justify-between items-center hover:bg-[#13C1AC]/5 transition-colors border-b border-gray-100">
+                          <div className="flex items-center gap-3">
+                            <div className="text-[#13C1AC]"><Settings className="w-4 h-4" /></div>
+                            <span className="text-gray-500">Subcategorie</span>
+                          </div>
+                          <span className="text-gray-900 font-medium border border-[#13C1AC]/30 bg-[#13C1AC]/5 px-2.5 py-0.5 rounded-full text-xs">
+                            {product.subcategory}
+                          </span>
+                        </div>
+                      )}
+                      <div className="px-6 py-4 flex justify-between items-center hover:bg-[#13C1AC]/5 transition-colors md:border-r border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className="text-[#13C1AC]"><MapPin className="w-4 h-4" /></div>
+                          <span className="text-gray-500">Locație</span>
+                        </div>
+                        <span className="text-gray-900 font-medium border border-[#13C1AC]/30 bg-[#13C1AC]/5 px-2.5 py-0.5 rounded-full text-xs">
+                          {product.location}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -257,14 +466,42 @@ export default function ProductPage() {
                             {product.title.length > 45 ? product.title.substring(0, 45) + '...' : product.title}
                         </h1>
                     </div>
-                    <div className="text-4xl font-extrabold text-gray-900 mb-2">{product.price} €</div>
-                    <div className="flex items-center text-gray-500 text-sm mb-6">
-                        <span className="bg-blue-50 border border-blue-100 px-4 py-1.5 rounded-full text-blue-500 font-medium">
-                            {product.condition === 'new' ? 'Nou' : 
-                             product.condition === 'like-new' ? 'Ca nou' :
-                             product.condition === 'good' ? 'Bună' : 
-                             product.condition === 'fair' ? 'Folosit' : product.condition}
-                        </span>
+                    <div className="text-4xl font-extrabold text-gray-900 mb-3">{product.price} €</div>
+                    
+                    {/* Condition & Negotiable Badges */}
+                    <div className="flex flex-wrap items-center gap-2 mb-6">
+                        {/* Condition badge */}
+                        {getConditionInfo(product.condition) ? (() => {
+                          const conditionInfo = getConditionInfo(product.condition);
+                          const Icon = conditionInfo?.icon;
+                          return (
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-md flex items-center gap-1 ${conditionInfo?.color}`}>
+                              {Icon && <Icon className="w-3 h-3" />}
+                              {conditionInfo?.label}
+                            </span>
+                          );
+                        })() : product.condition && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-md flex items-center gap-1 bg-gray-500 text-white">
+                            <CheckCircle className="w-3 h-3" />
+                            {product.condition}
+                          </span>
+                        )}
+                        
+                        {/* Category badge if no condition */}
+                        {!product.condition && product.category && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-md flex items-center gap-1 bg-[#13C1AC] text-white">
+                            <Tag className="w-3 h-3" />
+                            {product.subcategory || product.category}
+                          </span>
+                        )}
+                        
+                        {/* Negotiable badge */}
+                        {product.negotiable && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-md flex items-center gap-1 bg-violet-500 text-white">
+                            <MessageCircle className="w-3 h-3" />
+                            Negociabil
+                          </span>
+                        )}
                     </div>
                     
                     <button 

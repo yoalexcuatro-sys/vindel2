@@ -7,10 +7,12 @@ import { useState, Suspense, useRef, useEffect } from 'react';
 import SearchBar from './SearchBar';
 import { useAuth } from '@/lib/auth-context';
 import { subscribeToUnreadCount } from '@/lib/messages-service';
+import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [unreadCount, setUnreadCount] = useState(() => {
     // Cargar de caché para carga instantánea
     if (typeof window !== 'undefined') {
@@ -23,6 +25,34 @@ export default function Navbar() {
   });
   const { user, userProfile, logout, loading } = useAuth();
   const userMenuRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
+  const isHomePage = pathname === '/';
+
+  // Scroll detection for mobile search bar (only on home page)
+  useEffect(() => {
+    if (!isHomePage) {
+      setShowMobileSearch(false);
+      return;
+    }
+
+    let lastScrollY = window.scrollY;
+    const threshold = 150; // Show after scrolling 150px
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY > threshold) {
+        setShowMobileSearch(true);
+      } else {
+        setShowMobileSearch(false);
+      }
+      
+      lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [isHomePage]);
 
   // Subscribe to unread messages count
   useEffect(() => {
@@ -71,9 +101,24 @@ export default function Navbar() {
             </Link>
           </div>
 
+          {/* Mobile Search Bar - Appears on scroll */}
+          <div 
+            className={`md:hidden flex-1 mx-3 transition-all duration-300 ${
+              showMobileSearch 
+                ? 'opacity-100 translate-y-0' 
+                : 'opacity-0 -translate-y-2 pointer-events-none absolute'
+            }`}
+          >
+            {showMobileSearch && (
+              <Suspense fallback={<div className="h-9 bg-gray-100 rounded-full w-full animate-pulse" />}>
+                <SearchBar variant="navbar" />
+              </Suspense>
+            )}
+          </div>
+
           {/* Search Bar - Hidden on mobile, visible on md+ */}
           <div className="hidden md:flex flex-1 items-center justify-center px-8">
-            <div className="w-full max-w-lg relative">
+            <div className="w-full max-w-lg relative z-[100]">
               <Suspense fallback={<div className="h-10 bg-gray-100 rounded-full w-full animate-pulse" />}>
                  <SearchBar variant="navbar" />
               </Suspense>
@@ -197,13 +242,6 @@ export default function Navbar() {
           </div>
 
         </div>
-      </div>
-      
-      {/* Search Bar for Mobile - Below header */}
-      <div className="md:hidden px-4 py-2 pb-3 bg-white border-t border-gray-100">
-          <Suspense fallback={<div className="h-10 bg-gray-100 rounded-full w-full animate-pulse" />}>
-              <SearchBar variant="navbar" />
-          </Suspense>
       </div>
 
       {/* Mobile Menu Overlay */}

@@ -241,7 +241,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
               {/* Existing Images */}
               {existingImages.map((url, index) => (
                 <div key={`existing-${index}`} className="aspect-square rounded-xl overflow-hidden relative group">
-                  <Image src={url} alt="" fill className="object-cover" />
+                  <Image src={url} alt="" fill sizes="80px" className="object-cover" />
                   <button 
                     onClick={() => removeExistingImage(index)}
                     className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"

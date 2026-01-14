@@ -4,11 +4,15 @@ import { useState, useCallback, useEffect } from 'react';
 import { Heart, ArrowUpRight, ArrowDownRight, Clock, ShoppingBag, Package, Star, Sparkles, CheckCircle, AlertTriangle, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
 import { createProductLink } from '@/lib/slugs';
 import { mutate } from 'swr';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { useAuth } from '@/lib/auth-context';
+import { toggleFavorite } from '@/lib/favorites-service';
+import { useUserFavorites } from '@/lib/swr-hooks';
 
 interface Product {
   id: string; // Ensure ID is string for slug generation
@@ -29,6 +33,11 @@ interface Product {
 const getConditionInfo = (condition?: string): { label: string; color: string; icon: any } | null => {
   if (!condition) return null;
   const conditions: Record<string, { label: string; color: string; icon: any }> = {
+    // Valores antiguos (compatibilidad)
+    'new': { label: 'Nou', color: 'bg-emerald-500 text-white', icon: Star },
+    'like-new': { label: 'Ca nou', color: 'bg-cyan-500 text-white', icon: Sparkles },
+    'good': { label: 'Bună stare', color: 'bg-blue-500 text-white', icon: CheckCircle },
+    'fair': { label: 'Folosit', color: 'bg-gray-500 text-white', icon: CheckCircle },
     // Electronice / Gaming
     'nou-sigilat': { label: 'Sigilat', color: 'bg-emerald-500 text-white', icon: Package },
     'nou-desigilat': { label: 'Nou', color: 'bg-blue-500 text-white', icon: Star },
@@ -69,8 +78,12 @@ const isNewProduct = (publishedAt?: string | Timestamp): boolean => {
 };
 
 export default function ProductCard({ product }: { product: Product }) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { data: favoriteIds, mutate: mutateFavorites } = useUserFavorites(user?.uid || null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
+  const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   const [theme, setTheme] = useState(() => {
     // Cargar tema inmediatamente al inicializar
     if (typeof window !== 'undefined') {
@@ -79,6 +92,36 @@ export default function ProductCard({ product }: { product: Product }) {
     }
     return 1;
   });
+  
+  // Check if product is favorited
+  const isFavorited = favoriteIds?.includes(product.id) || false;
+  
+  // Handle favorite toggle
+  const handleFavoriteClick = useCallback(async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!user) {
+      // Redirect to login or show message
+      router.push('/login');
+      return;
+    }
+    
+    setIsFavoriteLoading(true);
+    try {
+      const newIsFavorited = await toggleFavorite(user.uid, product.id);
+      // Update local cache optimistically
+      if (newIsFavorited) {
+        mutateFavorites([...(favoriteIds || []), product.id], false);
+      } else {
+        mutateFavorites(favoriteIds?.filter(id => id !== product.id) || [], false);
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    } finally {
+      setIsFavoriteLoading(false);
+    }
+  }, [user, product.id, favoriteIds, mutateFavorites, router]);
   
   // Prefetch producto en hover para carga instantánea
   const prefetchProduct = useCallback(async () => {
@@ -189,20 +232,6 @@ export default function ProductCard({ product }: { product: Product }) {
             {getConditionInfo(product.condition)?.label}
           </div>
         )}
-
-        {/* Badge de Negociabil */}
-        {product.negotiable && (
-          <div className={`absolute left-2 px-2 py-1 text-[10px] font-semibold rounded-md flex items-center gap-1 pointer-events-none z-10 bg-violet-500 text-white ${
-            getConditionInfo(product.condition) ? 'top-9' : 'top-2'
-          }`}>
-            <MessageCircle className="w-3 h-3" />
-            Negociabil
-          </div>
-        )}
-        
-        <button className="absolute top-2 right-2 p-2 bg-white rounded-full text-gray-400 hover:text-red-500 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 pointer-events-auto" onClick={(e) => { e.preventDefault(); }}>
-            <Heart className="h-5 w-5" />
-        </button>
     </div>
   );
 
@@ -219,7 +248,9 @@ export default function ProductCard({ product }: { product: Product }) {
                  <div>
                     <div className="flex justify-between items-start">
                         <h4 className="font-bold text-slate-900 text-sm line-clamp-2 pr-2 group-hover:text-teal-600 transition-colors">{product.title}</h4>
-                        <Heart className="w-5 h-5 text-slate-300 shrink-0 hover:text-red-500 transition-colors" />
+                        <button onClick={handleFavoriteClick} disabled={isFavoriteLoading} className={`shrink-0 transition-colors ${isFavorited ? 'text-red-500' : 'text-slate-300 hover:text-red-500'}`}>
+                          <Heart className={`w-5 h-5 ${isFavorited ? 'fill-current' : ''}`} />
+                        </button>
                     </div>
                     <div className="text-[11px] text-slate-500 mt-1 truncate opacity-75">Electronics › Generic</div>
                  </div>
@@ -248,9 +279,9 @@ export default function ProductCard({ product }: { product: Product }) {
          <div className="group bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition-all duration-300 h-full flex flex-col">
             <div className="aspect-[5/4] rounded-xl overflow-hidden relative mb-3 ring-1 ring-black/5">
                  <ImageCarousel heightClass="h-full" />
-                 <div className="absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-sm z-20 transition-transform group-hover:scale-110">
-                    <Heart className="w-4 h-4 text-gray-400 group-hover:text-red-500" />
-                 </div>
+                 <button onClick={handleFavoriteClick} disabled={isFavoriteLoading} className={`absolute top-2 right-2 bg-white rounded-full p-1.5 shadow-sm z-20 transition-all group-hover:scale-110 ${isFavorited ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}>
+                    <Heart className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} />
+                 </button>
             </div>
             <div className="px-1 flex-1 flex flex-col">
                  <div className="flex justify-between items-start">
@@ -284,9 +315,9 @@ export default function ProductCard({ product }: { product: Product }) {
             <div className="px-1 flex flex-col">
                 <div className="flex justify-between items-start mb-0.5">
                    <h4 className="text-base font-bold text-gray-900">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
-                   <div className="p-1 -mr-1 rounded-full hover:bg-gray-100 transition-colors">
-                     <Heart className="w-5 h-5 text-gray-900 stroke-[1.5]" />
-                   </div>
+                   <button onClick={handleFavoriteClick} disabled={isFavoriteLoading} className={`p-1 -mr-1 rounded-full hover:bg-gray-100 transition-colors ${isFavorited ? 'text-red-500' : 'text-gray-900'}`}>
+                     <Heart className={`w-5 h-5 stroke-[1.5] ${isFavorited ? 'fill-current' : ''}`} />
+                   </button>
                 </div>
                 
                 <h3 className="text-slate-500 text-sm leading-tight mb-2 truncate font-normal">
@@ -325,8 +356,8 @@ export default function ProductCard({ product }: { product: Product }) {
                    <div>
                      <h4 className="text-base font-bold text-gray-900 mb-1">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
                    </div>
-                   <button className="text-gray-400 hover:text-red-500 transition-colors">
-                     <Heart className="w-6 h-6 stroke-2" />
+                   <button onClick={handleFavoriteClick} disabled={isFavoriteLoading} className={`transition-colors ${isFavorited ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}>
+                     <Heart className={`w-6 h-6 stroke-2 ${isFavorited ? 'fill-current' : ''}`} />
                    </button>
                 </div>
                 
@@ -396,12 +427,6 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="group bg-white rounded-xl overflow-hidden border-2 border-gray-100 hover:border-[#13C1AC] hover:shadow-lg transition-all duration-300 cursor-pointer relative hover:-translate-y-1 h-full flex flex-col">
           <div className="relative h-56 w-full shrink-0">
             <ImageCarousel heightClass="h-full" />
-            {/* Etiqueta Nou - solo aparece las primeras 24h */}
-            {isNewProduct(product.publishedAt) && (
-              <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-[#13C1AC] text-white text-[10px] font-bold rounded shadow-md z-10">
-                Nou
-              </div>
-            )}
             {/* Círculo verde hover */}
             <div className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 group-hover:bg-[#13C1AC] group-hover:text-white text-gray-400">
               <Heart className="h-5 w-5" />
@@ -415,8 +440,12 @@ export default function ProductCard({ product }: { product: Product }) {
           <div className="p-4 flex flex-col flex-1">
             <div className="flex items-center gap-2 mb-1">
               <p className="text-base font-bold text-[#13C1AC]">{product.price.toLocaleString()} <span className="text-xs font-medium text-gray-500">{product.currency === 'EUR' ? '€' : 'Lei'}</span></p>
-              <span className="text-xs text-gray-400">•</span>
-              <span className="text-xs text-gray-500">Negociabil</span>
+              {product.negotiable && (
+                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-violet-500 text-white flex items-center gap-1">
+                  <MessageCircle className="w-3 h-3" />
+                  Negociabil
+                </span>
+              )}
             </div>
             <p className="text-sm text-gray-700 line-clamp-2 leading-relaxed h-[2.5rem]">{product.title}</p>
             <div className="flex justify-between items-center mt-auto pt-4 text-xs text-gray-400">
@@ -438,47 +467,65 @@ export default function ProductCard({ product }: { product: Product }) {
     );
   }
 
-  // DEFAULT (THEME 1: Classic Market - Reference Style)
+  // DEFAULT (THEME 1: Elegant Teal Border Style)
   return (
-    <Link href={createProductLink(product)} className="block h-full">
-        <div className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-gray-100 relative h-full flex flex-col ring-1 ring-transparent hover:ring-teal-500/20">
-            <div className="relative">
-                <div className="aspect-[4/3] relative overflow-hidden">
-                    <ImageCarousel heightClass="h-full" />
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                        <span className="w-1.5 h-1.5 rounded-full bg-white shadow-sm"></span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-white/50 shadow-sm"></span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-white/50 shadow-sm"></span>
+    <div className="relative h-full">
+        <Link href={createProductLink(product)} className="block h-full">
+            <div className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 border-[#13C1AC] relative h-full flex flex-col">
+                <div className="relative">
+                    <div className="aspect-[4/3] relative overflow-hidden rounded-t-xl">
+                        <ImageCarousel heightClass="h-full" />
+                        
+                        {/* Badge Reservat */}
+                        {product.reserved && (
+                            <div className="absolute bottom-3 left-3 px-3 py-1.5 bg-black/70 text-white text-xs font-semibold rounded-lg backdrop-blur-sm z-20">
+                                Reservat
+                            </div>
+                        )}
+                        
+                        {/* Indicadores de imagen */}
+                        {imageCount > 1 && (
+                            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 pointer-events-none">
+                                {allImages.slice(0, 5).map((_, idx) => (
+                                    <span 
+                                        key={idx}
+                                        className={`h-1 rounded-full transition-all shadow-sm ${
+                                            idx === currentImageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/60'
+                                        }`}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                
+                <div className="p-4 flex flex-col flex-1">
+                    {/* Precio */}
+                    <h4 className="text-xl font-bold text-gray-900 mb-1">
+                        {product.price.toLocaleString()} {product.currency === 'EUR' ? '€' : 'Lei'}
+                    </h4>
+                    
+                    {/* Título */}
+                    <h3 className="text-gray-700 text-sm leading-snug line-clamp-2 group-hover:text-[#13C1AC] transition-colors">
+                        {product.title}
+                    </h3>
+                    
+                    {/* Ubicación */}
+                    <div className="mt-auto pt-3">
+                        <span className="text-sm text-gray-400">{product.location}</span>
                     </div>
                 </div>
             </div>
-            
-            <div className="p-4 flex flex-col flex-1">
-                <div className="flex justify-between items-start mb-2">
-                   <h4 className="text-base font-bold text-gray-900">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
-                   <Heart className="w-5 h-5 text-gray-400 hover:text-red-500 transition-colors cursor-pointer" />
-                </div>
-                
-                <h3 className="text-gray-700 text-sm leading-snug mb-3 line-clamp-2 group-hover:text-teal-600 transition-colors">{product.title}</h3>
-                
-                <div className="mt-auto">
-                    <div className="inline-block px-2 py-0.5 bg-blue-50 text-blue-600 text-[10px] rounded border border-blue-100 mb-4">
-                        Folosit
-                    </div>
-
-                    <div className="flex justify-between items-center text-[11px] text-gray-400 border-t border-gray-50 pt-3">
-                        <div className="flex items-center gap-1">
-                            <span className="w-3 h-3 rounded-full border border-gray-300 flex items-center justify-center text-[8px]">📍</span>
-                            {product.location}
-                        </div>
-                        <div className="flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            Azi
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </Link>
+        </Link>
+        
+        {/* Botón de favoritos FUERA del Link */}
+        <button 
+          className={`absolute top-3 right-3 z-30 w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${isFavorited ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-600 hover:bg-red-500 hover:text-white'} ${isFavoriteLoading ? 'opacity-50' : ''}`}
+          onClick={handleFavoriteClick}
+          disabled={isFavoriteLoading}
+        >
+            <Heart className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} />
+        </button>
+    </div>
   );
 }
