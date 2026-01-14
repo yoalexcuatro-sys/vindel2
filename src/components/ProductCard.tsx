@@ -185,33 +185,36 @@ export default function ProductCard({ product }: { product: Product }) {
 
   const ImageCarousel = ({ heightClass = "h-56" }: { heightClass?: string }) => (
     <div 
-      className={`relative ${heightClass} w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-200`}
+      className={`relative ${heightClass} w-full overflow-hidden bg-gray-100`}
       onMouseMove={handleMouseMove}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-        {/* Shimmer loading effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite] z-0" />
+        {/* Primera imagen SIEMPRE visible como base */}
+        <Image
+          src={allImages[0]}
+          alt={product.title}
+          fill
+          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
+          className="object-cover object-center"
+          style={{ objectPosition: 'center 30%' }}
+          priority
+          quality={75}
+        />
         
-        {/* Precargar todas las imágenes */}
-        {allImages.slice(0, 5).map((img, idx) => (
+        {/* Otras imágenes se superponen solo cuando están seleccionadas */}
+        {currentImageIndex > 0 && allImages[currentImageIndex] && (
           <Image
-            key={idx}
-            src={img}
+            src={allImages[currentImageIndex]}
             alt={product.title}
             fill
             sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
-            className={`object-cover object-center transition-opacity duration-100 ${
-              idx === currentImageIndex ? 'opacity-100 z-[1]' : 'opacity-0 z-0'
-            }`}
+            className="object-cover object-center z-[1]"
             style={{ objectPosition: 'center 30%' }}
-            priority={idx === 0}
-            loading={idx === 0 ? 'eager' : 'lazy'}
+            loading="lazy"
             quality={75}
-            placeholder="blur"
-            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFgABAQEAAAAAAAAAAAAAAAAAAAUH/8QAIhAAAgEDAwUBAAAAAAAAAAAAAQIDAAQRBRIhBhMxQVFh/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAZEQACAwEAAAAAAAAAAAAAAAABAgADESH/2gAMAwEAAhEDEEA/AKei6jPZahHdQkB4zlSRkHIPB/ayLr7Xr3WtUe6vJN0jADA4AA8AD4BSlaKxUDc+T//Z"
           />
-        ))}
+        )}
 
         {imageCount > 1 && (
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10 pointer-events-none">
