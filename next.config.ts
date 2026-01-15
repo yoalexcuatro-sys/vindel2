@@ -1,12 +1,21 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Optimizaciones de compilación
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production', // Eliminar console.log en producción
+  },
+  
+  // Experimental optimizations
+  experimental: {
+    optimizePackageImports: ['lucide-react'], // Tree-shake lucide icons
+  },
+
   images: {
     // Usar optimización de Vercel para mejor rendimiento
-    // Las imágenes se sirven en WebP/AVIF automáticamente
     formats: ['image/avif', 'image/webp'],
-    deviceSizes: [640, 750, 828, 1080, 1200], // Tamaños optimizados
-    imageSizes: [64, 96, 128, 256, 384], // Para thumbnails
+    deviceSizes: [640, 750, 828, 1080, 1200],
+    imageSizes: [64, 96, 128, 256, 384],
     minimumCacheTTL: 60 * 60 * 24 * 30, // Cache 30 días
     remotePatterns: [
       // Cloudflare R2 - tu bucket público
