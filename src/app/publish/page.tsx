@@ -17,7 +17,7 @@ import {
 import { localidades } from '@/data/localidades';
 import { useAuth } from '@/lib/auth-context';
 import { createProduct } from '@/lib/products-service';
-import { uploadProductImages } from '@/lib/storage-service';
+import { uploadProductImagesWithThumbs } from '@/lib/r2-storage';
 
 // =============================================================================
 // CONSTANTES
@@ -233,6 +233,132 @@ const PHONE_MODELS: Record<string, string[]> = {
     'Alt model'
   ],
   'Altă marcă': ['Alt model']
+};
+
+// Campos dinámicos para PC Gaming según el tipo seleccionado
+const PC_GAMING_FIELDS: Record<string, Array<{ id: string; label: string; type: string; options?: string[]; placeholder?: string; suffix?: string; required?: boolean }>> = {
+  'PC complet': [
+    { id: 'procesorPC', label: 'Procesor', type: 'text', placeholder: 'ex: Intel i7-13700K, AMD Ryzen 7 7800X3D' },
+    { id: 'placaVideoPC', label: 'Placă video', type: 'text', placeholder: 'ex: RTX 4070 Super 12GB' },
+    { id: 'ramPC', label: 'RAM', type: 'text', placeholder: 'ex: 32GB DDR5 6000MHz' },
+    { id: 'stocarePC', label: 'Stocare', type: 'text', placeholder: 'ex: 1TB NVMe SSD + 2TB HDD' },
+    { id: 'placaBazaPC', label: 'Placă de bază', type: 'text', placeholder: 'ex: ASUS ROG STRIX B650E-F' },
+    { id: 'sursaPC', label: 'Sursa', type: 'text', placeholder: 'ex: Corsair RM850x, 850W 80+ Gold' },
+    { id: 'carcasaPC', label: 'Carcasă', type: 'text', placeholder: 'ex: NZXT H7 Flow' },
+  ],
+  'Placă video (GPU)': [
+    { id: 'marcaGPU', label: 'Marcă', type: 'select', options: ['NVIDIA', 'AMD', 'Intel'], required: true },
+    { id: 'modelGPU', label: 'Model GPU', type: 'text', placeholder: 'ex: RTX 4070 Super, RX 7800 XT', required: true },
+    { id: 'producatorGPU', label: 'Producător', type: 'select', options: ['ASUS', 'MSI', 'Gigabyte', 'EVGA', 'Zotac', 'Palit', 'Gainward', 'PNY', 'Sapphire', 'XFX', 'PowerColor', 'Altul'] },
+    { id: 'vramGPU', label: 'VRAM', type: 'select', options: ['4GB', '6GB', '8GB', '10GB', '12GB', '16GB', '20GB', '24GB'] },
+    { id: 'tipVRAM', label: 'Tip VRAM', type: 'select', options: ['GDDR6', 'GDDR6X', 'GDDR7', 'HBM2', 'HBM3'] },
+  ],
+  'Procesor (CPU)': [
+    { id: 'marcaCPU', label: 'Marcă', type: 'select', options: ['Intel', 'AMD'], required: true },
+    { id: 'modelCPU', label: 'Model', type: 'text', placeholder: 'ex: Core i7-14700K, Ryzen 7 7800X3D', required: true },
+    { id: 'generatie', label: 'Generație', type: 'text', placeholder: 'ex: 14th Gen, Zen 4' },
+    { id: 'nuclee', label: 'Nuclee/Fire', type: 'text', placeholder: 'ex: 20 nuclee / 28 fire' },
+    { id: 'frecventa', label: 'Frecvență', type: 'text', placeholder: 'ex: 5.6 GHz Turbo' },
+    { id: 'socket', label: 'Socket', type: 'select', options: ['LGA 1700', 'LGA 1851', 'AM5', 'AM4', 'LGA 1200', 'TR5', 'Altul'] },
+    { id: 'coolerInclus', label: 'Cooler inclus', type: 'select', options: ['Da', 'Nu'] },
+  ],
+  'Placă de bază': [
+    { id: 'producatorMB', label: 'Producător', type: 'select', options: ['ASUS', 'MSI', 'Gigabyte', 'ASRock', 'EVGA', 'NZXT', 'Altul'], required: true },
+    { id: 'modelMB', label: 'Model', type: 'text', placeholder: 'ex: ROG STRIX B650E-F Gaming', required: true },
+    { id: 'socketMB', label: 'Socket', type: 'select', options: ['LGA 1700', 'LGA 1851', 'AM5', 'AM4', 'LGA 1200', 'TR5', 'Altul'], required: true },
+    { id: 'chipset', label: 'Chipset', type: 'text', placeholder: 'ex: Z790, B650E, X670E' },
+    { id: 'formatMB', label: 'Format', type: 'select', options: ['ATX', 'Micro-ATX', 'Mini-ITX', 'E-ATX'] },
+    { id: 'sloturiRAM', label: 'Sloturi RAM', type: 'select', options: ['2', '4'] },
+    { id: 'tipRAM', label: 'Tip RAM suportat', type: 'select', options: ['DDR4', 'DDR5'] },
+  ],
+  'Memorie RAM': [
+    { id: 'marcaRAM', label: 'Marcă', type: 'select', options: ['Corsair', 'G.Skill', 'Kingston', 'Crucial', 'TeamGroup', 'Patriot', 'ADATA', 'HyperX', 'Altul'], required: true },
+    { id: 'modelRAM', label: 'Model', type: 'text', placeholder: 'ex: Vengeance RGB DDR5', required: true },
+    { id: 'capacitateRAM', label: 'Capacitate totală', type: 'select', options: ['8GB', '16GB', '32GB', '48GB', '64GB', '96GB', '128GB'], required: true },
+    { id: 'configuratie', label: 'Configurație', type: 'select', options: ['1x8GB', '2x4GB', '2x8GB', '2x16GB', '2x24GB', '2x32GB', '4x8GB', '4x16GB', '4x32GB'] },
+    { id: 'tipRAMkit', label: 'Tip', type: 'select', options: ['DDR4', 'DDR5'], required: true },
+    { id: 'frecventaRAM', label: 'Frecvență', type: 'select', options: ['2666MHz', '3000MHz', '3200MHz', '3600MHz', '4000MHz', '4800MHz', '5200MHz', '5600MHz', '6000MHz', '6400MHz', '7200MHz', '8000MHz'] },
+    { id: 'latenta', label: 'Latență (CL)', type: 'text', placeholder: 'ex: CL16, CL30, CL36' },
+  ],
+  'SSD': [
+    { id: 'marcaSSD', label: 'Marcă', type: 'select', options: ['Samsung', 'WD', 'Crucial', 'Kingston', 'Seagate', 'Sabrent', 'Corsair', 'ADATA', 'SK Hynix', 'Altul'], required: true },
+    { id: 'modelSSD', label: 'Model', type: 'text', placeholder: 'ex: 990 Pro, SN850X, T700', required: true },
+    { id: 'capacitateSSD', label: 'Capacitate', type: 'select', options: ['128GB', '250GB', '256GB', '500GB', '512GB', '1TB', '2TB', '4TB', '8TB'], required: true },
+    { id: 'tipSSD', label: 'Tip', type: 'select', options: ['NVMe M.2 PCIe 5.0', 'NVMe M.2 PCIe 4.0', 'NVMe M.2 PCIe 3.0', 'SATA 2.5"', 'SATA M.2'], required: true },
+    { id: 'vitezaCitire', label: 'Viteză citire', type: 'text', placeholder: 'ex: 7000 MB/s' },
+    { id: 'vitezaScriere', label: 'Viteză scriere', type: 'text', placeholder: 'ex: 6500 MB/s' },
+  ],
+  'HDD': [
+    { id: 'marcaHDD', label: 'Marcă', type: 'select', options: ['Seagate', 'WD', 'Toshiba', 'Hitachi', 'Altul'], required: true },
+    { id: 'modelHDD', label: 'Model', type: 'text', placeholder: 'ex: Barracuda, WD Blue, IronWolf', required: true },
+    { id: 'capacitateHDD', label: 'Capacitate', type: 'select', options: ['500GB', '1TB', '2TB', '3TB', '4TB', '6TB', '8TB', '10TB', '12TB', '16TB', '18TB', '20TB'], required: true },
+    { id: 'tipHDD', label: 'Tip', type: 'select', options: ['3.5" Desktop', '2.5" Laptop', 'NAS', 'Enterprise'] },
+    { id: 'rpm', label: 'RPM', type: 'select', options: ['5400 RPM', '7200 RPM', '10000 RPM', '15000 RPM'] },
+    { id: 'cache', label: 'Cache', type: 'select', options: ['64MB', '128MB', '256MB', '512MB'] },
+  ],
+  'Sursa (PSU)': [
+    { id: 'marcaPSU', label: 'Marcă', type: 'select', options: ['Corsair', 'EVGA', 'Seasonic', 'be quiet!', 'Cooler Master', 'NZXT', 'Thermaltake', 'FSP', 'Silverstone', 'Altul'], required: true },
+    { id: 'modelPSU', label: 'Model', type: 'text', placeholder: 'ex: RM850x, SuperNOVA 1000 G7', required: true },
+    { id: 'puterePSU', label: 'Putere', type: 'select', options: ['450W', '500W', '550W', '600W', '650W', '700W', '750W', '850W', '1000W', '1200W', '1500W', '1600W'], required: true },
+    { id: 'certificare', label: 'Certificare', type: 'select', options: ['80+ White', '80+ Bronze', '80+ Silver', '80+ Gold', '80+ Platinum', '80+ Titanium'], required: true },
+    { id: 'modular', label: 'Tip cabluri', type: 'select', options: ['Full Modular', 'Semi Modular', 'Non-Modular'] },
+    { id: 'conectorGPU', label: 'Conector GPU', type: 'select', options: ['12VHPWR (ATX 3.0)', '2x 8-pin', '3x 8-pin', '1x 8-pin'] },
+  ],
+  'Carcasă': [
+    { id: 'marcaCarcasa', label: 'Marcă', type: 'select', options: ['NZXT', 'Corsair', 'Lian Li', 'Fractal Design', 'be quiet!', 'Phanteks', 'Cooler Master', 'Thermaltake', 'Deepcool', 'Altul'], required: true },
+    { id: 'modelCarcasa', label: 'Model', type: 'text', placeholder: 'ex: H7 Flow, 4000D Airflow, O11 Dynamic', required: true },
+    { id: 'formatCarcasa', label: 'Format', type: 'select', options: ['Full Tower', 'Mid Tower', 'Mini Tower', 'SFF/Mini-ITX'], required: true },
+    { id: 'culoareCarcasa', label: 'Culoare', type: 'select', options: ['Negru', 'Alb', 'Gri', 'Altă culoare'] },
+    { id: 'panou', label: 'Panou lateral', type: 'select', options: ['Sticlă temperată', 'Mesh/Perforat', 'Solid'] },
+    { id: 'ventilatoareIncluse', label: 'Ventilatoare incluse', type: 'text', placeholder: 'ex: 3x 120mm, 2x 140mm' },
+  ],
+  'Cooler/Răcire': [
+    { id: 'marcaCooler', label: 'Marcă', type: 'select', options: ['Noctua', 'be quiet!', 'Corsair', 'NZXT', 'Deepcool', 'Arctic', 'Cooler Master', 'Thermalright', 'EKWB', 'Altul'], required: true },
+    { id: 'modelCooler', label: 'Model', type: 'text', placeholder: 'ex: NH-D15, Kraken Z73, Dark Rock Pro 5', required: true },
+    { id: 'tipCooler', label: 'Tip', type: 'select', options: ['AIO Lichid 240mm', 'AIO Lichid 280mm', 'AIO Lichid 360mm', 'AIO Lichid 420mm', 'Tower Air Cooler', 'Low Profile', 'Custom Loop'], required: true },
+    { id: 'socketCooler', label: 'Socket compatibil', type: 'text', placeholder: 'ex: LGA 1700, AM5, AM4' },
+    { id: 'tdp', label: 'TDP suportat', type: 'text', placeholder: 'ex: 250W' },
+  ],
+  'Monitor gaming': [
+    { id: 'marcaMonitor', label: 'Marcă', type: 'select', options: ['ASUS', 'Samsung', 'LG', 'Dell/Alienware', 'MSI', 'BenQ', 'AOC', 'Gigabyte', 'ViewSonic', 'Acer', 'Altul'], required: true },
+    { id: 'modelMonitor', label: 'Model', type: 'text', placeholder: 'ex: PG27AQDP, Odyssey G9, 27GP850-B', required: true },
+    { id: 'diagonalaMonitor', label: 'Diagonală', type: 'select', options: ['24"', '25"', '27"', '28"', '32"', '34" Ultrawide', '38" Ultrawide', '49" Super Ultrawide'], required: true },
+    { id: 'rezolutieMonitor', label: 'Rezoluție', type: 'select', options: ['1080p FHD', '1440p QHD', '4K UHD', '5K', '1080p Ultrawide', '1440p Ultrawide', '5120x1440 Super Ultrawide'] },
+    { id: 'panouMonitor', label: 'Tip panou', type: 'select', options: ['IPS', 'VA', 'OLED', 'QD-OLED', 'TN', 'Mini-LED'] },
+    { id: 'rataRefresh', label: 'Rată refresh', type: 'select', options: ['60Hz', '75Hz', '144Hz', '165Hz', '180Hz', '240Hz', '280Hz', '360Hz', '480Hz'] },
+    { id: 'timpRaspuns', label: 'Timp răspuns', type: 'select', options: ['0.03ms', '0.1ms', '1ms', '2ms', '4ms', '5ms'] },
+    { id: 'adaptive', label: 'Adaptive Sync', type: 'select', options: ['G-Sync Ultimate', 'G-Sync Compatible', 'FreeSync Premium Pro', 'FreeSync Premium', 'FreeSync', 'Nu are'] },
+  ],
+  'Tastatură gaming': [
+    { id: 'marcaTastatura', label: 'Marcă', type: 'select', options: ['Razer', 'Logitech', 'Corsair', 'SteelSeries', 'HyperX', 'Ducky', 'Keychron', 'Wooting', 'ASUS ROG', 'Altul'], required: true },
+    { id: 'modelTastatura', label: 'Model', type: 'text', placeholder: 'ex: Huntsman V3 Pro, G Pro X, K100 RGB', required: true },
+    { id: 'tipSwitch', label: 'Tip switch', type: 'select', options: ['Mecanic - Liniar', 'Mecanic - Tactil', 'Mecanic - Clicky', 'Optic', 'Magnetic/Hall Effect', 'Membrană'] },
+    { id: 'layout', label: 'Layout', type: 'select', options: ['Full Size (100%)', 'TKL (80%)', '75%', '65%', '60%'] },
+    { id: 'conectare', label: 'Conectare', type: 'select', options: ['USB cu fir', 'Wireless 2.4GHz', 'Bluetooth', 'Wireless + Bluetooth + Fir'] },
+  ],
+  'Mouse gaming': [
+    { id: 'marcaMouse', label: 'Marcă', type: 'select', options: ['Logitech', 'Razer', 'Finalmouse', 'Pulsar', 'Lamzu', 'Zowie', 'SteelSeries', 'Corsair', 'HyperX', 'Altul'], required: true },
+    { id: 'modelMouse', label: 'Model', type: 'text', placeholder: 'ex: G Pro X Superlight 2, DeathAdder V3, UltralightX', required: true },
+    { id: 'senzor', label: 'Senzor', type: 'text', placeholder: 'ex: HERO 2, Focus Pro 30K, PAW3395' },
+    { id: 'dpiMax', label: 'DPI max', type: 'select', options: ['12000', '16000', '20000', '25000', '30000', '32000', '44000'] },
+    { id: 'greutateMouse', label: 'Greutate', type: 'text', placeholder: 'ex: 60g, 75g' },
+    { id: 'conectareMouse', label: 'Conectare', type: 'select', options: ['USB cu fir', 'Wireless 2.4GHz', 'Wireless + Bluetooth'] },
+  ],
+  'Căști gaming': [
+    { id: 'marcaCasti', label: 'Marcă', type: 'select', options: ['SteelSeries', 'Logitech', 'HyperX', 'Razer', 'Corsair', 'Audeze', 'Beyerdynamic', 'Sennheiser', 'ASUS ROG', 'Altul'], required: true },
+    { id: 'modelCasti', label: 'Model', type: 'text', placeholder: 'ex: Arctis Nova Pro, Cloud III, BlackShark V2', required: true },
+    { id: 'tipCasti', label: 'Tip', type: 'select', options: ['Over-ear închise', 'Over-ear deschise', 'On-ear', 'In-ear'] },
+    { id: 'conectareCasti', label: 'Conectare', type: 'select', options: ['USB cu fir', 'Jack 3.5mm', 'Wireless 2.4GHz', 'Wireless + Bluetooth', 'Wireless + Jack'] },
+    { id: 'sunetSurround', label: 'Sunet surround', type: 'select', options: ['Stereo', '7.1 Virtual', '7.1 Real', 'Spatial Audio'] },
+    { id: 'microfon', label: 'Microfon', type: 'select', options: ['Detașabil', 'Retractabil', 'Fix', 'Fără microfon'] },
+  ],
+  'Scaun gaming': [
+    { id: 'marcaScaun', label: 'Marcă', type: 'select', options: ['Secretlab', 'Herman Miller', 'noblechairs', 'DXRacer', 'Razer', 'Corsair', 'AndaSeat', 'AKRacing', 'IKEA', 'Altul'], required: true },
+    { id: 'modelScaun', label: 'Model', type: 'text', placeholder: 'ex: Titan Evo 2025, Embody, HERO', required: true },
+    { id: 'materialScaun', label: 'Material', type: 'select', options: ['Piele sintetică (PU)', 'Piele naturală', 'Fabric/Textil', 'Mesh', 'Hybrid'] },
+    { id: 'marime', label: 'Mărime', type: 'select', options: ['S (sub 170cm)', 'M (165-180cm)', 'L (175-190cm)', 'XL (peste 185cm)'] },
+    { id: 'greutateMax', label: 'Greutate max', type: 'select', options: ['100kg', '120kg', '130kg', '150kg', '180kg'] },
+  ],
 };
 
 const CATEGORIES = [
@@ -779,9 +905,10 @@ const SUBCATEGORY_FIELDS: Record<string, FormField[]> = {
     { id: 'marca', label: 'Marcă', type: 'select', options: ['Apple', 'Samsung', 'Lenovo', 'Huawei', 'Xiaomi', 'Altă marcă'], required: true },
     { id: 'model', label: 'Model', type: 'text', placeholder: 'Model' },
     { id: 'diagonala', label: 'Diagonală', type: 'select', options: ['8"', '10"', '11"', '12.9"', '13"'] },
+    { id: 'procesor', label: 'Procesor', type: 'text', placeholder: 'ex: Apple M2, Snapdragon 8 Gen 2' },
   ],
   'TV / Audio': [
-    { id: 'tip', label: 'Tip', type: 'select', options: ['Televizor', 'Soundbar', 'Boxe', 'Căști', 'Amplificator', 'Home Cinema'], required: true },
+    { id: 'tip', label: 'Tip', type: 'select', options: ['Televizor', 'Soundbar', 'Boxe', 'Subwoofer', 'Căști', 'Amplificator', 'Home Cinema', 'Receptor AV', 'iPod', 'MP3 Player', 'Radio', 'Pickup/Vinyl', 'Mixer audio', 'Microfon', 'Interfață audio', 'Echipament DJ', 'Sistem Hi-Fi', 'Difuzoare portabile', 'Sistem karaoke', 'Accesorii audio'], required: true },
     { id: 'marca', label: 'Marcă', type: 'text', placeholder: 'Marcă' },
     { id: 'diagonala', label: 'Diagonală (TV)', type: 'select', options: ['32"', '43"', '50"', '55"', '65"', '75"', '85"'] },
   ],
@@ -860,10 +987,11 @@ const SUBCATEGORY_FIELDS: Record<string, FormField[]> = {
     { id: 'brand', label: 'Brand', type: 'text', placeholder: 'Brand (opțional)' },
   ],
   'Încălțăminte': [
-    { id: 'tip', label: 'Tip', type: 'select', options: ['Pantofi', 'Adidași', 'Sandale', 'Cizme', 'Ghete', 'Papuci'], required: true },
-    { id: 'marime', label: 'Mărime', type: 'select', options: ['36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46'], required: true },
+    { id: 'tip', label: 'Tip', type: 'select', options: ['Pantofi', 'Adidași', 'Teniși', 'Sandale', 'Cizme', 'Ghete', 'Papuci', 'Mocasini', 'Balerini', 'Espadrile', 'Platforme', 'Tocuri', 'Botine', 'Slip-on', 'Sneakers'], required: true },
+    { id: 'marime', label: 'Mărime', type: 'select', options: ['35', '36', '37', '38', '39', '40', '41', '42', '43', '44', '45', '46', '47', '48'], required: true },
     { id: 'gen', label: 'Gen', type: 'select', options: ['Femei', 'Bărbați', 'Unisex'] },
-    { id: 'brand', label: 'Brand', type: 'text', placeholder: 'Brand (opțional)' },
+    { id: 'culoare', label: 'Culoare', type: 'select', options: ['Alb', 'Negru', 'Gri', 'Maro', 'Bej', 'Roșu', 'Albastru', 'Verde', 'Galben', 'Portocaliu', 'Roz', 'Mov', 'Multicolor'] },
+    { id: 'marca', label: 'Marcă', type: 'text', placeholder: 'ex: Nike, Adidas, Puma' },
   ],
   'Genți': [
     { id: 'tip', label: 'Tip', type: 'select', options: ['Geantă mână', 'Rucsac', 'Poșetă', 'Geantă laptop', 'Valiză'], required: true },
@@ -1199,9 +1327,27 @@ const SUBCATEGORY_FIELDS: Record<string, FormField[]> = {
     { id: 'titluJoc', label: 'Titlu joc', type: 'text', placeholder: 'Numele jocului (dacă e cazul)' },
   ],
   'PC Gaming': [
-    { id: 'tip', label: 'Tip produs', type: 'select', options: ['PC complet', 'Componentă', 'Periferic', 'Joc (fizic)'], required: true },
-    { id: 'componenta', label: 'Componentă/Periferic', type: 'select', options: ['Placă video', 'Procesor', 'RAM', 'SSD/HDD', 'Monitor', 'Tastatură', 'Mouse', 'Căști', 'Scaun gaming', 'Altul'] },
-    { id: 'specificatii', label: 'Specificații', type: 'text', placeholder: 'ex: RTX 4070, i7-13700K' },
+    { id: 'tipPC', label: 'Tip produs', type: 'select', options: [
+      'PC complet', 
+      'Placă video (GPU)', 
+      'Procesor (CPU)', 
+      'Placă de bază', 
+      'Memorie RAM', 
+      'SSD', 
+      'HDD', 
+      'Sursa (PSU)', 
+      'Carcasă', 
+      'Cooler/Răcire', 
+      'Monitor gaming', 
+      'Tastatură gaming', 
+      'Mouse gaming', 
+      'Căști gaming', 
+      'Scaun gaming', 
+      'Mousepad', 
+      'Webcam', 
+      'Microfon', 
+      'Altă componentă'
+    ], required: true },
   ],
   'Jocuri': [
     { id: 'platforma', label: 'Platformă', type: 'select', options: ['PC', 'PlayStation', 'Xbox', 'Nintendo', 'Multi-platformă'], required: true },
@@ -1242,6 +1388,7 @@ export default function PublishPage() {
   const [moneda, setMoneda] = useState<'LEI' | 'EUR'>('LEI');
   const [condicion, setCondicion] = useState<string>('');
   const [negociable, setNegociable] = useState(false);
+  const [deliveryType, setDeliveryType] = useState<'personal' | 'shipping' | 'both'>('personal');
   const [tipPersoana, setTipPersoana] = useState<'fizica' | 'juridica'>('fizica');
   const [ubicacion, setUbicacion] = useState('');
   const [imagenes, setImagenes] = useState<File[]>([]);
@@ -1263,7 +1410,14 @@ export default function PublishPage() {
   }, [user, authLoading, router]);
 
   // Campos dinámicos para la subcategoría actual
-  const subcategoryFields = SUBCATEGORY_FIELDS[subcategoria] || [];
+  const baseSubcategoryFields = SUBCATEGORY_FIELDS[subcategoria] || [];
+  
+  // Agregar campos dinámicos para PC Gaming según el tipo seleccionado
+  const pcGamingDynamicFields = subcategoria === 'PC Gaming' && customFields['tipPC'] 
+    ? (PC_GAMING_FIELDS[customFields['tipPC']] || [])
+    : [];
+  
+  const subcategoryFields = [...baseSubcategoryFields, ...pcGamingDynamicFields];
 
   // Handlers de imágenes
   const handleAddImages = (files: FileList) => {
@@ -1349,15 +1503,20 @@ export default function PublishPage() {
     setError('');
 
     try {
-      // Subir imágenes a Firebase Storage
+      // Subir imágenes a Firebase Storage (con thumbnails)
       let imageUrls: string[] = [];
+      let thumbUrls: string[] = [];
+      
       if (imagenes.length > 0) {
-        imageUrls = await uploadProductImages(imagenes, user.uid);
+        const result = await uploadProductImagesWithThumbs(imagenes, user.uid);
+        imageUrls = result.images;
+        thumbUrls = result.thumbImages;
       }
       
       // Si no hay imágenes, usar placeholder local
       if (imageUrls.length === 0) {
         imageUrls = ['/placeholder-product.svg'];
+        thumbUrls = ['/placeholder-product.svg'];
       }
 
       const productData = {
@@ -1369,9 +1528,11 @@ export default function PublishPage() {
         subcategory: subcategoria,
         condition: condicion,
         negotiable: negociable,
+        deliveryType: deliveryType,
         location: ubicacion,
         image: imageUrls[0],
         images: imageUrls,
+        thumbImages: thumbUrls,
         customFields: customFields,
         sellerId: user.uid,
         seller: {
@@ -1971,6 +2132,48 @@ export default function PublishPage() {
                   Persoană juridică
                 </button>
               </div>
+
+              {/* Metoda de predare - Solo para productos físicos (no servicii, imobiliare, locuri-de-munca) */}
+              {categoria && !['servicii', 'imobiliare', 'locuri-de-munca', 'turism'].includes(categoria) && (
+                <div className="mt-4">
+                  <label className="text-gray-600 text-xs mb-2 block">Metoda de predare</label>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setDeliveryType('personal')}
+                      className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                        deliveryType === 'personal'
+                          ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                          : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Users className="w-4 h-4" />
+                      Predare personală
+                    </button>
+                    <button
+                      onClick={() => setDeliveryType('shipping')}
+                      className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                        deliveryType === 'shipping'
+                          ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                          : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Truck className="w-4 h-4" />
+                      Livrare disponibilă
+                    </button>
+                    <button
+                      onClick={() => setDeliveryType('both')}
+                      className={`px-4 py-2.5 rounded-full flex items-center gap-2 transition-all text-sm ${
+                        deliveryType === 'both'
+                          ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-md'
+                          : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Package className="w-4 h-4" />
+                      Ambele opțiuni
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -2005,6 +2208,12 @@ export default function PublishPage() {
                             // Si cambia la marca de teléfono, resetear el modelo
                             if (field.id === 'marca' && subcategoria === 'Telefoane') {
                               handleCustomFieldChange('model', '');
+                            }
+                            // Si cambia el tipo de PC Gaming, limpiar campos dinámicos anteriores
+                            if (field.id === 'tipPC' && subcategoria === 'PC Gaming') {
+                              // Limpiar todos los campos de PC Gaming excepto tipPC
+                              const pcFieldIds = Object.values(PC_GAMING_FIELDS).flat().map(f => f.id);
+                              pcFieldIds.forEach(id => handleCustomFieldChange(id, ''));
                             }
                           }}
                           className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 text-sm

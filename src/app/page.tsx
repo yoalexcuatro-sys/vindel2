@@ -1,11 +1,29 @@
 'use client';
 
-import CategoryBar from '@/components/CategoryBar';
-import ProductGrid from '@/components/ProductGrid';
+import dynamic from 'next/dynamic';
 import SearchBar from '@/components/SearchBar';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import { Plus, TrendingUp, Shield, Zap } from 'lucide-react';
+
+// Lazy load componentes que no son críticos para First Paint
+const CategoryBar = dynamic(() => import('@/components/CategoryBar'), {
+  loading: () => <div className="h-14 bg-white border-b border-gray-100 animate-pulse" />,
+  ssr: true // Mantener SSR para SEO
+});
+
+const ProductGrid = dynamic(() => import('@/components/ProductGrid'), {
+  loading: () => (
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {[...Array(10)].map((_, i) => (
+          <div key={i} className="bg-white rounded-xl h-72 animate-pulse" />
+        ))}
+      </div>
+    </div>
+  ),
+  ssr: true
+});
 
 export default function Home() {
   return (

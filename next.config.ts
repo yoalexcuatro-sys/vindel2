@@ -2,12 +2,25 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    qualities: [60, 75],
+    // Usar optimización de Vercel para mejor rendimiento
+    // Las imágenes se sirven en WebP/AVIF automáticamente
     formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 86400,
-    deviceSizes: [640, 750, 828, 1080, 1200],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    deviceSizes: [640, 750, 828, 1080, 1200], // Tamaños optimizados
+    imageSizes: [64, 96, 128, 256, 384], // Para thumbnails
+    minimumCacheTTL: 60 * 60 * 24 * 30, // Cache 30 días
     remotePatterns: [
+      // Cloudflare R2 - tu bucket público
+      {
+        protocol: 'https',
+        hostname: '*.r2.dev',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.r2.cloudflarestorage.com',
+        pathname: '/**',
+      },
+      // Firebase Storage (para imágenes existentes)
       {
         protocol: 'https',
         hostname: 'firebasestorage.googleapis.com',
@@ -20,12 +33,12 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'images.unsplash.com',
+        hostname: '*.googleusercontent.com',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: '*.googleusercontent.com',
+        hostname: 'images.unsplash.com',
         pathname: '/**',
       },
       {
@@ -37,6 +50,7 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Cache estático para imágenes - 1 año
       {
         source: '/:all*(svg|jpg|png|webp|avif)',
         locale: false,
@@ -47,8 +61,19 @@ const nextConfig: NextConfig = {
           }
         ],
       },
+      // Cache para assets estáticos (JS, CSS) - 1 año
       {
-        source: '/(.*)', 
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          }
+        ],
+      },
+      // Cache para páginas estáticas - 1 hora con revalidación
+      {
+        source: '/:path*',
         headers: [
           {
             key: 'X-Content-Type-Options',

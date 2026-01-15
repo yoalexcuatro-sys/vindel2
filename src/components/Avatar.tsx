@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 
 interface AvatarProps {
   src?: string | null;
@@ -83,12 +82,12 @@ export default function Avatar({
     <div className={`relative flex-shrink-0 ${className}`}>
       {showImage ? (
         <div className={`${sizeClasses[size]} rounded-full overflow-hidden ring-2 ring-white shadow-md`}>
-          <Image 
+          <img 
             src={validSrc} 
             alt={name} 
-            width={80} 
-            height={80} 
             className="object-cover w-full h-full"
+            loading="lazy"
+            decoding="async"
             onError={() => setImageError(true)}
           />
         </div>

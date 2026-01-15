@@ -9,7 +9,7 @@ import {
 import { localidades } from '@/data/localidades';
 import { useAuth } from '@/lib/auth-context';
 import { getProduct, updateProduct, Product } from '@/lib/products-service';
-import { uploadProductImages } from '@/lib/storage-service';
+import { uploadImages as uploadProductImages } from '@/lib/r2-storage';
 import Image from 'next/image';
 
 const CITIES = localidades.map(loc => `${loc.ciudad}, ${loc.judet}`);

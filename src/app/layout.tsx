@@ -1,25 +1,18 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Open_Sans } from "next/font/google";
+import { Inter } from "next/font/google";
 import Navbar from "@/components/Navbar";
 import FooterWrapper from "@/components/FooterWrapper";
 import { AuthProvider } from "@/lib/auth-context";
 import { SWRProvider } from "@/lib/swr-config";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Una sola fuente optimizada - Inter es más ligera y versátil
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const openSans = Open_Sans({
-  variable: "--font-open-sans",
-  subsets: ["latin"],
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600', '700'], // Solo pesos necesarios
+  display: 'swap', // Muestra texto inmediatamente
+  preload: true,
 });
 
 export const metadata: Metadata = {
@@ -35,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${openSans.variable} antialiased flex flex-col min-h-screen bg-gray-50`}
+        className={`${inter.variable} font-sans antialiased flex flex-col min-h-screen bg-gray-50`}
       >
         <AuthProvider>
           <SWRProvider>

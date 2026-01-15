@@ -1,15 +1,20 @@
 'use client';
 
-import { Heart, Share2, Eye, Flag, MessageCircle, MapPin, ShieldCheck, ChevronLeft, ChevronRight, Tag, Gauge, Ruler, Calendar, Hash, Car, CircleDot, Package, Settings, Zap, Thermometer, Clock, CheckCircle, Info, X, Home, Bed, Bath, Building, Sofa, Waves, ParkingCircle, Trees, Star, Sparkles, AlertTriangle } from 'lucide-react';
+import { Heart, Share2, Eye, Flag, MessageCircle, MapPin, ShieldCheck, ChevronLeft, ChevronRight, Tag, Gauge, Ruler, Calendar, Hash, Car, CircleDot, Package, Settings, Zap, Thermometer, Clock, CheckCircle, Info, X, Home, Bed, Bath, Building, Sofa, Waves, ParkingCircle, Trees, Star, Sparkles, AlertTriangle, Truck, Users } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { notFound, useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, memo } from 'react';
 import { getProduct, getProducts, Product } from '@/lib/products-service';
 import { createOrGetConversation } from '@/lib/messages';
-import ProductCard from '@/components/ProductCard';
 import { extractIdFromSlug } from '@/lib/slugs';
 import Avatar from '@/components/Avatar';
+
+// Lazy load ProductCard solo cuando hay productos del vendedor
+const ProductCard = dynamic(() => import('@/components/ProductCard'), {
+  ssr: true
+});
 
 // Helper para obtener info de condición
 const getConditionInfo = (condition?: string): { label: string; color: string; icon: any } | null => {
@@ -54,6 +59,20 @@ export default function ProductPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
+  // Precargar imágenes en background para cambio instantáneo
+  useEffect(() => {
+    if (product && product.images && product.images.length > 1) {
+      // Precargar resto de imágenes después de 100ms
+      const timer = setTimeout(() => {
+        product.images.slice(1).forEach((url) => {
+          const img = new window.Image();
+          img.src = url;
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [product]);
+
   useEffect(() => {
     // Force scroll to top when entering the page to ensure full visibility
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -66,22 +85,14 @@ export default function ProductPage() {
           if (foundProduct) {
             setProduct(foundProduct);
             
-            // Debug: ver qué datos tiene el producto
-            console.log('Product data:', {
-              id: foundProduct.id,
-              condition: foundProduct.condition,
-              negotiable: foundProduct.negotiable,
-              category: foundProduct.category,
-              subcategory: foundProduct.subcategory
-            });
-            
             // Dynamic Title for SEO & UX
             document.title = `${foundProduct.title} | Vindel`;
 
-            // Obtener otros productos del mismo vendedor
-            const sellerResult = await getProducts({ sellerId: foundProduct.sellerId }, 6);
-            const otherProducts = sellerResult.products.filter(p => p.id !== foundProduct.id).slice(0, 5);
-            setSellerProducts(otherProducts);
+            // Obtener otros productos del mismo vendedor (en paralelo, no bloquea)
+            getProducts({ sellerId: foundProduct.sellerId }, 6).then(sellerResult => {
+              const otherProducts = sellerResult.products.filter(p => p.id !== foundProduct.id).slice(0, 5);
+              setSellerProducts(otherProducts);
+            });
           }
         }
       } catch (e) {
@@ -125,12 +136,19 @@ export default function ProductPage() {
   const images = product ? (product.images && product.images.length > 0 ? product.images : [product.image]) : [];
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    const newIndex = (currentImageIndex + 1) % images.length;
+    console.log('Next image:', currentImageIndex, '->', newIndex);
+    setCurrentImageIndex(newIndex);
   };
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    const newIndex = (currentImageIndex - 1 + images.length) % images.length;
+    console.log('Prev image:', currentImageIndex, '->', newIndex);
+    setCurrentImageIndex(newIndex);
   };
+
+  // Debug log
+  console.log('Current image index:', currentImageIndex, 'Total images:', images.length, 'Current URL:', images[currentImageIndex]);
 
   return (
     <div className="bg-gray-50 min-h-screen pb-12">
@@ -146,59 +164,97 @@ export default function ProductPage() {
             {/* Left Column: Images & Description */}
             <div className="lg:col-span-2 space-y-6">
                 
-                {/* Image Gallery */}
-                <div 
-                    className="bg-gray-100 rounded-xl overflow-hidden shadow-sm relative h-[400px] md:h-[500px] flex items-center justify-center group cursor-pointer"
-                    onClick={() => setLightboxOpen(true)}
-                >
-                    {/* Main Image Layer - Optimized for performance */}
-                    <Image 
-                        src={images[currentImageIndex]} 
-                        alt={product.title} 
-                        fill
-                        className="object-contain"
-                        priority
-                        sizes="(max-width: 768px) 100vw, 800px"
-                    />
-                    
-                    {/* Image counter */}
-                    <div className="absolute top-4 left-4 bg-black/60 text-white text-sm px-3 py-1 rounded-lg backdrop-blur-md font-medium z-10">
-                        {currentImageIndex + 1}/{images.length}
-                    </div>
-                    
-                    {images.length > 1 && (
-                      <>
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-gray-100 rounded-full text-gray-800 shadow-lg transition-all opacity-0 group-hover:opacity-100"
-                        >
-                            <ChevronLeft className="h-6 w-6" />
-                        </button>
-                        <button 
-                            onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-gray-100 rounded-full text-gray-800 shadow-lg transition-all opacity-0 group-hover:opacity-100"
-                        >
-                            <ChevronRight className="h-6 w-6" />
-                        </button>
-                      </>
-                    )}
+                {/* Image Gallery - Simple and Fast */}
+                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                  {/* Main Image Container */}
+                  <div 
+                      className="relative h-[400px] md:h-[500px] bg-gray-100 flex items-center justify-center group cursor-pointer"
+                      onClick={() => setLightboxOpen(true)}
+                  >
+                      {/* All images preloaded, show/hide for instant switching */}
+                      {images.map((img, idx) => (
+                        <Image 
+                          key={idx}
+                          src={img} 
+                          alt={product.title} 
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 66vw"
+                          className="object-contain"
+                          style={{ display: idx === currentImageIndex ? 'block' : 'none' }}
+                          priority={idx === 0}
+                          quality={75}
+                        />
+                      ))}
+                      
+                      {/* Image counter */}
+                      <div className="absolute top-4 left-4 bg-black/60 text-white text-sm px-3 py-1 rounded-lg backdrop-blur-md font-medium z-10">
+                          {currentImageIndex + 1}/{images.length}
+                      </div>
+                      
+                      {images.length > 1 && (
+                        <>
+                          <button 
+                              onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                              className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-gray-100 rounded-full text-gray-800 shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+                          >
+                              <ChevronLeft className="h-6 w-6" />
+                          </button>
+                          <button 
+                              onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-gray-100 rounded-full text-gray-800 shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+                          >
+                              <ChevronRight className="h-6 w-6" />
+                          </button>
+                        </>
+                      )}
 
-                    <button 
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-colors"
-                    >
-                        <Share2 className="h-6 w-6" />
-                    </button>
-                    <button 
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute top-4 right-16 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white backdrop-blur-md transition-colors"
-                    >
-                        <Heart className="h-6 w-6" />
-                    </button>
-                    <div className="absolute bottom-4 left-4 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-md flex items-center">
-                        <Eye className="h-3 w-3 mr-1" />
-                        {product.views || 0} vizualizări
+                      <div className="absolute top-4 right-4 flex gap-2 z-10">
+                        <button 
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-2 bg-white/90 hover:bg-white rounded-full text-gray-600 shadow-md transition-colors"
+                        >
+                            <Heart className="h-5 w-5" />
+                        </button>
+                        <button 
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-2 bg-white/90 hover:bg-white rounded-full text-gray-600 shadow-md transition-colors"
+                        >
+                            <Share2 className="h-5 w-5" />
+                        </button>
+                      </div>
+                      
+                      <div className="absolute bottom-4 left-4 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-md flex items-center z-10">
+                          <Eye className="h-3 w-3 mr-1" />
+                          {product.views || 0}
+                      </div>
+                  </div>
+
+                  {/* Thumbnails - click or hover to change instantly */}
+                  {images.length > 1 && (
+                    <div className="flex gap-1.5 p-2 bg-gray-50 border-t border-gray-100 overflow-x-auto">
+                      {images.map((img, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setCurrentImageIndex(idx)}
+                          onMouseEnter={() => setCurrentImageIndex(idx)}
+                          className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 ${
+                            currentImageIndex === idx 
+                              ? 'border-[#13C1AC] ring-2 ring-[#13C1AC]/20' 
+                              : 'border-transparent opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          <Image 
+                            src={img} 
+                            alt={`Miniatura ${idx + 1}`} 
+                            fill
+                            sizes="64px"
+                            className="object-cover"
+                            quality={50}
+                          />
+                        </button>
+                      ))}
                     </div>
+                  )}
                 </div>
 
                 {/* Description Card */}
@@ -235,7 +291,18 @@ export default function ProductPage() {
                       </h2>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2">
-                      {Object.entries(product.customFields).map(([key, value], idx, arr) => {
+                      {Object.entries(product.customFields)
+                        .sort(([keyA], [keyB]) => {
+                          // Ordenar: marca primero, luego model, después el resto
+                          const order = ['marca', 'marcaAnvelopa', 'marcaJanta', 'model', 'tip', 'tipMoto', 'tipAnvelopa', 'tipJanta'];
+                          const indexA = order.indexOf(keyA);
+                          const indexB = order.indexOf(keyB);
+                          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                          if (indexA !== -1) return -1;
+                          if (indexB !== -1) return 1;
+                          return 0;
+                        })
+                        .map(([key, value], idx, arr) => {
                         // Mapeo de IDs a etiquetas legibles
                         const fieldLabels: Record<string, string> = {
                           // Auto
@@ -325,6 +392,125 @@ export default function ProductPage() {
                           'placaVideo': 'Placă video',
                           'stocare': 'Stocare',
                           'tipStorare': 'Tip stocare',
+                          // PC Gaming - General
+                          'tip': 'Tip produs',
+                          'tipPC': 'Tip produs',
+                          'specificatii': 'Specificații',
+                          'componenta': 'Componentă',
+                          // PC Complet
+                          'procesorPC': 'Procesor',
+                          'placaVideoPC': 'Placă video',
+                          'ramPC': 'RAM',
+                          'stocarePC': 'Stocare',
+                          'placaBazaPC': 'Placă de bază',
+                          'sursaPC': 'Sursa',
+                          'carcasaPC': 'Carcasă',
+                          // GPU
+                          'marcaGPU': 'Marcă GPU',
+                          'modelGPU': 'Model GPU',
+                          'producatorGPU': 'Producător',
+                          'vramGPU': 'VRAM',
+                          'tipVRAM': 'Tip VRAM',
+                          // CPU
+                          'marcaCPU': 'Marcă CPU',
+                          'modelCPU': 'Model CPU',
+                          'generatie': 'Generație',
+                          'nuclee': 'Nuclee/Fire',
+                          'frecventa': 'Frecvență',
+                          'socket': 'Socket',
+                          'coolerInclus': 'Cooler inclus',
+                          // Motherboard
+                          'producatorMB': 'Producător',
+                          'modelMB': 'Model',
+                          'socketMB': 'Socket',
+                          'chipset': 'Chipset',
+                          'formatMB': 'Format',
+                          'sloturiRAM': 'Sloturi RAM',
+                          'tipRAM': 'Tip RAM suportat',
+                          // RAM
+                          'marcaRAM': 'Marcă RAM',
+                          'modelRAM': 'Model RAM',
+                          'capacitateRAM': 'Capacitate',
+                          'configuratie': 'Configurație',
+                          'tipRAMkit': 'Tip RAM',
+                          'frecventaRAM': 'Frecvență',
+                          'latenta': 'Latență (CL)',
+                          // SSD
+                          'marcaSSD': 'Marcă SSD',
+                          'modelSSD': 'Model SSD',
+                          'capacitateSSD': 'Capacitate',
+                          'tipSSD': 'Tip SSD',
+                          'vitezaCitire': 'Viteză citire',
+                          'vitezaScriere': 'Viteză scriere',
+                          // HDD
+                          'marcaHDD': 'Marcă HDD',
+                          'modelHDD': 'Model HDD',
+                          'capacitateHDD': 'Capacitate',
+                          'tipHDD': 'Tip HDD',
+                          'rpm': 'RPM',
+                          'cache': 'Cache',
+                          // PSU
+                          'marcaPSU': 'Marcă sursa',
+                          'modelPSU': 'Model sursa',
+                          'puterePSU': 'Putere',
+                          'certificare': 'Certificare',
+                          'modular': 'Tip cabluri',
+                          'conectorGPU': 'Conector GPU',
+                          // Case
+                          'marcaCarcasa': 'Marcă carcasă',
+                          'modelCarcasa': 'Model carcasă',
+                          'formatCarcasa': 'Format',
+                          'culoareCarcasa': 'Culoare',
+                          'panou': 'Panou lateral',
+                          'ventilatoareIncluse': 'Ventilatoare',
+                          // Cooler
+                          'marcaCooler': 'Marcă cooler',
+                          'modelCooler': 'Model cooler',
+                          'tipCooler': 'Tip cooler',
+                          'socketCooler': 'Socket compatibil',
+                          'tdp': 'TDP suportat',
+                          // Monitor
+                          'marcaMonitor': 'Marcă monitor',
+                          'modelMonitor': 'Model monitor',
+                          'diagonalaMonitor': 'Diagonală',
+                          'rezolutieMonitor': 'Rezoluție',
+                          'panouMonitor': 'Tip panou',
+                          'rataRefresh': 'Rată refresh',
+                          'timpRaspuns': 'Timp răspuns',
+                          'adaptive': 'Adaptive Sync',
+                          // Keyboard
+                          'marcaTastatura': 'Marcă tastatură',
+                          'modelTastatura': 'Model tastatură',
+                          'tipSwitch': 'Tip switch',
+                          'layout': 'Layout',
+                          'conectare': 'Conectare',
+                          // Mouse
+                          'marcaMouse': 'Marcă mouse',
+                          'modelMouse': 'Model mouse',
+                          'senzor': 'Senzor',
+                          'dpiMax': 'DPI max',
+                          'greutateMouse': 'Greutate',
+                          'conectareMouse': 'Conectare',
+                          // Headset
+                          'marcaCasti': 'Marcă căști',
+                          'modelCasti': 'Model căști',
+                          'tipCasti': 'Tip căști',
+                          'conectareCasti': 'Conectare',
+                          'sunetSurround': 'Sunet surround',
+                          'microfon': 'Microfon',
+                          // Chair
+                          'marcaScaun': 'Marcă scaun',
+                          'modelScaun': 'Model scaun',
+                          'materialScaun': 'Material',
+                          'greutateMax': 'Greutate max',
+                          // Gaming
+                          'platforma': 'Platformă',
+                          'format': 'Format',
+                          'titlu': 'Titlu',
+                          'tipAccesoriu': 'Tip accesoriu',
+                          'versiune': 'Versiune',
+                          'titluJoc': 'Titlu joc',
+                          'completitudine': 'Completitudine',
                           // Job
                           'tipOferta': 'Tip ofertă',
                           'pozitie': 'Poziție',
@@ -449,6 +635,24 @@ export default function ProductPage() {
                         </div>
                         <span className="text-gray-900 font-medium border border-[#13C1AC]/30 bg-[#13C1AC]/5 px-2.5 py-0.5 rounded-full text-xs">
                           {product.location}
+                        </span>
+                      </div>
+                      {/* Metoda de predare */}
+                      <div className="px-6 py-4 flex justify-between items-center hover:bg-[#13C1AC]/5 transition-colors border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className={product.deliveryType === 'shipping' || product.deliveryType === 'both' ? 'text-purple-500' : 'text-[#13C1AC]'}>
+                            {product.deliveryType === 'shipping' || product.deliveryType === 'both' ? <Truck className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+                          </div>
+                          <span className="text-gray-500">Predare</span>
+                        </div>
+                        <span className={`font-medium px-2.5 py-0.5 rounded-full text-xs ${
+                          product.deliveryType === 'shipping' || product.deliveryType === 'both' 
+                            ? 'text-purple-600 border border-purple-300 bg-purple-50' 
+                            : 'text-gray-900 border border-[#13C1AC]/30 bg-[#13C1AC]/5'
+                        }`}>
+                          {product.deliveryType === 'shipping' ? 'Livrare disponibilă' : 
+                           product.deliveryType === 'both' ? 'Personal + Livrare' : 
+                           'Predare personală'}
                         </span>
                       </div>
                     </div>
@@ -593,8 +797,12 @@ export default function ProductPage() {
             </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-              {sellerProducts.map((item) => (
-                 <div key={item.id} className="h-full">
+              {sellerProducts.map((item, index) => (
+                 <div 
+                   key={item.id} 
+                   className="h-full"
+                  
+                 >
                     <ProductCard product={item} />
                  </div>
               ))}
@@ -640,17 +848,20 @@ export default function ProductPage() {
               </button>
             )}
 
-            {/* Imagen */}
+            {/* All images with display toggle for instant switching */}
             <div className="relative max-w-5xl w-full h-full max-h-[75vh] flex items-center justify-center">
-              <Image
-                src={images[currentImageIndex]}
-                alt={product.title}
-                fill
-                className="object-contain"
-                sizes="100vw"
-                priority
-                quality={90}
-              />
+              {images.map((img, idx) => (
+                <Image
+                  key={idx}
+                  src={img}
+                  alt={product.title}
+                  fill
+                  sizes="100vw"
+                  className="object-contain"
+                  style={{ display: idx === currentImageIndex ? 'block' : 'none' }}
+                  quality={85}
+                />
+              ))}
             </div>
 
             {/* Flecha derecha */}
@@ -667,11 +878,30 @@ export default function ProductPage() {
             )}
           </div>
 
-          {/* Barra inferior con info y chat */}
+          {/* Barra inferior con thumbnails, info y chat */}
           <div 
             className="bg-zinc-900 border-t border-white/10 px-4 py-4 md:py-6 pb-8 md:pb-6"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Thumbnails row */}
+            {images.length > 1 && (
+              <div className="flex justify-center gap-2 mb-4 overflow-x-auto pb-2">
+                {images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentImageIndex(idx)}
+                    className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden flex-shrink-0 border-2 ${
+                      currentImageIndex === idx 
+                        ? 'border-[#13C1AC] ring-2 ring-[#13C1AC]/30' 
+                        : 'border-white/20 opacity-50 hover:opacity-100'
+                    }`}
+                  >
+                    <Image src={img} alt={`Miniatura ${idx + 1}`} fill sizes="56px" className="object-cover" quality={50} />
+                  </button>
+                ))}
+              </div>
+            )}
+            
             <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
               {/* Info del vendedor y anuncio */}
               <div className="flex items-center gap-3 min-w-0 flex-1">

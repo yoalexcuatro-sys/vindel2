@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, memo } from 'react';
-import { Heart, Clock, Package, Star, Sparkles, CheckCircle, AlertTriangle, MessageCircle } from 'lucide-react';
+import { Heart, Clock, Package, Star, Sparkles, CheckCircle, AlertTriangle, MessageCircle, Truck, Users } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -20,10 +20,12 @@ interface Product {
   negotiable?: boolean;
   image: string;
   images?: string[];
+  thumbImages?: string[]; // Thumbnails for fast loading
   location: string;
   category?: string; // Added for URL generation
   reserved?: boolean;
   publishedAt?: string | Timestamp;
+  deliveryType?: 'personal' | 'shipping' | 'both';
 }
 
 // Helper para obtener el label y color del estado
@@ -74,16 +76,8 @@ const isNewProduct = (publishedAt?: string | Timestamp): boolean => {
   return diffHours < 24;
 };
 
-// Cache global del tema para evitar leer localStorage en cada card
+// Cache global del tema - NO leer localStorage aquí para evitar hydration mismatch
 let cachedTheme: number | null = null;
-const getTheme = () => {
-  if (cachedTheme !== null) return cachedTheme;
-  if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('user_card_theme');
-    cachedTheme = saved ? parseInt(saved) : 1;
-  }
-  return cachedTheme ?? 1;
-};
 
 function ProductCardComponent({ product }: { product: Product }) {
   const router = useRouter();
@@ -92,7 +86,8 @@ function ProductCardComponent({ product }: { product: Product }) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovering, setIsHovering] = useState(false);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
-  const [theme, setTheme] = useState(getTheme);
+  // Siempre iniciar con tema 1 para evitar hydration mismatch
+  const [theme, setTheme] = useState(1);
   
   // Check if product is favorited
   const isFavorited = favoriteIds?.includes(product.id) || false;
@@ -124,7 +119,7 @@ function ProductCardComponent({ product }: { product: Product }) {
     }
   }, [user, product.id, favoriteIds, mutateFavorites, router]);
   
-  // Listen for theme changes from settings
+  // Cargar tema de localStorage después del mount (evita hydration mismatch)
   useEffect(() => {
     const loadTheme = () => {
       if (typeof window !== 'undefined') {
@@ -136,6 +131,9 @@ function ProductCardComponent({ product }: { product: Product }) {
       }
     };
     
+    // Cargar tema inicial
+    loadTheme();
+    
     window.addEventListener('themeChange', loadTheme);
     return () => window.removeEventListener('themeChange', loadTheme);
   }, []);
@@ -144,6 +142,12 @@ function ProductCardComponent({ product }: { product: Product }) {
   const allImages = product.images && product.images.length > 0 
     ? product.images 
     : [product.image || '/placeholder.jpg'];
+  
+  // Use thumbImages for fast loading, fallback to original
+  const allThumbs = product.thumbImages && product.thumbImages.length > 0
+    ? product.thumbImages
+    : allImages;
+  
   const imageCount = allImages.length;
 
   // Throttle mouse move - ahora 100ms para mejor rendimiento
@@ -174,38 +178,41 @@ function ProductCardComponent({ product }: { product: Product }) {
     setIsHovering(false);
   }, []);
 
-  const ImageCarousel = ({ heightClass = "h-56" }: { heightClass?: string }) => (
+  // Precargar otras imágenes cuando el mouse entra (usa thumbs si hay)
+  const preloadImagesRef = useRef(false);
+  const handlePreloadImages = useCallback(() => {
+    if (preloadImagesRef.current || allImages.length <= 1) return;
+    preloadImagesRef.current = true;
+    // Preload thumbs first (faster), then large images
+    allThumbs.slice(1).forEach(url => {
+      const img = new window.Image();
+      img.src = url;
+    });
+  }, [allThumbs, allImages.length]);
+
+  const ImageCarousel = ({ heightClass = "h-56", priority = false }: { heightClass?: string; priority?: boolean }) => (
     <div 
-      className={`relative ${heightClass} w-full overflow-hidden bg-gray-100`}
+      className={`relative ${heightClass} w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50`}
       onMouseMove={handleMouseMove}
-      onMouseEnter={handleMouseEnter}
+      onMouseEnter={() => { handleMouseEnter(); handlePreloadImages(); }}
       onMouseLeave={handleMouseLeave}
     >
-        {/* Primera imagen SIEMPRE visible como base */}
-        <Image
-          src={allImages[0]}
-          alt={product.title}
-          fill
-          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
-          className="object-cover object-center"
-          style={{ objectPosition: 'center 30%' }}
-          loading="lazy"
-          quality={60}
-        />
-        
-        {/* Otras imágenes se superponen solo cuando están seleccionadas */}
-        {currentImageIndex > 0 && allImages[currentImageIndex] && (
+        {/* Todas las imágenes renderizadas, controladas por opacity/visibility */}
+        {allThumbs.map((thumb, idx) => (
           <Image
-            src={allImages[currentImageIndex]}
+            key={idx}
+            src={thumb}
             alt={product.title}
             fill
-            sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
-            className="object-cover object-center z-[1]"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+            className={`object-cover pointer-events-none transition-opacity duration-150 ${
+              currentImageIndex === idx ? 'opacity-100 z-[2]' : 'opacity-0 z-[1]'
+            }`}
             style={{ objectPosition: 'center 30%' }}
-            loading="lazy"
-            quality={75}
+            priority={idx === 0 && priority}
+            quality={60}
           />
-        )}
+        ))}
 
         {imageCount > 1 && (
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10 pointer-events-none">
@@ -242,7 +249,7 @@ function ProductCardComponent({ product }: { product: Product }) {
   // THEME 4: Structured Pro (Watch Style)
   if (theme === 4) {
     return (
-      <Link href={createProductLink(product)} className="block h-full">
+      <Link href={createProductLink(product)} prefetch={false} className="block h-full">
         <div className="group bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300 h-full flex flex-col">
            <div className="flex p-3 gap-3 flex-1">
               <div className="w-24 h-24 relative rounded-md overflow-hidden shrink-0">
@@ -279,7 +286,7 @@ function ProductCardComponent({ product }: { product: Product }) {
   // THEME 5: Minimalist Focus
   if (theme === 5) {
      return (
-       <Link href={createProductLink(product)} className="block h-full">
+       <Link href={createProductLink(product)} prefetch={false} className="block h-full">
          <div className="group bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition-all duration-300 h-full flex flex-col">
             <div className="aspect-[5/4] rounded-xl overflow-hidden relative mb-3 ring-1 ring-black/5">
                  <ImageCarousel heightClass="h-full" />
@@ -302,20 +309,18 @@ function ProductCardComponent({ product }: { product: Product }) {
   // THEME 6: Social Connect (Vinted Style) - Sin carrusel
   if (theme === 6) {
     return (
-      <Link href={createProductLink(product)} className="block h-full"> 
+      <Link href={createProductLink(product)} prefetch={false} className="block h-full"> 
         <div className="group bg-transparent h-full flex flex-col cursor-pointer">
             <div className="relative mb-2">
                 <div className="aspect-[3/4] rounded-2xl overflow-hidden relative ring-1 ring-black/5">
                     {/* Imagen única sin carrusel */}
-                    <Image
+                    <img
                       src={allImages[0]}
                       alt={product.title}
-                      fill
-                      sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
-                      className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       style={{ objectPosition: 'center 30%' }}
                       loading="lazy"
-                      quality={60}
+                      decoding="async"
                     />
                     {/* Badge 1/N */}
                     {imageCount > 1 && (
@@ -341,12 +346,16 @@ function ProductCardComponent({ product }: { product: Product }) {
                 </h3>
                 
                 <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 16v-4" />
-                        <path d="M12 8h.01" />
-                     </svg>
-                    <span className="truncate">Predare personală</span>
+                     {product.deliveryType === 'shipping' || product.deliveryType === 'both' ? (
+                       <Truck className="w-3.5 h-3.5 text-purple-500" />
+                     ) : (
+                       <Users className="w-3.5 h-3.5" />
+                     )}
+                    <span className={`truncate ${product.deliveryType === 'shipping' || product.deliveryType === 'both' ? 'text-purple-500 font-medium' : ''}`}>
+                      {product.deliveryType === 'shipping' ? 'Livrare disponibilă' : 
+                       product.deliveryType === 'both' ? 'Livrare disponibilă' : 
+                       'Predare personală'}
+                    </span>
                 </div>
             </div>
         </div>
@@ -356,7 +365,7 @@ function ProductCardComponent({ product }: { product: Product }) {
   // THEME 7: Auto/Imobiliare (Details & Tags)
   if (theme === 7) {
     return (
-      <Link href={createProductLink(product)} className="block h-full"> 
+      <Link href={createProductLink(product)} prefetch={false} className="block h-full"> 
         <div className="group bg-white rounded-2xl border border-gray-300 overflow-hidden h-full flex flex-col hover:shadow-lg transition-all duration-300">
             <div className="relative aspect-[4/3] border-b border-gray-100">
                 <ImageCarousel heightClass="h-full" />
@@ -409,7 +418,7 @@ function ProductCardComponent({ product }: { product: Product }) {
   // THEME 8: Compact Card (User Requested)
   if (theme === 8) {
     return (
-      <Link href={createProductLink(product)} className="block h-full">
+      <Link href={createProductLink(product)} prefetch={false} className="block h-full">
         <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden relative h-full flex flex-col ring-1 ring-gray-100/50">
           <div className="relative">
              <div className="aspect-video relative overflow-hidden">
@@ -439,7 +448,7 @@ function ProductCardComponent({ product }: { product: Product }) {
   // THEME 9: Original Classic (vindel23 style)
   if (theme === 9) {
     return (
-      <Link href={createProductLink(product)} className="block h-full">
+      <Link href={createProductLink(product)} prefetch={false} className="block h-full">
         <div className="group bg-white rounded-xl overflow-hidden border-2 border-gray-100 hover:border-[#13C1AC] hover:shadow-lg transition-all duration-300 cursor-pointer relative hover:-translate-y-1 h-full flex flex-col">
           <div className="relative h-56 w-full shrink-0">
             <ImageCarousel heightClass="h-full" />
@@ -486,20 +495,18 @@ function ProductCardComponent({ product }: { product: Product }) {
   // DEFAULT (THEME 1: Elegant Teal Border Style) - Sin carrusel
   return (
     <div className="relative h-full">
-        <Link href={createProductLink(product)} className="block h-full">
+        <Link href={createProductLink(product)} prefetch={false} className="block h-full">
             <div className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 border-[#13C1AC] relative h-full flex flex-col">
                 <div className="relative">
                     <div className="aspect-[4/3] relative overflow-hidden rounded-t-xl">
                         {/* Imagen única sin carrusel */}
-                        <Image
+                        <img
                           src={allImages[0]}
                           alt={product.title}
-                          fill
-                          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
-                          className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                           style={{ objectPosition: 'center 30%' }}
                           loading="lazy"
-                          quality={60}
+                          decoding="async"
                         />
                         
                         {/* Badge Reservat */}
@@ -551,7 +558,13 @@ function ProductCardComponent({ product }: { product: Product }) {
 
 // Memoized export to prevent unnecessary re-renders
 export default memo(ProductCardComponent, (prevProps, nextProps) => {
-  return prevProps.product.id === nextProps.product.id &&
-         prevProps.product.price === nextProps.product.price &&
-         prevProps.product.title === nextProps.product.title;
+  // Comparación profunda pero eficiente
+  const prev = prevProps.product;
+  const next = nextProps.product;
+  return prev.id === next.id &&
+         prev.price === next.price &&
+         prev.title === next.title &&
+         prev.reserved === next.reserved &&
+         prev.condition === next.condition &&
+         prev.image === next.image;
 });

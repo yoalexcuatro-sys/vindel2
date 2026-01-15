@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { getUserProducts, Product, deleteProduct } from '@/lib/products-service';
-import { uploadAvatar } from '@/lib/storage-service';
+import { uploadAvatar } from '@/lib/r2-storage';
 import { useFavoriteProducts } from '@/lib/swr-hooks';
 import ProductCard from '@/components/ProductCard';
 import ProtectedRoute from '@/components/ProtectedRoute';

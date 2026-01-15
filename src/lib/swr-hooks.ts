@@ -1,4 +1,4 @@
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { 
   collection, 
@@ -15,6 +15,11 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Product } from './products-service';
+import { 
+  hasValidCachedData,
+  invalidateCache,
+  clearAllCache 
+} from './swr-config';
 
 // ============================================
 // FETCHERS
@@ -46,82 +51,36 @@ function isProductApproved(product: Product): boolean {
   return false;
 }
 
-// Fetcher para productos home (destacados/recientes) - solo aprobados
+// Fetcher para productos home - simplificado, el caché lo maneja SWRConfig
 async function fetchHomeProducts(): Promise<Product[]> {
-  // Intentar obtener de caché local primero para carga instantánea
-  if (typeof window !== 'undefined') {
-    const cached = sessionStorage.getItem('home-products-cache');
-    if (cached) {
-      try {
-        const cachedProducts = JSON.parse(cached);
-        // Revalidar en background pero devolver caché inmediatamente
-        fetchHomeProductsFromFirebase().then(products => {
-          sessionStorage.setItem('home-products-cache', JSON.stringify(products));
-        }).catch(() => {});
-        return cachedProducts;
-      } catch {
-        // Si hay error parseando, continuar con fetch normal
-      }
-    }
-  }
-  
+  // El caché ahora lo maneja el provider de SWR automáticamente
+  // Solo hacemos el fetch real a Firebase
   const products = await fetchHomeProductsFromFirebase();
-  
-  // Guardar en caché local
-  if (typeof window !== 'undefined') {
-    try {
-      sessionStorage.setItem('home-products-cache', JSON.stringify(products));
-    } catch {
-      // Ignorar errores de quota
-    }
-  }
-  
   return products;
 }
 
-// Fetch desde Firebase sin caché
+// Fetch desde Firebase
 async function fetchHomeProductsFromFirebase(): Promise<Product[]> {
   const q = query(
     collection(db, 'products'),
     where('sold', '==', false),
     orderBy('publishedAt', 'desc'),
-    limit(40)
+    limit(100)
   );
   const snapshot = await getDocs(q);
   const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
   
   // Filtrar solo aprobados o auto-aprobados
-  return products.filter(isProductApproved).slice(0, 20);
+  return products.filter(isProductApproved).slice(0, 50);
 }
 
-// Fetcher para un producto individual con caché local
+// Fetcher para un producto individual - el caché lo maneja SWR
 async function fetchProduct(id: string): Promise<Product | null> {
-  // Intentar obtener de caché local primero
-  if (typeof window !== 'undefined') {
-    const cached = sessionStorage.getItem(`product-cache-${id}`);
-    if (cached) {
-      // Revalidar en background pero devolver caché inmediatamente
-      getDoc(doc(db, 'products', id)).then(snapshot => {
-        if (snapshot.exists()) {
-          sessionStorage.setItem(`product-cache-${id}`, JSON.stringify({ id: snapshot.id, ...snapshot.data() }));
-        }
-      });
-      return JSON.parse(cached);
-    }
-  }
-  
   const docRef = doc(db, 'products', id);
   const snapshot = await getDoc(docRef);
   if (!snapshot.exists()) return null;
   
-  const product = { id: snapshot.id, ...snapshot.data() } as Product;
-  
-  // Guardar en caché local
-  if (typeof window !== 'undefined') {
-    sessionStorage.setItem(`product-cache-${id}`, JSON.stringify(product));
-  }
-  
-  return product;
+  return { id: snapshot.id, ...snapshot.data() } as Product;
 }
 
 // Fetcher para productos de un usuario
@@ -212,30 +171,21 @@ async function fetchSearchProducts(params: {
  * Caché: sessionStorage + SWR para carga instantánea
  */
 export function useHomeProducts() {
-  // Intentar obtener datos iniciales de sessionStorage
-  const getFallbackData = () => {
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = sessionStorage.getItem('home-products-cache');
-        if (cached) return JSON.parse(cached);
-      } catch {}
-    }
-    return undefined;
-  };
-
+  // El cache provider de SWRConfig maneja la persistencia automáticamente
+  // Los datos se restauran del sessionStorage al iniciar
   return useSWR('home-products', fetchHomeProducts, {
     revalidateOnFocus: false,
-    revalidateOnMount: true,
-    dedupingInterval: 60000,        // 1 minuto entre peticiones iguales
-    refreshInterval: 300000,        // Refresca cada 5 min en background
-    keepPreviousData: true,         // Mantiene datos mientras recarga
-    fallbackData: getFallbackData(),
+    revalidateOnMount: true,        // Siempre verificar datos frescos
+    dedupingInterval: 30000,        // 30s entre peticiones duplicadas
+    refreshInterval: 120000,        // Refresca cada 2 min en background
+    keepPreviousData: true,         // Mantiene datos mientras recarga (evita flash)
+    suspense: false,
   });
 }
 
 /**
  * Hook para un producto individual
- * Caché agresiva para carga instantánea
+ * El cache provider persiste automáticamente
  */
 export function useProduct(id: string | null) {
   return useSWR(
@@ -245,7 +195,7 @@ export function useProduct(id: string | null) {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
       dedupingInterval: 120000,     // 2 min entre peticiones iguales
-      revalidateIfStale: false,     // No revalidar datos stale
+      revalidateIfStale: true,      // Revalidar en background si está stale
       keepPreviousData: true,       // Mantener datos previos mientras carga
     }
   );
@@ -302,33 +252,43 @@ export function useSearchProducts(params: {
   );
 }
 
+// ============================================
+// UTILIDADES DE CACHÉ
+// ============================================
+
 /**
- * Prefetch de producto (llamar en hover para carga instantánea)
+ * Invalidar caché de productos del home
+ * Usar después de crear/editar/eliminar un producto
  */
-export function prefetchProduct(id: string) {
-  // Precarga el producto en caché SWR
-  const key = `product-${id}`;
-  fetchProduct(id).then(data => {
-    // SWR automáticamente usa este dato cuando se llame useProduct
-    if (typeof window !== 'undefined') {
-      (window as any).__SWR_CACHE__?.set(key, data);
-    }
-  });
+export async function invalidateProductsCache() {
+  // Invalidar en sessionStorage
+  invalidateCache('home-products');
+  
+  // Forzar revalidación en SWR
+  await mutate('home-products');
 }
 
-// ============================================
-// UTILIDADES
-// ============================================
+/**
+ * Invalidar caché de un producto específico
+ */
+export async function invalidateProductCache(productId: string) {
+  invalidateCache(`product-${productId}`);
+  await mutate(`product-${productId}`);
+}
 
 /**
- * Invalidar caché (útil después de crear/editar producto)
+ * Invalidar todos los caches (logout, cambios mayores)
  */
-export function invalidateProductsCache() {
-  if (typeof window !== 'undefined') {
-    // Forzar revalidación de productos home
-    const event = new CustomEvent('swr-invalidate', { detail: 'home-products' });
-    window.dispatchEvent(event);
-  }
+export function clearCache() {
+  clearAllCache();
+}
+
+/**
+ * Prefetch de un producto (llamar en hover para carga instantánea)
+ */
+export async function prefetchProduct(id: string) {
+  // Precargar en el caché de SWR
+  await mutate(`product-${id}`, () => fetchProduct(id), { revalidate: false });
 }
 
 // ============================================

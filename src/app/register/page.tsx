@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { User, Building2, Mail, Lock, Eye, EyeOff, MapPin, Briefcase, Phone, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { localidades } from '@/data/localidades';
 
 type AccountType = 'personal' | 'business';
 
@@ -15,9 +16,22 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showLocationSuggestions, setShowLocationSuggestions] = useState(false);
+  const locationRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', password: '', businessName: '', cui: '', location: '',
   });
+
+  // Close location suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (locationRef.current && !locationRef.current.contains(event.target as Node)) {
+        setShowLocationSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -200,12 +214,55 @@ export default function RegisterPage() {
 
             {/* Row 3 - Location + Password */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
+              <div ref={locationRef} className="relative">
                 <label className="block text-xs font-medium text-gray-600 mb-1">Localitate</label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input name="location" type="text" required className="w-full pl-10 pr-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#13C1AC]/20 focus:border-[#13C1AC] outline-none" placeholder="București, Cluj..." value={formData.location} onChange={handleChange} />
+                  <input 
+                    name="location" 
+                    type="text" 
+                    required 
+                    autoComplete="off"
+                    className="w-full pl-10 pr-3 py-2.5 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#13C1AC]/20 focus:border-[#13C1AC] outline-none" 
+                    placeholder="București, Cluj..." 
+                    value={formData.location} 
+                    onChange={handleChange}
+                    onFocus={() => setShowLocationSuggestions(true)}
+                  />
                 </div>
+                {/* Location suggestions dropdown */}
+                {showLocationSuggestions && formData.location.length >= 2 && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {localidades
+                      .filter(loc => 
+                        loc.ciudad.toLowerCase().includes(formData.location.toLowerCase()) ||
+                        loc.judet.toLowerCase().includes(formData.location.toLowerCase())
+                      )
+                      .slice(0, 8)
+                      .map(loc => (
+                        <button
+                          key={`${loc.ciudad}-${loc.judet}`}
+                          type="button"
+                          onClick={() => {
+                            setFormData({ ...formData, location: `${loc.ciudad}, ${loc.judet}` });
+                            setShowLocationSuggestions(false);
+                          }}
+                          className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center gap-2 text-sm"
+                        >
+                          <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                          <span className="text-gray-700">{loc.ciudad}</span>
+                          <span className="text-xs text-gray-400">{loc.judet}</span>
+                        </button>
+                      ))
+                    }
+                    {localidades.filter(loc => 
+                      loc.ciudad.toLowerCase().includes(formData.location.toLowerCase()) ||
+                      loc.judet.toLowerCase().includes(formData.location.toLowerCase())
+                    ).length === 0 && (
+                      <div className="px-3 py-2 text-sm text-gray-500">Nu s-au găsit rezultate</div>
+                    )}
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Parolă</label>

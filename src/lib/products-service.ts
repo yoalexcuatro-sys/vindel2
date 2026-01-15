@@ -14,10 +14,12 @@ import {
   startAfter,
   serverTimestamp,
   deleteField,
+  increment,
   DocumentData,
   QueryDocumentSnapshot,
   Timestamp,
 } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { db } from './firebase';
 
 export interface Product {
@@ -28,12 +30,15 @@ export interface Product {
   negotiable?: boolean;
   image: string;
   images: string[];
+  // Thumbnails (400px) for fast loading in lists
+  thumbImages?: string[];
   location: string;
   description: string;
   condition: string;
   category: string;
   subcategory?: string;
   customFields?: Record<string, string>;
+  deliveryType?: 'personal' | 'shipping' | 'both';
   views: number;
   reserved: boolean;
   sold: boolean;
@@ -197,17 +202,19 @@ export async function incrementProductViews(productId: string, visitorId?: strin
       localStorage.setItem(viewedKey, JSON.stringify({ [productId]: now }));
     }
     
-    // Incrementar contador en Firestore
-    const docRef = doc(db, PRODUCTS_COLLECTION, productId);
-    const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-      const currentViews = docSnap.data().views || 0;
-      await updateDoc(docRef, { views: currentViews + 1 });
-      return true;
+    // Incrementar contador en Firestore solo si hay usuario autenticado
+    const auth = getAuth();
+    if (auth.currentUser) {
+      const docRef = doc(db, PRODUCTS_COLLECTION, productId);
+      await updateDoc(docRef, { views: increment(1) });
     }
+    return true;
   } catch (error) {
-    console.error('Error incrementing views:', error);
+    // Silently fail - view increment is not critical
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('View increment skipped:', error instanceof Error ? error.message : 'unknown error');
+    }
   }
   
   return false;

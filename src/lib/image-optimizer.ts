@@ -20,7 +20,7 @@ export async function optimizeImage(
   const {
     maxWidth = 1200,
     maxHeight = 900,
-    quality = 0.7
+    quality = 0.55
   } = options;
 
   return new Promise((resolve, reject) => {

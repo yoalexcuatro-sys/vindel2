@@ -178,16 +178,22 @@ function SearchResults() {
             from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
           }
-          @keyframes fadeInScale {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
+          @keyframes cardFadeIn {
+            from { 
+              opacity: 0;
+              transform: translateY(15px) scale(0.95);
+            }
+            to { 
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
           }
           @keyframes listFadeIn {
             from { opacity: 0; transform: translateX(-10px); }
             to { opacity: 1; transform: translateX(0); }
           }
           .animate-fadeInUp { animation: fadeInUp 0.4s ease-out forwards; }
-          .animate-fadeInScale { animation: fadeInScale 0.35s ease-out forwards; }
+          .animate-card { animation: cardFadeIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
           .animate-listFadeIn { animation: listFadeIn 0.4s ease-out forwards; }
           /* Hide number input spinners */
           input[type="number"]::-webkit-outer-spin-button,
@@ -380,11 +386,10 @@ function SearchResults() {
             ) : (
               // Grid View
               <div className="grid gap-2 sm:gap-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-                {sortedProducts.map((product, index) => (
+                {sortedProducts.map((product) => (
                     <div 
                       key={product.id} 
-                      className="animate-fadeInScale"
-                      style={{ animationDelay: `${Math.min(index * 40, 320)}ms`, opacity: 0 }}
+                      className="animate-card"
                     >
                       <ProductCard product={product} />
                     </div>

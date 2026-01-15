@@ -1,8 +1,7 @@
 'use client';
 
-import { Heart, Share2, Eye, Flag, MessageCircle, MapPin, ShieldCheck, ChevronLeft, ChevronRight, Tag, Gauge, Ruler, Calendar, Hash, Car, CircleDot, Package, Settings, Zap, Thermometer, Clock, CheckCircle, Info, X, Home, Bed, Bath, Building, Sofa, Waves, ParkingCircle, Trees, Star, Sparkles, AlertTriangle } from 'lucide-react';
+import { Heart, Share2, Eye, Flag, MessageCircle, MapPin, ShieldCheck, ChevronLeft, ChevronRight, Tag, Gauge, Ruler, Calendar, Hash, Car, CircleDot, Package, Settings, Zap, Thermometer, Clock, CheckCircle, Info, X, Home, Bed, Bath, Building, Sofa, Waves, ParkingCircle, Trees, Star, Sparkles, AlertTriangle, Truck, Users } from 'lucide-react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getProducts, Product, incrementProductViews } from '@/lib/products-service';
@@ -98,6 +97,23 @@ export default function ProductPage() {
   // Calcular imágenes (necesario antes del useEffect)
   const images = product ? (product.images && product.images.length > 0 ? product.images : [product.image]) : [];
 
+  // Precargar todas las imágenes en segundo plano
+  useEffect(() => {
+    if (images.length <= 1) return;
+    
+    // Preload remaining images after first one
+    const preloadImages = () => {
+      images.slice(1).forEach((src) => {
+        const img = new Image();
+        img.src = src;
+      });
+    };
+    
+    // Delay slightly to not block first paint
+    const timer = setTimeout(preloadImages, 100);
+    return () => clearTimeout(timer);
+  }, [images]);
+
   useEffect(() => {
     // Force scroll to top when entering the page to ensure full visibility
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -111,15 +127,6 @@ export default function ProductPage() {
         hasTrackedView.current = true;
         incrementProductViews(product.id, user?.uid).catch(console.error);
       }
-      
-      // Debug: ver datos del producto
-      console.log('ANUNTURI - Product data:', {
-        id: product.id,
-        condition: product.condition,
-        negotiable: product.negotiable,
-        category: product.category,
-        subcategory: product.subcategory
-      });
     }
   }, [product, user?.uid]);
 
@@ -232,32 +239,44 @@ export default function ProductPage() {
             {/* Left Column: Images & Description */}
             <div className="lg:col-span-2 space-y-4 sm:space-y-6">
                 
-                {/* Image Gallery - Optimized */}
+                {/* Image Gallery - Ultra Fast */}
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden animate-fadeInUp animate-delay-100">
                   {/* Main Image */}
                   <div className="relative aspect-[4/3] sm:aspect-[16/10] bg-gray-100">
-                    <Image 
-                      src={images[currentImageIndex]} 
-                      alt={product.title} 
-                      fill
-                      className="object-contain"
-                      priority
-                      sizes="(max-width: 768px) 100vw, 800px"
+                    {/* First image always visible and eager loaded */}
+                    <img 
+                      src={images[0]} 
+                      alt={product.title}
+                      className="absolute inset-0 w-full h-full object-contain"
+                      style={{ display: currentImageIndex === 0 ? 'block' : 'none' }}
+                      loading="eager"
+                      decoding="sync"
+                      fetchPriority="high"
                     />
+                    {/* Other images loaded in background */}
+                    {images.slice(1).map((src, idx) => (
+                      <img 
+                        key={idx + 1}
+                        src={src} 
+                        alt={product.title}
+                        className="absolute inset-0 w-full h-full object-contain"
+                        style={{ display: idx + 1 === currentImageIndex ? 'block' : 'none' }}
+                        loading="eager"
+                        decoding="async"
+                      />
+                    ))}
                     
                     {images.length > 1 && (
                       <>
                         <button
-                          onClick={() => setCurrentImageIndex(Math.max(0, currentImageIndex - 1))}
-                          disabled={currentImageIndex === 0}
-                          className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 bg-white/90 rounded-full shadow-md hover:bg-white transition-all disabled:opacity-30"
+                          onClick={() => setCurrentImageIndex(currentImageIndex === 0 ? images.length - 1 : currentImageIndex - 1)}
+                          className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 bg-white/90 rounded-full shadow-md hover:bg-white transition-all"
                         >
                           <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                         <button
-                          onClick={() => setCurrentImageIndex(Math.min(images.length - 1, currentImageIndex + 1))}
-                          disabled={currentImageIndex === images.length - 1}
-                          className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 bg-white/90 rounded-full shadow-md hover:bg-white transition-all disabled:opacity-30"
+                          onClick={() => setCurrentImageIndex(currentImageIndex === images.length - 1 ? 0 : currentImageIndex + 1)}
+                          className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 bg-white/90 rounded-full shadow-md hover:bg-white transition-all"
                         >
                           <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
@@ -289,7 +308,7 @@ export default function ProductPage() {
                     </div>
                   </div>
 
-                  {/* Thumbnails - hover to change */}
+                  {/* Thumbnails - click or hover to change */}
                   {images.length > 1 && (
                     <div className="flex gap-1 sm:gap-1.5 p-1.5 sm:p-2 bg-gray-50 border-t border-gray-100 overflow-x-auto scrollbar-none">
                       {images.map((img, idx) => (
@@ -297,13 +316,13 @@ export default function ProductPage() {
                           key={idx}
                           onClick={() => setCurrentImageIndex(idx)}
                           onMouseEnter={() => setCurrentImageIndex(idx)}
-                          className={`relative w-11 h-11 sm:w-14 sm:h-14 rounded-md overflow-hidden flex-shrink-0 transition-all border-2 ${
+                          className={`relative w-11 h-11 sm:w-14 sm:h-14 rounded-md overflow-hidden flex-shrink-0 border-2 ${
                             currentImageIndex === idx 
                               ? 'border-[#13C1AC]' 
                               : 'border-transparent opacity-60 hover:opacity-100'
                           }`}
                         >
-                          <Image src={img} alt={`Imagine ${idx + 1}`} fill sizes="56px" className="object-cover" />
+                          <img src={img} alt={`Imagine ${idx + 1}`} className="w-full h-full object-cover" />
                         </button>
                       ))}
                     </div>
@@ -360,6 +379,16 @@ export default function ProductPage() {
                     <div className="relative grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
                       {Object.entries(product.customFields)
                         .filter(([key]) => key !== 'stareTehnica' && key !== 'stare')
+                        .sort(([keyA], [keyB]) => {
+                          // Ordenar: marca primero, luego model, después el resto
+                          const order = ['marca', 'marcaAnvelopa', 'marcaJanta', 'model', 'tip', 'tipMoto', 'tipAnvelopa', 'tipJanta'];
+                          const indexA = order.indexOf(keyA);
+                          const indexB = order.indexOf(keyB);
+                          if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+                          if (indexA !== -1) return -1;
+                          if (indexB !== -1) return 1;
+                          return 0;
+                        })
                         .map(([key, value], idx, arr) => {
                         const fieldLabels: Record<string, string> = {
                           // Auto
@@ -515,6 +544,15 @@ export default function ProductPage() {
                       <div className="px-4 py-3.5 border-r border-gray-100/50">
                         <div className="text-gray-400 text-xs mb-0.5">Locație</div>
                         <div className="text-gray-800 font-semibold text-sm">{product.location}</div>
+                      </div>
+                      <div className="px-4 py-3.5">
+                        <div className="text-gray-400 text-xs mb-0.5">Predare</div>
+                        <div className={`font-semibold text-sm flex items-center gap-1.5 ${product.deliveryType === 'shipping' || product.deliveryType === 'both' ? 'text-purple-600' : 'text-gray-800'}`}>
+                          {product.deliveryType === 'shipping' || product.deliveryType === 'both' ? <Truck className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
+                          {product.deliveryType === 'shipping' ? 'Livrare' : 
+                           product.deliveryType === 'both' ? 'Personal + Livrare' : 
+                           'Predare personală'}
+                        </div>
                       </div>
                     </div>
                   </div>

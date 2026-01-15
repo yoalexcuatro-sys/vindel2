@@ -4,19 +4,66 @@ import {
   getDownloadURL,
   deleteObject,
   listAll,
+  updateMetadata,
 } from 'firebase/storage';
 import { storage } from './firebase';
 import { optimizeImage } from './image-optimizer';
+
+// Cache control for images (1 year, immutable)
+const CACHE_CONTROL = 'public,max-age=31536000,immutable';
 
 // Generate a unique filename
 function generateFileName(originalName: string): string {
   const timestamp = Date.now();
   const randomString = Math.random().toString(36).substring(2, 8);
-  // Ensure extension is webp since we optimize everything to webp
   return `${timestamp}-${randomString}.webp`;
 }
 
-// Upload a single image
+// Image sizes configuration - optimized for fast loading
+const IMAGE_SIZES = {
+  thumb: { maxWidth: 300, maxHeight: 300, quality: 0.5 },
+  medium: { maxWidth: 600, maxHeight: 450, quality: 0.55 },
+  large: { maxWidth: 1200, maxHeight: 900, quality: 0.6 },
+};
+
+// Upload a single image with multiple sizes
+export async function uploadImageWithSizes(
+  file: File,
+  path: string = 'products'
+): Promise<{ thumb: string; large: string }> {
+  const baseName = generateFileName(file.name);
+  
+  // Generate optimized versions in parallel
+  const [thumbBlob, largeBlob] = await Promise.all([
+    optimizeImage(file, IMAGE_SIZES.thumb),
+    optimizeImage(file, IMAGE_SIZES.large),
+  ]);
+
+  // Upload both versions in parallel
+  const thumbRef = ref(storage, `${path}/thumb/${baseName}`);
+  const largeRef = ref(storage, `${path}/large/${baseName}`);
+
+  const [thumbResult, largeResult] = await Promise.all([
+    uploadBytes(thumbRef, thumbBlob, { 
+      contentType: 'image/webp',
+      cacheControl: CACHE_CONTROL,
+    }),
+    uploadBytes(largeRef, largeBlob, { 
+      contentType: 'image/webp',
+      cacheControl: CACHE_CONTROL,
+    }),
+  ]);
+
+  // Get download URLs in parallel
+  const [thumbUrl, largeUrl] = await Promise.all([
+    getDownloadURL(thumbResult.ref),
+    getDownloadURL(largeResult.ref),
+  ]);
+
+  return { thumb: thumbUrl, large: largeUrl };
+}
+
+// Upload a single image (backward compatible - returns large URL)
 export async function uploadImage(
   file: File,
   path: string = 'products'
@@ -25,11 +72,7 @@ export async function uploadImage(
   let fileToUpload: Blob = file;
   if (file.type.startsWith('image/')) {
     try {
-      fileToUpload = await optimizeImage(file, {
-        maxWidth: 1920,
-        maxHeight: 1080,
-        quality: 0.85
-      });
+      fileToUpload = await optimizeImage(file, IMAGE_SIZES.large);
     } catch (e) {
       console.warn('Image optimization failed, uploading original', e);
     }
@@ -38,9 +81,12 @@ export async function uploadImage(
   const fileName = generateFileName(file.name);
   const storageRef = ref(storage, `${path}/${fileName}`);
   
-  await uploadBytes(storageRef, fileToUpload);
-  const downloadURL = await getDownloadURL(storageRef);
+  const result = await uploadBytes(storageRef, fileToUpload, {
+    contentType: 'image/webp',
+    cacheControl: CACHE_CONTROL,
+  });
   
+  const downloadURL = await getDownloadURL(result.ref);
   return downloadURL;
 }
 
@@ -174,4 +220,19 @@ export async function uploadProductImages(
   );
   
   return uploadImages(compressedFiles, `products/${productId}`);
+}
+
+// Upload product images with thumbnails - returns both large and thumb URLs
+export async function uploadProductImagesWithThumbs(
+  files: File[],
+  productId: string
+): Promise<{ images: string[]; thumbImages: string[] }> {
+  const results = await Promise.all(
+    files.map((file) => uploadImageWithSizes(file, `products/${productId}`))
+  );
+  
+  return {
+    images: results.map(r => r.large),
+    thumbImages: results.map(r => r.thumb),
+  };
 }
