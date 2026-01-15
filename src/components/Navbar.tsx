@@ -96,8 +96,8 @@ export default function Navbar() {
           
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
-            <Link href="/" className="text-2xl font-bold text-[#13C1AC]">
-              Vindel.ro
+            <Link href="/" className="text-2xl font-medium text-[#13C1AC] tracking-tight">
+              Vindel<span className="font-light opacity-70">.ro</span>
             </Link>
           </div>
 
