@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { collection, getDocs, updateDoc, doc, writeBatch, getDoc } from 'firebase/firestore';
+import { collection, getDocs, updateDoc, doc, writeBatch, getDoc, Timestamp, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { Loader2, CheckCircle2, AlertCircle, Database, ArrowLeft, Search, Eye } from 'lucide-react';
@@ -191,6 +191,81 @@ export default function MigratePage() {
     }
   };
 
+  const migratePublishedAt = async () => {
+    if (!isAdmin) return;
+    
+    setLoading(true);
+    setResult(null);
+    
+    try {
+      const productsRef = collection(db, 'products');
+      const snapshot = await getDocs(productsRef);
+      
+      let updated = 0;
+      let skipped = 0;
+      
+      const batches: any[] = [];
+      let currentBatch = writeBatch(db);
+      let operationCount = 0;
+      
+      snapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        
+        // Skip if already has publishedAt
+        if (data.publishedAt) {
+          skipped++;
+          return;
+        }
+        
+        const docRef = doc(db, 'products', docSnap.id);
+        
+        // Use createdAt if exists, otherwise use a date 7 days ago
+        let publishedAt: Timestamp;
+        if (data.createdAt) {
+          publishedAt = data.createdAt;
+        } else {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          publishedAt = Timestamp.fromDate(sevenDaysAgo);
+        }
+        
+        currentBatch.update(docRef, { publishedAt });
+        operationCount++;
+        updated++;
+        
+        if (operationCount === 500) {
+          batches.push(currentBatch);
+          currentBatch = writeBatch(db);
+          operationCount = 0;
+        }
+      });
+      
+      if (operationCount > 0) {
+        batches.push(currentBatch);
+      }
+      
+      for (const batch of batches) {
+        await batch.commit();
+      }
+      
+      setResult({
+        success: updated,
+        errors: 0,
+        message: `Migración completada: ${updated} productos actualizados cu publishedAt (${skipped} omise)`
+      });
+      
+    } catch (error: any) {
+      console.error('Migration error:', error);
+      setResult({
+        success: 0,
+        errors: 1,
+        message: `Error: ${error.message}`
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -292,6 +367,22 @@ export default function MigratePage() {
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Database className="w-5 h-5" />}
                 Rulează migrarea
+              </button>
+            </div>
+
+            {/* Migrate PublishedAt */}
+            <div className="border border-orange-200 rounded-xl p-5 bg-orange-50">
+              <h3 className="font-semibold text-gray-800 mb-2">3. Adaugă câmp "publishedAt" ⏱️</h3>
+              <p className="text-gray-500 text-sm mb-4">
+                Setează data publicării pentru produse. Folosește createdAt dacă există, altfel 7 zile în urmă.
+              </p>
+              <button
+                onClick={migratePublishedAt}
+                disabled={loading}
+                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Database className="w-5 h-5" />}
+                Rulează migrarea publishedAt
               </button>
             </div>
           </div>

@@ -127,16 +127,16 @@ export default function AdminProducts() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
           <table className="w-full text-left border-collapse">
-            <thead>
+            <thead className="sticky top-0 z-10">
               <tr className="bg-gray-50 border-b border-gray-100 text-xs uppercase text-gray-500 font-semibold tracking-wider">
-                <th className="px-6 py-4">Produs</th>
-                <th className="px-6 py-4">Categorie</th>
-                <th className="px-6 py-4">Preț</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Data</th>
-                <th className="px-6 py-4 text-right">Acțiuni</th>
+                <th className="px-6 py-4 bg-gray-50">Produs</th>
+                <th className="px-6 py-4 bg-gray-50">Categorie</th>
+                <th className="px-6 py-4 bg-gray-50">Preț</th>
+                <th className="px-6 py-4 bg-gray-50">Status</th>
+                <th className="px-6 py-4 bg-gray-50">Data</th>
+                <th className="px-6 py-4 bg-gray-50 text-right">Acțiuni</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

@@ -353,43 +353,43 @@ async function fetchAdminStats(): Promise<AdminStats> {
   // Actividad reciente
   const recentActivity: AdminStats['recentActivity'] = [];
   
-  // Últimos productos
+  // Últimos productos (anuncios nuevos)
   const recentProducts = productsSnap.docs
     .filter(doc => doc.data().createdAt)
     .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0))
-    .slice(0, 3);
+    .slice(0, 5);
   
   recentProducts.forEach(doc => {
     const data = doc.data();
     recentActivity.push({
-      id: doc.id,
+      id: `product-${doc.id}`,
       type: 'product',
-      title: data.title || 'Produs nou',
+      title: data.title || 'Anunț nou',
       time: data.createdAt?.seconds 
         ? new Date(data.createdAt.seconds * 1000).toISOString()
         : new Date().toISOString()
     });
   });
   
-  // Últimos usuarios
+  // Últimos usuarios registrados
   const recentUsers = usersSnap.docs
     .filter(doc => doc.data().createdAt)
     .sort((a, b) => (b.data().createdAt?.seconds || 0) - (a.data().createdAt?.seconds || 0))
-    .slice(0, 2);
+    .slice(0, 5);
   
   recentUsers.forEach(doc => {
     const data = doc.data();
     recentActivity.push({
-      id: doc.id,
+      id: `user-${doc.id}`,
       type: 'user',
-      title: data.displayName || data.email || 'Utilizator nou',
+      title: data.displayName || data.email?.split('@')[0] || 'Utilizator nou',
       time: data.createdAt?.seconds 
         ? new Date(data.createdAt.seconds * 1000).toISOString()
         : new Date().toISOString()
     });
   });
   
-  // Ordenar por tiempo
+  // Ordenar por tiempo (más reciente primero)
   recentActivity.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
   
   return {
@@ -476,6 +476,7 @@ export function invalidateAdminCache() {
 // ============================================
 
 import { getUserFavoriteIds } from './favorites-service';
+import { getNotifications, Notification } from './notifications-service';
 
 /**
  * Hook para obtener IDs de favoritos del usuario
@@ -494,11 +495,77 @@ export function useUserFavorites(userId: string | null) {
   );
 }
 
+// ============================================
+// PROFILE HOOKS (con caché persistente)
+// ============================================
+
+/**
+ * Hook para productos del usuario actual (perfil)
+ * Caché agresivo para navegación instantánea entre tabs
+ */
+export function useMyProducts(userId: string | null) {
+  return useSWR<Product[]>(
+    userId ? `my-products-${userId}` : null,
+    async () => {
+      if (!userId) return [];
+      const q = query(
+        collection(db, 'products'),
+        where('sellerId', '==', userId),
+        orderBy('publishedAt', 'desc')
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+    },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 120000,     // 2 min deduplicación
+      revalidateIfStale: false,     // Solo revalidar manualmente
+      keepPreviousData: true,
+    }
+  );
+}
+
+/**
+ * Hook para notificaciones del usuario
+ * Con caché agresivo para evitar recargas y destellos
+ */
+export function useNotifications(userId: string | null, maxCount: number = 30) {
+  return useSWR<Notification[]>(
+    userId ? `notifications-${userId}` : null,
+    () => getNotifications(userId!, maxCount),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false,     // No revalidar datos stale automáticamente
+      dedupingInterval: 120000,     // 2 min entre peticiones iguales
+      refreshInterval: 0,           // No auto-refresh
+      keepPreviousData: true,       // Mantener datos anteriores
+    }
+  );
+}
+
+/**
+ * Invalidar caché de productos del usuario
+ */
+export async function invalidateMyProductsCache(userId: string) {
+  invalidateCache(`my-products-${userId}`);
+  await mutate(`my-products-${userId}`);
+}
+
+/**
+ * Invalidar caché de notificaciones
+ */
+export async function invalidateNotificationsCache(userId: string) {
+  invalidateCache(`notifications-${userId}`);
+  await mutate(`notifications-${userId}`);
+}
+
 /**
  * Hook para obtener productos favoritos completos
  */
 export function useFavoriteProducts(userId: string | null) {
-  const { data: favoriteIds, mutate: mutateFavorites } = useUserFavorites(userId);
+  const { data: favoriteIds } = useUserFavorites(userId);
   
   return useSWR<Product[]>(
     favoriteIds && favoriteIds.length > 0 ? `favorite-products-${userId}` : null,
@@ -519,7 +586,18 @@ export function useFavoriteProducts(userId: string | null) {
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
-      dedupingInterval: 60000,
+      dedupingInterval: 120000,     // 2 min - más largo para favoritos
+      keepPreviousData: true,
     }
   );
+}
+
+/**
+ * Invalidar caché de favoritos
+ */
+export async function invalidateFavoritesCache(userId: string) {
+  invalidateCache(`favorites-${userId}`);
+  invalidateCache(`favorite-products-${userId}`);
+  await mutate(`favorites-${userId}`);
+  await mutate(`favorite-products-${userId}`);
 }

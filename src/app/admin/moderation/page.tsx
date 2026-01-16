@@ -23,13 +23,13 @@ import {
   getDocs, 
   doc, 
   updateDoc, 
-  orderBy, 
   limit,
   deleteDoc,
   Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Product, approveProduct, rejectProduct } from '@/lib/products-service';
+import { createNotification } from '@/lib/notifications-service';
 
 // Types
 interface Report {
@@ -39,9 +39,12 @@ interface Report {
   reason: string;
   description?: string;
   reporterId?: string;
+  reporterEmail?: string;
   status: 'pending' | 'resolved' | 'dismissed';
   createdAt: any;
   targetData?: any; // To store fetched product/user data
+  productTitle?: string;
+  productImage?: string;
 }
 
 // Helper: calcular tiempo restante para auto-aprobación
@@ -63,8 +66,37 @@ export default function ModerationPage() {
   const [activeTab, setActiveTab] = useState<'approvals' | 'reports'>('approvals');
   const [pendingProducts, setPendingProducts] = useState<Product[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [reportsCount, setReportsCount] = useState(0); // Contador de reportes para badge
   const [loading, setLoading] = useState(true);
   const [, forceUpdate] = useState(0); // Para actualizar el contador de tiempo
+  
+  // Estados para modales de confirmación
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    type: 'approve' | 'reject' | 'delete';
+    productId: string;
+    productTitle: string;
+    reportId?: string;
+  }>({ show: false, type: 'approve', productId: '', productTitle: '' });
+  const [rejectReason, setRejectReason] = useState('');
+  const [deleteReason, setDeleteReason] = useState('');
+
+  // Cargar conteo de reportes al inicio
+  useEffect(() => {
+    const fetchReportsCount = async () => {
+      try {
+        const q = query(
+          collection(db, 'reports'), 
+          where('status', '==', 'pending')
+        );
+        const snap = await getDocs(q);
+        setReportsCount(snap.size);
+      } catch (e) {
+        console.error("Error fetching reports count", e);
+      }
+    };
+    fetchReportsCount();
+  }, []);
 
   // Actualizar contador cada segundo
   useEffect(() => {
@@ -88,11 +120,10 @@ export default function ModerationPage() {
     setLoading(true);
     try {
       if (activeTab === 'approvals') {
-        // Traer productos con status pending
+        // Traer productos con status pending (sin orderBy para evitar índice)
         const q = query(
           collection(db, 'products'), 
-          where('status', '==', 'pending'),
-          orderBy('publishedAt', 'asc') // Los más antiguos primero
+          where('status', '==', 'pending')
         );
         const snap = await getDocs(q);
         const now = new Date();
@@ -106,18 +137,30 @@ export default function ModerationPage() {
             if (!p.pendingUntil) return true;
             // Si tiene pendingUntil y aún no expiró, mostrarlo
             return p.pendingUntil.toDate() > now;
+          })
+          .sort((a, b) => {
+            // Ordenar por publishedAt (más antiguos primero)
+            const timeA = a.publishedAt?.seconds || 0;
+            const timeB = b.publishedAt?.seconds || 0;
+            return timeA - timeB;
           });
         
         setPendingProducts(data);
       } else {
-        // Fetch Reports
+        // Fetch Reports - Query sin orderBy para evitar necesidad de índice compuesto
         const q = query(
           collection(db, 'reports'), 
-          where('status', '==', 'pending'),
-          orderBy('createdAt', 'desc')
+          where('status', '==', 'pending')
         );
         const snap = await getDocs(q);
-        const reportsData = snap.docs.map(d => ({ id: d.id, ...d.data() } as Report));
+        // Ordenar en cliente por createdAt
+        const reportsData = snap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Report))
+          .sort((a, b) => {
+            const timeA = a.createdAt?.seconds || 0;
+            const timeB = b.createdAt?.seconds || 0;
+            return timeB - timeA; // Más recientes primero
+          });
         
         // Enrich reports with target data (e.g. product details)
         // This is a simplified version; in production you'd want to be careful with N+1 reads
@@ -134,6 +177,7 @@ export default function ModerationPage() {
         }));
         
         setReports(enrichedReports);
+        setReportsCount(enrichedReports.length); // Actualizar contador
       }
     } catch (e) {
       console.error("Error fetching moderation data", e);
@@ -144,22 +188,22 @@ export default function ModerationPage() {
 
   // Actions
   const handleApproveProduct = async (id: string) => {
-    if (!confirm("Ești sigur că aprobi acest anunț?")) return;
     try {
       await approveProduct(id);
       setPendingProducts(prev => prev.filter(p => p.id !== id));
+      setConfirmModal({ show: false, type: 'approve', productId: '', productTitle: '' });
     } catch (e) {
       console.error(e);
       alert("Eroare la aprobare.");
     }
   };
 
-  const handleRejectProduct = async (id: string) => {
-    const reason = prompt("Motivul respingerii (opțional):");
-    if (reason === null) return;
+  const handleRejectProduct = async (id: string, reason: string) => {
     try {
       await rejectProduct(id, reason || 'Nu respectă regulile platformei');
       setPendingProducts(prev => prev.filter(p => p.id !== id));
+      setConfirmModal({ show: false, type: 'reject', productId: '', productTitle: '' });
+      setRejectReason('');
     } catch (e) {
         console.error(e);
     }
@@ -168,9 +212,35 @@ export default function ModerationPage() {
   const handleResolveReport = async (reportId: string, action: 'dismiss' | 'delete_item') => {
       try {
           if (action === 'delete_item') {
-             // Find report to get targetId
+             // Find report to get targetId and seller info
              const report = reports.find(r => r.id === reportId);
              if (report && report.targetType === 'product') {
+                 // Pedir razón de eliminación
+                 const reason = prompt(
+                   'Motivul ștergerii anunțului (va fi trimis proprietarului):\n\n' +
+                   'Exemplu: Anunțul încalcă regulile platformei privind conținutul fals/înșelător.'
+                 );
+                 
+                 if (!reason) return; // Cancelado
+                 
+                 // Enviar notificación al vendedor
+                 const sellerId = report.targetData?.sellerId;
+                 const productTitle = report.targetData?.title || 'Anunț';
+                 
+                 if (sellerId) {
+                   await createNotification({
+                     userId: sellerId,
+                     type: 'product_rejected',
+                     title: '⚠️ Anunțul tău a fost șters',
+                     message: `Anunțul "${productTitle}" a fost eliminat. Motiv: ${reason}`,
+                     metadata: {
+                       productId: report.targetId,
+                       productTitle: productTitle,
+                       reportReason: reason
+                     }
+                   });
+                 }
+                 
                  await deleteDoc(doc(db, 'products', report.targetId));
              }
              await updateDoc(doc(db, 'reports', reportId), { status: 'resolved', resolution: 'item_deleted' });
@@ -178,6 +248,7 @@ export default function ModerationPage() {
              await updateDoc(doc(db, 'reports', reportId), { status: 'dismissed' });
           }
           setReports(prev => prev.filter(r => r.id !== reportId));
+          setReportsCount(prev => prev - 1);
       } catch (e) {
           console.error(e);
       }
@@ -234,9 +305,12 @@ export default function ModerationPage() {
           >
             <Flag className="w-4 h-4" />
             Rapoarte & Sesizări
-            {reports.length > 0 && (
-                <span className="bg-red-100 text-red-600 text-xs py-0.5 px-2 rounded-full">
-                    {reports.length}
+            {(reportsCount > 0 || reports.length > 0) && (
+                <span className="relative flex items-center">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative bg-red-500 text-white text-xs font-bold py-0.5 px-2 rounded-full">
+                        {reports.length > 0 ? reports.length : reportsCount}
+                    </span>
                 </span>
             )}
           </button>
@@ -322,13 +396,23 @@ export default function ModerationPage() {
                                         </div>
                                         <div className="flex gap-2">
                                             <button 
-                                                onClick={() => handleRejectProduct(product.id)}
+                                                onClick={() => setConfirmModal({ 
+                                                  show: true, 
+                                                  type: 'reject', 
+                                                  productId: product.id, 
+                                                  productTitle: product.title 
+                                                })}
                                                 className="px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg flex items-center gap-1 transition-colors"
                                             >
                                                <XCircle className="w-4 h-4" /> Respinge
                                             </button>
                                             <button 
-                                                onClick={() => handleApproveProduct(product.id)}
+                                                onClick={() => setConfirmModal({ 
+                                                  show: true, 
+                                                  type: 'approve', 
+                                                  productId: product.id, 
+                                                  productTitle: product.title 
+                                                })}
                                                 className="px-4 py-1.5 text-sm font-bold text-white bg-green-600 hover:bg-green-700 rounded-lg flex items-center gap-2 shadow-sm transition-all active:scale-95"
                                             >
                                                <CheckCircle className="w-4 h-4" /> Aprobă Anunțul
@@ -361,33 +445,70 @@ export default function ModerationPage() {
                                                 {report.reason}
                                             </span>
                                             <span className="text-xs text-gray-400">
-                                                ID: {report.id}
+                                                {report.createdAt?.seconds ? new Date(report.createdAt.seconds * 1000).toLocaleString('ro-RO') : ''}
                                             </span>
                                         </div>
                                         
-                                        <div className="mb-4">
+                                        {report.description && (
+                                          <div className="mb-4">
                                             <p className="text-gray-900 font-medium text-sm">
-                                                Descriere utilizator: <span className="font-normal italic">"{report.description}"</span>
+                                                Detalii: <span className="font-normal italic">"{report.description}"</span>
                                             </p>
-                                        </div>
-
-                                        {/* Target Preview */}
-                                        {report.targetData && (
-                                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex gap-3 mb-4">
-                                                {report.targetData.images?.[0] && (
-                                                    <div className="w-12 h-12 rounded bg-gray-200 relative overflow-hidden shrink-0">
-                                                        <Image src={report.targetData.images[0]} fill alt="Target" className="object-cover" />
-                                                    </div>
-                                                )}
-                                                <div>
-                                                    <p className="text-sm font-bold text-gray-900">{report.targetData.title || 'Element șters'}</p>
-                                                    <p className="text-xs text-gray-500">ID: {report.targetId}</p>
-                                                </div>
-                                                <Link href={`/product/${report.targetId}`} target="_blank" className="ml-auto text-indigo-600 hover:text-indigo-800">
-                                                    <ExternalLink className="w-4 h-4" />
-                                                </Link>
-                                            </div>
+                                          </div>
                                         )}
+                                        
+                                        {report.reporterEmail && (
+                                          <p className="text-xs text-gray-400 mb-3">
+                                            Raportat de: {report.reporterEmail}
+                                          </p>
+                                        )}
+
+                                        {/* Target Preview - use stored data or fetched data */}
+                                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex gap-3 mb-4">
+                                            {(report.productImage || report.targetData?.images?.[0]) && (
+                                                <div className="w-14 h-14 rounded-lg bg-gray-200 relative overflow-hidden shrink-0">
+                                                    <Image 
+                                                      src={report.productImage || report.targetData?.images?.[0]} 
+                                                      fill 
+                                                      alt="Target" 
+                                                      className="object-cover" 
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-gray-900 truncate">
+                                                  {report.productTitle || report.targetData?.title || 'Element șters'}
+                                                </p>
+                                                <p className="text-xs text-gray-500">ID: {report.targetId.slice(0, 12)}...</p>
+                                                {report.targetData?.price && (
+                                                  <p className="text-xs font-medium text-indigo-600">{report.targetData.price} RON</p>
+                                                )}
+                                                {/* Seller/User info */}
+                                                {report.targetData?.seller && (
+                                                  <div className="mt-1.5 pt-1.5 border-t border-gray-200">
+                                                    <p className="text-xs text-gray-500">
+                                                      Vânzător: <span className="font-semibold text-gray-700">{report.targetData.seller.name || 'Anonim'}</span>
+                                                    </p>
+                                                    {report.targetData?.sellerId && (
+                                                      <Link 
+                                                        href={`/admin/users?uid=${report.targetData.sellerId}`}
+                                                        className="text-[10px] text-indigo-500 hover:text-indigo-700 font-mono flex items-center gap-1 mt-0.5"
+                                                      >
+                                                        UID: {report.targetData.sellerId.slice(0, 16)}...
+                                                        <ExternalLink className="w-3 h-3" />
+                                                      </Link>
+                                                    )}
+                                                  </div>
+                                                )}
+                                            </div>
+                                            <Link 
+                                              href={`/anunturi/${report.targetData?.category || 'general'}/${report.targetId}`} 
+                                              target="_blank" 
+                                              className="text-indigo-600 hover:text-indigo-800 p-2 hover:bg-indigo-50 rounded-lg transition-colors"
+                                            >
+                                                <ExternalLink className="w-4 h-4" />
+                                            </Link>
+                                        </div>
                                     </div>
 
                                     <div className="flex flex-row md:flex-col justify-center gap-2 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-4">
@@ -411,6 +532,101 @@ export default function ModerationPage() {
                 </div>
             )}
 
+        </div>
+      )}
+
+      {/* Modal de Confirmación */}
+      {confirmModal.show && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          onClick={() => {
+            setConfirmModal({ show: false, type: 'approve', productId: '', productTitle: '' });
+            setRejectReason('');
+          }}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className={`px-6 py-5 ${
+              confirmModal.type === 'approve' 
+                ? 'bg-gradient-to-r from-green-500 to-emerald-600' 
+                : 'bg-gradient-to-r from-red-500 to-red-600'
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                  {confirmModal.type === 'approve' ? (
+                    <CheckCircle className="w-6 h-6 text-white" />
+                  ) : (
+                    <XCircle className="w-6 h-6 text-white" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    {confirmModal.type === 'approve' ? 'Aprobă Anunțul' : 'Respinge Anunțul'}
+                  </h3>
+                  <p className="text-white/80 text-sm truncate max-w-[250px]">{confirmModal.productTitle}</p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Contenido */}
+            <div className="p-6">
+              {confirmModal.type === 'approve' ? (
+                <p className="text-gray-600">
+                  Anunțul va fi publicat și vizibil pentru toți utilizatorii. Ești sigur că vrei să aprobi acest anunț?
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  <p className="text-gray-600">
+                    Anunțul va fi respins și proprietarul va primi o notificare.
+                  </p>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Motivul respingerii (opțional)
+                    </label>
+                    <textarea
+                      value={rejectReason}
+                      onChange={(e) => setRejectReason(e.target.value)}
+                      placeholder="Ex: Imagini neclare, descriere incompletă..."
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Footer */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={() => {
+                  setConfirmModal({ show: false, type: 'approve', productId: '', productTitle: '' });
+                  setRejectReason('');
+                }}
+                className="flex-1 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-xl transition-colors"
+              >
+                Anulează
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmModal.type === 'approve') {
+                    handleApproveProduct(confirmModal.productId);
+                  } else {
+                    handleRejectProduct(confirmModal.productId, rejectReason);
+                  }
+                }}
+                className={`flex-1 py-2.5 font-semibold rounded-xl transition-colors ${
+                  confirmModal.type === 'approve'
+                    ? 'bg-green-600 hover:bg-green-700 text-white'
+                    : 'bg-red-600 hover:bg-red-700 text-white'
+                }`}
+              >
+                {confirmModal.type === 'approve' ? 'Aprobă' : 'Respinge'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

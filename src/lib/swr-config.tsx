@@ -22,7 +22,15 @@ export function persistToStorage(key: string, data: unknown) {
   if (typeof window === 'undefined' || !data) return;
   
   // Solo persistir claves importantes
-  const persistKeys = ['home-products', 'product-', 'user-profile-'];
+  const persistKeys = [
+    'home-products', 
+    'product-', 
+    'user-profile-',
+    'my-products-',      // Productos del usuario (perfil)
+    'favorites-',        // IDs de favoritos
+    'favorite-products-', // Productos favoritos completos
+    'notifications-',    // Notificaciones
+  ];
   const shouldPersist = persistKeys.some(pk => key.startsWith(pk));
   
   if (!shouldPersist) return;

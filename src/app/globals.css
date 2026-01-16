@@ -41,3 +41,15 @@ body {
     transform: translateX(100%);
   }
 }
+
+/* Fade in animation for images */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    filter: blur(8px);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+  }
+}

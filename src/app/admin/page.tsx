@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { 
   Users, 
   ShoppingBag, 
@@ -11,6 +12,8 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAdminStats } from '@/lib/swr-hooks';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 // Helper to format time ago
 function timeAgo(dateStr: string): string {
@@ -29,6 +32,42 @@ function timeAgo(dateStr: string): string {
 
 export default function AdminDashboard() {
   const { data: stats, isLoading: loading } = useAdminStats();
+  const [pendingCount, setPendingCount] = useState(0);
+  const [reportsCount, setReportsCount] = useState(0);
+  
+  // Cargar contadores de pendientes y reportes
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        // Contar anuncios pendientes (solo los que aún no expiraron)
+        const pendingQ = query(
+          collection(db, 'products'), 
+          where('status', '==', 'pending')
+        );
+        const pendingSnap = await getDocs(pendingQ);
+        const now = new Date();
+        const validPending = pendingSnap.docs.filter(doc => {
+          const data = doc.data();
+          // Si no tiene pendingUntil, es un producto viejo que necesita revisión
+          if (!data.pendingUntil) return true;
+          // Si tiene pendingUntil y aún no expiró, necesita revisión
+          return data.pendingUntil.toDate() > now;
+        });
+        setPendingCount(validPending.length);
+        
+        // Contar reportes pendientes
+        const reportsQ = query(
+          collection(db, 'reports'), 
+          where('status', '==', 'pending')
+        );
+        const reportsSnap = await getDocs(reportsQ);
+        setReportsCount(reportsSnap.size);
+      } catch (e) {
+        console.error('Error fetching counts', e);
+      }
+    };
+    fetchCounts();
+  }, []);
   
   const dbStatus = stats?.dbStatus || 'checking';
   const totalUsers = stats?.totalUsers || 0;
@@ -111,12 +150,16 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                      <p className="text-sm font-medium text-gray-900 truncate">
-                       {activity.type === 'product' ? `Anunț: ${activity.title}` : `Utilizator: ${activity.title}`}
+                       {activity.title}
                      </p>
-                     <p className="text-xs text-gray-400 mt-0.5">{timeAgo(activity.time)}</p>
+                     <p className="text-xs text-gray-400 mt-0.5">
+                       {activity.type === 'product' ? 'A publicat un anunț nou' : 'S-a înregistrat pe platformă'} • {timeAgo(activity.time)}
+                     </p>
                   </div>
-                  <span className="text-xs px-2.5 py-1 rounded-full font-medium shrink-0 bg-emerald-100 text-emerald-700">
-                     Nou
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium shrink-0 ${
+                    activity.type === 'product' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                     {activity.type === 'product' ? 'Anunț' : 'Utilizator'}
                   </span>
                 </div>
               ))
@@ -144,7 +187,17 @@ export default function AdminDashboard() {
                       <span className="text-amber-600 text-xs">Moderar anunțuri</span>
                     </div>
                   </div>
-                  <span className="text-amber-500 group-hover:translate-x-1 transition-transform">→</span>
+                  <div className="flex items-center gap-2">
+                    {pendingCount > 0 && (
+                      <span className="relative flex items-center">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                        <span className="relative bg-amber-500 text-white text-xs font-bold py-0.5 px-2 rounded-full">
+                          {pendingCount}
+                        </span>
+                      </span>
+                    )}
+                    <span className="text-amber-500 group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
                 </Link>
                 
                 <Link 
@@ -158,7 +211,17 @@ export default function AdminDashboard() {
                       <span className="text-red-600 text-xs">Ver rapoarte</span>
                     </div>
                   </div>
-                  <span className="text-red-500 group-hover:translate-x-1 transition-transform">→</span>
+                  <div className="flex items-center gap-2">
+                    {reportsCount > 0 && (
+                      <span className="relative flex items-center">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative bg-red-500 text-white text-xs font-bold py-0.5 px-2 rounded-full">
+                          {reportsCount}
+                        </span>
+                      </span>
+                    )}
+                    <span className="text-red-500 group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
                 </Link>
               </div>
            </div>

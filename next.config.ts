@@ -14,6 +14,7 @@ const nextConfig: NextConfig = {
   images: {
     // Usar optimización de Vercel para mejor rendimiento
     formats: ['image/avif', 'image/webp'],
+    qualities: [50, 60, 75], // Permitir quality 50, 60 y 75
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [64, 96, 128, 256, 384],
     minimumCacheTTL: 60 * 60 * 24 * 30, // Cache 30 días

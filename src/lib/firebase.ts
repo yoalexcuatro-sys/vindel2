@@ -17,15 +17,6 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Log config in development (without sensitive data)
-if (typeof window !== 'undefined') {
-  console.log('Firebase config loaded:', {
-    hasApiKey: !!firebaseConfig.apiKey,
-    projectId: firebaseConfig.projectId,
-    authDomain: firebaseConfig.authDomain,
-  });
-}
-
 // Initialize Firebase
 let app: FirebaseApp;
 let db: Firestore;

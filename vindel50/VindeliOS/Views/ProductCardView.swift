@@ -7,7 +7,7 @@ struct ProductCardView: View {
         VStack(alignment: .leading, spacing: 0) {
             // Image Section
             ZStack(alignment: .topTrailing) {
-                AsyncImage(url: URL(string: product.image)) { phase in
+                AsyncImage(url: product.safeImageURL) { phase in
                     switch phase {
                     case .empty:
                         Color.gray.opacity(0.1)
@@ -20,7 +20,7 @@ struct ProductCardView: View {
                         Color.gray.opacity(0.2)
                             .overlay(Image(systemName: "photo").foregroundStyle(.gray))
                     @unknown default:
-                        EmptyView()
+                        Color.gray.opacity(0.1)
                     }
                 }
                 .frame(height: 180)

@@ -12,7 +12,7 @@ import {
   Monitor, Tablet, Tv, Speaker, Plug, Cpu, Footprints, ShoppingBag, Gem, Watch, 
   Glasses, Tent, Fish, Music, Book, Hammer, Droplets, Ticket, Map, Bed, Tractor,
   FileText, Shield, Leaf, ShoppingCart, Scissors, UtensilsCrossed, Utensils, 
-  Megaphone, Calculator, Package, Stethoscope, UserCircle, Sparkles
+  Megaphone, Calculator, Package, Stethoscope, UserCircle, Sparkles, Zap
 } from 'lucide-react';
 import { localidades } from '@/data/localidades';
 import { useAuth } from '@/lib/auth-context';
@@ -494,6 +494,7 @@ const SUBCATEGORIES: Record<string, SubcategoryItem[]> = {
     { name: 'Electrocasnice', icon: Plug },
     { name: 'Grădinărit', icon: TreeDeciduous },
     { name: 'Unelte', icon: Hammer },
+    { name: 'Scule electrice', icon: Zap },
     { name: 'Materiale construcții', icon: Building2 },
     { name: 'Instalații sanitare', icon: Droplets }
   ],

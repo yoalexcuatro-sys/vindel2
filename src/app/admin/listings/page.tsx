@@ -129,15 +129,15 @@ export default function ListingsModeration() {
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-         <div className="overflow-x-auto">
+         <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
              <table className="w-full text-left text-sm text-gray-500">
-                <thead className="bg-gray-50 text-xs uppercase text-gray-700 font-medium">
+                <thead className="bg-gray-50 text-xs uppercase text-gray-700 font-medium sticky top-0 z-10">
                     <tr>
-                        <th className="px-6 py-4">Produs</th>
-                        <th className="px-6 py-4">Vânzător</th>
-                        <th className="px-6 py-4">Preț</th>
-                        <th className="px-6 py-4">Status</th>
-                        <th className="px-6 py-4">Acțiuni</th>
+                        <th className="px-6 py-4 bg-gray-50">Produs</th>
+                        <th className="px-6 py-4 bg-gray-50">Vânzător</th>
+                        <th className="px-6 py-4 bg-gray-50">Preț</th>
+                        <th className="px-6 py-4 bg-gray-50">Status</th>
+                        <th className="px-6 py-4 bg-gray-50">Acțiuni</th>
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">

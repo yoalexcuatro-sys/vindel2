@@ -19,7 +19,7 @@ function preloadProductImages(products: Product[], count: number = 10) {
 export default function ProductGrid() {
   const { data: products, isLoading, isValidating } = useHomeProducts();
   const [currentTheme, setCurrentTheme] = useState(1);
-  const [visibleCount, setVisibleCount] = useState(25);
+  const [visibleCount, setVisibleCount] = useState(35);
   const preloadedRef = useRef(false);
   
   // Estados para animación - solo aplicar en primera carga real
@@ -49,15 +49,21 @@ export default function ProductGrid() {
   useEffect(() => {
     const loadTheme = () => {
       const saved = localStorage.getItem('user_card_theme');
-      if (saved) setCurrentTheme(parseInt(saved));
+      const newTheme = saved ? parseInt(saved) : 1;
+      setCurrentTheme(newTheme);
     };
     loadTheme();
-    window.addEventListener('themeChange', loadTheme);
-    return () => window.removeEventListener('themeChange', loadTheme);
+    
+    const handleThemeChange = () => {
+      loadTheme();
+    };
+    
+    window.addEventListener('themeChange', handleThemeChange);
+    return () => window.removeEventListener('themeChange', handleThemeChange);
   }, []);
 
   const handleLoadMore = () => {
-    setVisibleCount(prev => prev + 25);
+    setVisibleCount(prev => prev + 35);
   };
 
   // Usar productos de SWR - mostrar skeletons solo mientras carga sin datos
@@ -79,7 +85,7 @@ export default function ProductGrid() {
       </div>
       
       {/* Grid Skeleton */}
-      <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+      <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
         {[...Array(10)].map((_, i) => (
           <div key={i} className="bg-white rounded-xl sm:rounded-2xl p-2 sm:p-3 border border-gray-100 shadow-sm">
             <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 rounded-lg sm:rounded-xl mb-2 sm:mb-3 animate-pulse"></div>
@@ -157,20 +163,20 @@ export default function ProductGrid() {
           </div>
           
           {/* Product Grid - Responsive columns */}
-          <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {visibleProducts.map((product) => (
+          <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
+            {visibleProducts.map((product, index) => (
               <div 
-                key={product.id}
+                key={`${product.id}-theme-${currentTheme}`}
                 className={shouldAnimate ? 'animate-card' : ''}
               >
-                <ProductCard product={product} />
+                <ProductCard product={product} priority={index < 10} />
               </div>
             ))}
           </div>
           
           {/* Load More Button */}
           {hasMoreProducts && (
-            <div className="mt-6 sm:mt-8 text-center">
+            <div className="mt-4 sm:mt-6 text-center pb-2">
               <button 
                 onClick={handleLoadMore}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-[#13C1AC] text-[#13C1AC] font-semibold rounded-full hover:bg-[#13C1AC] hover:text-white transition-all active:scale-95 text-sm sm:text-base"
@@ -185,7 +191,7 @@ export default function ProductGrid() {
 
           {/* Ver todos - cuando ya no hay más para cargar */}
           {!hasMoreProducts && displayProducts && displayProducts.length >= 20 && (
-            <div className="mt-6 sm:mt-8 text-center">
+            <div className="mt-4 sm:mt-6 text-center pb-2">
               <a 
                 href="/search"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-[#13C1AC] text-white font-semibold rounded-full hover:bg-[#0da896] transition-all active:scale-95 text-sm sm:text-base"

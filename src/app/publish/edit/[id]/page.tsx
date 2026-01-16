@@ -10,6 +10,9 @@ import { localidades } from '@/data/localidades';
 import { useAuth } from '@/lib/auth-context';
 import { getProduct, updateProduct, Product } from '@/lib/products-service';
 import { uploadImages as uploadProductImages } from '@/lib/r2-storage';
+import { invalidateMyProductsCache } from '@/lib/swr-hooks';
+import { doc, updateDoc, deleteField, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import Image from 'next/image';
 
 const CITIES = localidades.map(loc => `${loc.ciudad}, ${loc.judet}`);
@@ -154,7 +157,29 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         images: finalImages,
       };
 
-      await updateProduct(id, updateData);
+      // Si el anuncio estaba rechazado, volver a ponerlo en revisión
+      if (originalProduct.status === 'rejected') {
+        updateData.status = 'pending';
+        // Calcular nuevo pendingUntil (5 minutos para auto-aprobación)
+        const pendingUntil = new Date();
+        pendingUntil.setMinutes(pendingUntil.getMinutes() + 5);
+        
+        // Actualizar directamente en Firebase para usar deleteField
+        const docRef = doc(db, 'products', id);
+        await updateDoc(docRef, {
+          ...updateData,
+          updatedAt: Timestamp.now(),
+          pendingUntil: Timestamp.fromDate(pendingUntil),
+          rejectionReason: deleteField() // Eliminar el campo completamente
+        });
+      } else {
+        await updateProduct(id, updateData);
+      }
+
+      // Invalidar caché para que se actualice la lista
+      if (user?.uid) {
+        invalidateMyProductsCache(user.uid);
+      }
       
       setSuccess(true);
       setTimeout(() => router.push('/profile?view=products'), 2000);

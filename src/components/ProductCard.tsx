@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, memo } from 'react';
+import { useState, useCallback, useEffect, memo } from 'react';
 import { Heart, Clock, Package, Star, Sparkles, CheckCircle, AlertTriangle, MessageCircle, Truck, Users } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -11,6 +11,36 @@ import { useAuth } from '@/lib/auth-context';
 import { toggleFavorite } from '@/lib/favorites-service';
 import { useUserFavorites } from '@/lib/swr-hooks';
 
+// Helper para formatear tiempo relativo
+const getRelativeTime = (publishedAt?: string | Timestamp): string => {
+  if (!publishedAt) return 'Azi';
+  
+  let date: Date;
+  if (typeof publishedAt === 'string') {
+    date = new Date(publishedAt);
+  } else if (publishedAt && 'seconds' in publishedAt) {
+    date = new Date(publishedAt.seconds * 1000);
+  } else {
+    return 'Azi';
+  }
+  
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+  
+  if (diffMins < 1) return 'Acum';
+  if (diffMins < 60) return `${diffMins} min`;
+  if (diffHours < 24) return diffHours === 1 ? '1 oră' : `${diffHours} ore`;
+  if (diffDays < 7) return diffDays === 1 ? 'Ieri' : `${diffDays} zile`;
+  if (diffWeeks < 4) return diffWeeks === 1 ? '1 săpt' : `${diffWeeks} săpt`;
+  if (diffMonths < 12) return diffMonths === 1 ? '1 lună' : `${diffMonths} luni`;
+  return '+1 an';
+};
+
 interface Product {
   id: string; // Ensure ID is string for slug generation
   title: string;
@@ -20,12 +50,19 @@ interface Product {
   negotiable?: boolean;
   image: string;
   images?: string[];
-  thumbImages?: string[]; // Thumbnails for fast loading
   location: string;
   category?: string; // Added for URL generation
   reserved?: boolean;
   publishedAt?: string | Timestamp;
   deliveryType?: 'personal' | 'shipping' | 'both';
+  seller?: {
+    id: string;
+    name: string;
+    rating?: number;
+    reviews?: number;
+    avatar?: string;
+    joined?: string;
+  };
 }
 
 // Helper para obtener el label y color del estado
@@ -76,18 +113,31 @@ const isNewProduct = (publishedAt?: string | Timestamp): boolean => {
   return diffHours < 24;
 };
 
-// Cache global del tema - NO leer localStorage aquí para evitar hydration mismatch
+// Cache global del tema para evitar leer localStorage en cada card
 let cachedTheme: number | null = null;
+const getTheme = () => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('user_card_theme');
+    cachedTheme = saved ? parseInt(saved) : 1;
+    return cachedTheme;
+  }
+  return cachedTheme ?? 1;
+};
 
-function ProductCardComponent({ product }: { product: Product }) {
+function ProductCardComponent({ product, priority = false }: { product: Product; priority?: boolean }) {
   const router = useRouter();
   const { user } = useAuth();
   const { data: favoriteIds, mutate: mutateFavorites } = useUserFavorites(user?.uid || null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isHovering, setIsHovering] = useState(false);
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
-  // Siempre iniciar con tema 1 para evitar hydration mismatch
-  const [theme, setTheme] = useState(1);
+  
+  // Initialize theme from localStorage immediately to prevent flash
+  const [theme, setTheme] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('user_card_theme');
+      return saved ? parseInt(saved) : 1;
+    }
+    return 1;
+  });
   
   // Check if product is favorited
   const isFavorited = favoriteIds?.includes(product.id) || false;
@@ -119,113 +169,59 @@ function ProductCardComponent({ product }: { product: Product }) {
     }
   }, [user, product.id, favoriteIds, mutateFavorites, router]);
   
-  // Cargar tema de localStorage después del mount (evita hydration mismatch)
+  // Load theme on mount and listen for changes
   useEffect(() => {
     const loadTheme = () => {
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('user_card_theme');
-        if (saved) {
-          cachedTheme = parseInt(saved);
-          setTheme(cachedTheme);
-        }
+        const newTheme = saved ? parseInt(saved) : 1;
+        cachedTheme = newTheme;
+        setTheme(newTheme);
       }
     };
     
-    // Cargar tema inicial
+    // Load immediately on mount
     loadTheme();
     
-    window.addEventListener('themeChange', loadTheme);
-    return () => window.removeEventListener('themeChange', loadTheme);
+    // Listen for changes from settings
+    const handleThemeChange = () => {
+      loadTheme();
+    };
+    
+    window.addEventListener('themeChange', handleThemeChange);
+    
+    // Also listen for storage changes (cross-tab)
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'user_card_theme') {
+        loadTheme();
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    
+    return () => {
+      window.removeEventListener('themeChange', handleThemeChange);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
   // Use images array if exists, otherwise single image
-  const allImages = product.images && product.images.length > 0 
-    ? product.images 
-    : [product.image || '/placeholder.jpg'];
-  
-  // Use thumbImages for fast loading, fallback to original
-  const allThumbs = product.thumbImages && product.thumbImages.length > 0
-    ? product.thumbImages
-    : allImages;
-  
-  const imageCount = allImages.length;
+  const mainImage = product.images && product.images.length > 0 
+    ? product.images[0] 
+    : product.image || '/placeholder.jpg';
 
-  // Throttle mouse move - ahora 100ms para mejor rendimiento
-  const lastUpdateRef = useRef(0);
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (imageCount <= 1) return;
-    
-    // Throttle: solo actualizar cada 100ms
-    const now = Date.now();
-    if (now - lastUpdateRef.current < 100) return;
-    lastUpdateRef.current = now;
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = x / rect.width;
-    const newIndex = Math.min(Math.floor(percentage * imageCount), imageCount - 1);
-    if (newIndex !== currentImageIndex) {
-      setCurrentImageIndex(newIndex);
-    }
-  }, [imageCount, currentImageIndex]);
-
-  const handleMouseEnter = useCallback(() => {
-    if (imageCount > 1) setIsHovering(true);
-  }, [imageCount]);
-
-  const handleMouseLeave = useCallback(() => {
-    setCurrentImageIndex(0);
-    setIsHovering(false);
-  }, []);
-
-  // Precargar otras imágenes cuando el mouse entra (usa thumbs si hay)
-  const preloadImagesRef = useRef(false);
-  const handlePreloadImages = useCallback(() => {
-    if (preloadImagesRef.current || allImages.length <= 1) return;
-    preloadImagesRef.current = true;
-    // Preload thumbs first (faster), then large images
-    allThumbs.slice(1).forEach(url => {
-      const img = new window.Image();
-      img.src = url;
-    });
-  }, [allThumbs, allImages.length]);
-
-  const ImageCarousel = ({ heightClass = "h-56", priority = false }: { heightClass?: string; priority?: boolean }) => (
-    <div 
-      className={`relative ${heightClass} w-full overflow-hidden bg-gradient-to-br from-gray-100 to-gray-50`}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => { handleMouseEnter(); handlePreloadImages(); }}
-      onMouseLeave={handleMouseLeave}
-    >
-        {/* Todas las imágenes renderizadas, controladas por opacity/visibility */}
-        {allThumbs.map((thumb, idx) => (
-          <Image
-            key={idx}
-            src={thumb}
-            alt={product.title}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-            className={`object-cover pointer-events-none transition-opacity duration-150 ${
-              currentImageIndex === idx ? 'opacity-100 z-[2]' : 'opacity-0 z-[1]'
-            }`}
-            style={{ objectPosition: 'center 30%' }}
-            priority={idx === 0 && priority}
-            quality={60}
-          />
-        ))}
-
-        {imageCount > 1 && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 z-10 pointer-events-none">
-            {allImages.slice(0, 5).map((_, idx) => (
-              <span 
-                key={idx}
-                className={`h-0.5 rounded-full transition-all shadow-sm ${
-                  idx === currentImageIndex ? 'w-4 bg-white' : 'w-2 bg-white/50'
-                }`}
-              />
-            ))}
-          </div>
-        )}
+  const ImageCarousel = ({ heightClass = "h-56" }: { heightClass?: string }) => (
+    <div className={`relative ${heightClass} w-full overflow-hidden bg-gray-100`}>
+        {/* Imagen única optimizada */}
+        <Image
+          src={mainImage}
+          alt={product.title}
+          fill
+          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
+          className="object-cover object-center"
+          style={{ objectPosition: 'center 30%' }}
+          priority={priority}
+          quality={50}
+        />
 
         {product.reserved && (
             <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs font-semibold rounded-md backdrop-blur-sm pointer-events-none">
@@ -249,7 +245,7 @@ function ProductCardComponent({ product }: { product: Product }) {
   // THEME 4: Structured Pro (Watch Style)
   if (theme === 4) {
     return (
-      <Link href={createProductLink(product)} prefetch={false} className="block h-full">
+      <Link href={createProductLink(product)} className="block h-full">
         <div className="group bg-white rounded-lg overflow-hidden border border-gray-200 hover:border-gray-300 hover:shadow-md transition-all duration-300 h-full flex flex-col">
            <div className="flex p-3 gap-3 flex-1">
               <div className="w-24 h-24 relative rounded-md overflow-hidden shrink-0">
@@ -274,7 +270,7 @@ function ProductCardComponent({ product }: { product: Product }) {
            <div className="px-3 py-2 bg-slate-50 flex justify-between items-center text-[11px] text-slate-500 border-t border-gray-100 shrink-0">
                 <div className="flex items-center gap-1">
                     <Clock className="w-3 h-3" />
-                    <span>Azi, 12:00</span>
+                    <span>{getRelativeTime(product.publishedAt)}</span>
                 </div>
                 <span className="truncate max-w-[50%]">{product.location}</span>
            </div>
@@ -286,7 +282,7 @@ function ProductCardComponent({ product }: { product: Product }) {
   // THEME 5: Minimalist Focus
   if (theme === 5) {
      return (
-       <Link href={createProductLink(product)} prefetch={false} className="block h-full">
+       <Link href={createProductLink(product)} className="block h-full">
          <div className="group bg-white hover:bg-gray-50 rounded-xl cursor-pointer transition-all duration-300 h-full flex flex-col">
             <div className="aspect-[5/4] rounded-xl overflow-hidden relative mb-3 ring-1 ring-black/5">
                  <ImageCarousel heightClass="h-full" />
@@ -309,27 +305,22 @@ function ProductCardComponent({ product }: { product: Product }) {
   // THEME 6: Social Connect (Vinted Style) - Sin carrusel
   if (theme === 6) {
     return (
-      <Link href={createProductLink(product)} prefetch={false} className="block h-full"> 
-        <div className="group bg-transparent h-full flex flex-col cursor-pointer">
+      <div className="relative h-full">
+        <Link href={createProductLink(product)} className="block h-full"> 
+          <div className="group bg-transparent h-full flex flex-col cursor-pointer">
             <div className="relative mb-2">
-                <div className="aspect-[3/4] rounded-2xl overflow-hidden relative ring-1 ring-black/5">
+                <div className="aspect-[4/5] rounded-xl overflow-hidden relative ring-1 ring-black/5">
                     {/* Imagen única sin carrusel */}
-                    <img
-                      src={allImages[0]}
+                    <Image
+                      src={mainImage}
                       alt={product.title}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      fill
+                      sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
+                      className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
                       style={{ objectPosition: 'center 30%' }}
-                      loading="lazy"
-                      decoding="async"
+                      priority={priority}
+                      quality={50}
                     />
-                    {/* Badge 1/N */}
-                    {imageCount > 1 && (
-                      <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full z-20 pointer-events-none">
-                         <span className="text-[10px] font-semibold text-white/90">
-                            1 / {imageCount}
-                         </span>
-                      </div>
-                    )}
                 </div>
             </div>
             
@@ -345,27 +336,47 @@ function ProductCardComponent({ product }: { product: Product }) {
                   {product.title}
                 </h3>
                 
-                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                {/* Ubicación y tiempo */}
+                <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+                  <span className="flex items-center gap-1 truncate">
+                    <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="truncate">{product.location}</span>
+                  </span>
+                  <span className="flex items-center gap-1 shrink-0">
+                    <Clock className="w-3 h-3" />
+                    {getRelativeTime(product.publishedAt)}
+                  </span>
+                </div>
+                
+                <div className={`flex items-center gap-1.5 text-xs ${
+                  product.deliveryType === 'shipping' || product.deliveryType === 'both' 
+                    ? 'text-purple-500' 
+                    : 'text-slate-400'
+                }`}>
                      {product.deliveryType === 'shipping' || product.deliveryType === 'both' ? (
-                       <Truck className="w-3.5 h-3.5 text-purple-500" />
+                       <Truck className="w-3.5 h-3.5" />
                      ) : (
                        <Users className="w-3.5 h-3.5" />
                      )}
-                    <span className={`truncate ${product.deliveryType === 'shipping' || product.deliveryType === 'both' ? 'text-purple-500 font-medium' : ''}`}>
+                    <span className="truncate">
                       {product.deliveryType === 'shipping' ? 'Livrare disponibilă' : 
-                       product.deliveryType === 'both' ? 'Livrare disponibilă' : 
+                       product.deliveryType === 'both' ? 'Ambele opțiuni' : 
                        'Predare personală'}
                     </span>
                 </div>
             </div>
-        </div>
-      </Link>
+          </div>
+        </Link>
+      </div>
     );
   }
   // THEME 7: Auto/Imobiliare (Details & Tags)
   if (theme === 7) {
     return (
-      <Link href={createProductLink(product)} prefetch={false} className="block h-full"> 
+      <Link href={createProductLink(product)} className="block h-full"> 
         <div className="group bg-white rounded-2xl border border-gray-300 overflow-hidden h-full flex flex-col hover:shadow-lg transition-all duration-300">
             <div className="relative aspect-[4/3] border-b border-gray-100">
                 <ImageCarousel heightClass="h-full" />
@@ -415,23 +426,37 @@ function ProductCardComponent({ product }: { product: Product }) {
     );
   }
 
-  // THEME 8: Compact Card (User Requested)
+  // THEME 8: Compact Card (User Requested) - Sin carrusel
   if (theme === 8) {
+    const conditionData = getConditionInfo(product.condition);
+    const CondIcon = conditionData?.icon;
+    
     return (
-      <Link href={createProductLink(product)} prefetch={false} className="block h-full">
+      <Link href={createProductLink(product)} className="block h-full">
         <div className="group bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden relative h-full flex flex-col ring-1 ring-gray-100/50">
-          <div className="relative">
-             <div className="aspect-video relative overflow-hidden">
-                <ImageCarousel heightClass="h-full" />
+          <div className="relative p-2 pb-0">
+             <div className="aspect-square relative overflow-hidden rounded-xl ring-1 ring-gray-100">
+                <Image
+                  src={product.images?.[0] || product.image}
+                  alt={product.title}
+                  fill
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                  className="object-cover"
+                  quality={75}
+                />
+                {/* Condition badge */}
+                {conditionData && (
+                  <span className={`absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded-md flex items-center gap-1 shadow-sm ${conditionData.color}`}>
+                    {CondIcon && <CondIcon className="w-3.5 h-3.5" />}
+                    {conditionData.label}
+                  </span>
+                )}
              </div>
-             <span className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold shadow-sm z-20 pointer-events-none">
-                Premium
-             </span>
           </div>
           
           <div className="p-4 flex flex-col flex-1">
              <h4 className="font-bold text-gray-900 text-base mb-1 line-clamp-1 group-hover:text-teal-600 transition-colors">{product.title}</h4>
-             <p className="text-xs text-slate-500 mb-4">Postat de Alex Electronics</p>
+             <p className="text-xs text-slate-500 mb-4">Postat de {product.seller?.name || 'Utilizator'}</p>
              
              <div className="flex items-center justify-between mt-auto">
                 <span className="font-bold text-[#13C1AC] text-base">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</span>
@@ -448,7 +473,7 @@ function ProductCardComponent({ product }: { product: Product }) {
   // THEME 9: Original Classic (vindel23 style)
   if (theme === 9) {
     return (
-      <Link href={createProductLink(product)} prefetch={false} className="block h-full">
+      <Link href={createProductLink(product)} className="block h-full">
         <div className="group bg-white rounded-xl overflow-hidden border-2 border-gray-100 hover:border-[#13C1AC] hover:shadow-lg transition-all duration-300 cursor-pointer relative hover:-translate-y-1 h-full flex flex-col">
           <div className="relative h-56 w-full shrink-0">
             <ImageCarousel heightClass="h-full" />
@@ -483,7 +508,7 @@ function ProductCardComponent({ product }: { product: Product }) {
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="w-3.5 h-3.5" />
-                Azi
+                {getRelativeTime(product.publishedAt)}
               </span>
             </div>
           </div>
@@ -492,22 +517,35 @@ function ProductCardComponent({ product }: { product: Product }) {
     );
   }
 
-  // DEFAULT (THEME 1: Elegant Teal Border Style) - Sin carrusel
+  // DEFAULT (THEME 1: Golden Border Style) - Sin carrusel
+  const defaultConditionData = getConditionInfo(product.condition);
+  const DefaultCondIcon = defaultConditionData?.icon;
+  
   return (
     <div className="relative h-full">
-        <Link href={createProductLink(product)} prefetch={false} className="block h-full">
-            <div className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-2 border-[#13C1AC] relative h-full flex flex-col">
+        <Link href={createProductLink(product)} className="block h-full">
+            <div className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-[3px] border-amber-400 relative h-full flex flex-col">
                 <div className="relative">
-                    <div className="aspect-[4/3] relative overflow-hidden rounded-t-xl">
+                    <div className="aspect-[4/3] relative overflow-hidden">
                         {/* Imagen única sin carrusel */}
-                        <img
-                          src={allImages[0]}
+                        <Image
+                          src={mainImage}
                           alt={product.title}
-                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          fill
+                          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
+                          className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
                           style={{ objectPosition: 'center 30%' }}
-                          loading="lazy"
-                          decoding="async"
+                          priority={priority}
+                          quality={50}
                         />
+                        
+                        {/* Condition badge */}
+                        {defaultConditionData && (
+                            <span className={`absolute top-3 left-3 px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 shadow-sm z-20 ${defaultConditionData.color}`}>
+                                {DefaultCondIcon && <DefaultCondIcon className="w-3.5 h-3.5" />}
+                                {defaultConditionData.label}
+                            </span>
+                        )}
                         
                         {/* Badge Reservat */}
                         {product.reserved && (
@@ -515,20 +553,13 @@ function ProductCardComponent({ product }: { product: Product }) {
                                 Reservat
                             </div>
                         )}
-                        
-                        {/* Contador de fotos */}
-                        {imageCount > 1 && (
-                            <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-lg z-20 font-medium">
-                                1 / {imageCount}
-                            </div>
-                        )}
                     </div>
                 </div>
                 
                 <div className="p-4 flex flex-col flex-1">
                     {/* Precio */}
-                    <h4 className="text-xl font-bold text-gray-900 mb-1">
-                        {product.price.toLocaleString()} {product.currency === 'EUR' ? '€' : 'Lei'}
+                    <h4 className="text-xl font-bold text-[#13C1AC] mb-1">
+                        {product.price.toLocaleString()} <span className="text-sm font-medium text-gray-500">{product.currency === 'EUR' ? '€' : 'Lei'}</span>
                     </h4>
                     
                     {/* Título */}
@@ -536,9 +567,19 @@ function ProductCardComponent({ product }: { product: Product }) {
                         {product.title}
                     </h3>
                     
-                    {/* Ubicación */}
-                    <div className="mt-auto pt-3">
-                        <span className="text-sm text-gray-400">{product.location}</span>
+                    {/* Ubicación y tiempo */}
+                    <div className="mt-auto pt-3 flex items-center justify-between text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            {product.location}
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {getRelativeTime(product.publishedAt)}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -557,14 +598,5 @@ function ProductCardComponent({ product }: { product: Product }) {
 }
 
 // Memoized export to prevent unnecessary re-renders
-export default memo(ProductCardComponent, (prevProps, nextProps) => {
-  // Comparación profunda pero eficiente
-  const prev = prevProps.product;
-  const next = nextProps.product;
-  return prev.id === next.id &&
-         prev.price === next.price &&
-         prev.title === next.title &&
-         prev.reserved === next.reserved &&
-         prev.condition === next.condition &&
-         prev.image === next.image;
-});
+// Note: Theme changes are handled via useState inside the component
+export default memo(ProductCardComponent);

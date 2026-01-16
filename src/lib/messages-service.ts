@@ -181,30 +181,23 @@ export async function deleteMessage(
   userId: string
 ): Promise<boolean> {
   try {
-    console.log('Deleting message:', { messageId, conversationId, userId });
-    
     // Get the message to verify ownership
     const messageRef = doc(db, MESSAGES_COLLECTION, messageId);
     const messageSnap = await getDoc(messageRef);
     
     if (!messageSnap.exists()) {
-      console.log('Message not found');
       return false;
     }
     
     const message = messageSnap.data() as Message;
-    console.log('Message data:', { senderId: message.senderId, userId });
     
     // Only allow deleting own messages
     if (message.senderId !== userId) {
-      console.log('Not owner, cannot delete');
       return false;
     }
     
     // Delete the message
-    console.log('Attempting to delete...');
     await deleteDoc(messageRef);
-    console.log('Message deleted successfully');
     
     // Update last message in conversation if needed
     const messagesQuery = query(
@@ -366,8 +359,6 @@ export async function deleteConversation(
   userId: string
 ): Promise<boolean> {
   try {
-    console.log('Deleting conversation:', conversationId, 'by user:', userId);
-    
     // Get the conversation to verify user is a participant
     const conversationRef = doc(db, CONVERSATIONS_COLLECTION, conversationId);
     const conversationSnap = await getDoc(conversationRef);
@@ -395,12 +386,9 @@ export async function deleteConversation(
     const deletePromises = messagesSnap.docs.map(msgDoc => deleteDoc(msgDoc.ref));
     await Promise.all(deletePromises);
     
-    console.log(`Deleted ${messagesSnap.docs.length} messages`);
-    
     // Delete the conversation
     await deleteDoc(conversationRef);
     
-    console.log('Conversation deleted successfully');
     return true;
   } catch (error) {
     console.error('Error deleting conversation:', error);

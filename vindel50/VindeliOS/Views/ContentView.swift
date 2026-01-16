@@ -11,6 +11,22 @@ struct ContentView: View {
                     if viewModel.isLoading {
                         ProgressView()
                             .padding(.top, 50)
+                    } else if let error = viewModel.errorMessage {
+                        VStack(spacing: 16) {
+                            Image(systemName: "exclamationmark.triangle")
+                                .font(.largeTitle)
+                                .foregroundColor(.orange)
+                            Text(error)
+                                .foregroundColor(.secondary)
+                            Button("Reîncearcă") {
+                                Task {
+                                    await viewModel.fetchProducts()
+                                }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.vindelTeal)
+                        }
+                        .padding(.top, 50)
                     } else {
                         LazyVGrid(columns: [
                             GridItem(.flexible(), spacing: 16),

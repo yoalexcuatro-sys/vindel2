@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import { Search, Shield, ShieldOff, Mail, Calendar, CheckCircle, XCircle, Crown, LayoutGrid, List, X, Eye, Package, Flag, Clock, MapPin, Phone, Building2, User, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Search, Shield, ShieldOff, Mail, Calendar, CheckCircle, XCircle, Crown, LayoutGrid, List, X, Eye, Package, Flag, Clock, MapPin, Phone, Building2, User, ExternalLink, Bell, Trash2 } from 'lucide-react';
 import Image from 'next/image';
-import { collection, query, limit, getDocs, doc, updateDoc, where } from 'firebase/firestore';
+import { collection, query, limit, getDocs, doc, updateDoc, where, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAdminUsers } from '@/lib/swr-hooks';
 import { mutate } from 'swr';
@@ -40,14 +41,37 @@ interface UserReport {
     status?: string;
 }
 
+interface UserNotification {
+    id: string;
+    type: string;
+    title: string;
+    message: string;
+    read: boolean;
+    createdAt: any;
+}
+
 export default function AdminUsers() {
+  const searchParams = useSearchParams();
+  const uidParam = searchParams.get('uid');
+  
   const { data: users = [], isLoading: loading } = useAdminUsers();
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [userProducts, setUserProducts] = useState<UserProduct[]>([]);
   const [userReports, setUserReports] = useState<UserReport[]>([]);
+  const [userNotifications, setUserNotifications] = useState<UserNotification[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
+
+  // Auto-open user modal if uid param is provided
+  useEffect(() => {
+    if (uidParam && users.length > 0 && !selectedUser) {
+      const userToOpen = users.find(u => u.uid === uidParam);
+      if (userToOpen) {
+        openUserDetail(userToOpen);
+      }
+    }
+  }, [uidParam, users]);
 
   // Filter users based on search
   const filteredUsers = users.filter(user => {
@@ -99,11 +123,42 @@ export default function AdminUsers() {
       }
   };
 
+  const handleDeleteNotification = async (notificationId: string) => {
+      if(!confirm('Ștergi această notificare?')) return;
+      
+      // Optimistic update
+      setUserNotifications(prev => prev.filter(n => n.id !== notificationId));
+      
+      try {
+          await deleteDoc(doc(db, 'notifications', notificationId));
+      } catch (e) {
+          console.error("Failed to delete notification", e);
+          alert('Eroare la ștergerea notificării');
+      }
+  };
+
+  const handleDeleteAllNotifications = async (userId: string) => {
+      if(!confirm('Ștergi TOATE notificările acestui utilizator?')) return;
+      
+      const notificationIds = userNotifications.map(n => n.id);
+      
+      // Optimistic update
+      setUserNotifications([]);
+      
+      try {
+          await Promise.all(notificationIds.map(id => deleteDoc(doc(db, 'notifications', id))));
+      } catch (e) {
+          console.error("Failed to delete all notifications", e);
+          alert('Eroare la ștergerea notificărilor');
+      }
+  };
+
   const openUserDetail = async (user: UserProfile) => {
     setSelectedUser(user);
     setDetailLoading(true);
     setUserProducts([]);
     setUserReports([]);
+    setUserNotifications([]);
     
     try {
       // Fetch user's products
@@ -131,6 +186,21 @@ export default function AdminUsers() {
         ...doc.data() 
       } as UserReport));
       setUserReports(reports);
+      
+      // Fetch user's notifications
+      const notificationsQuery = query(
+        collection(db, 'notifications'), 
+        where('userId', '==', user.uid),
+        limit(50)
+      );
+      const notificationsSnapshot = await getDocs(notificationsQuery);
+      const notifications = notificationsSnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data() 
+      } as UserNotification));
+      // Sort by date descending
+      notifications.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      setUserNotifications(notifications);
     } catch (error) {
       console.error('Error fetching user details:', error);
     } finally {
@@ -142,6 +212,7 @@ export default function AdminUsers() {
     setSelectedUser(null);
     setUserProducts([]);
     setUserReports([]);
+    setUserNotifications([]);
   };
 
   if (loading) {
@@ -679,6 +750,71 @@ export default function AdminUsers() {
                     ) : (
                       <div className="bg-gray-50 rounded-xl p-6 text-center text-gray-500 text-sm">
                         Nu există rapoarte pentru acest utilizator.
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Notifications */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                        <Bell className="w-4 h-4" /> Notificări ({userNotifications.length})
+                      </h3>
+                      {userNotifications.length > 0 && (
+                        <button
+                          onClick={() => handleDeleteAllNotifications(selectedUser.uid)}
+                          className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1"
+                        >
+                          <Trash2 className="w-3 h-3" /> Șterge toate
+                        </button>
+                      )}
+                    </div>
+                    {userNotifications.length > 0 ? (
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {userNotifications.map((notification) => (
+                          <div 
+                            key={notification.id} 
+                            className={`flex items-start justify-between gap-3 rounded-xl p-3 ${
+                              notification.read ? 'bg-gray-50' : 'bg-blue-50'
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                  notification.type === 'report_received' 
+                                    ? 'bg-orange-100 text-orange-700'
+                                    : notification.type === 'report_resolved'
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}>
+                                  {notification.type}
+                                </span>
+                                {!notification.read && (
+                                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                                )}
+                              </div>
+                              <p className="text-sm font-medium text-gray-900 mt-1">{notification.title}</p>
+                              <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{notification.message}</p>
+                              <p className="text-[10px] text-gray-400 mt-1">
+                                {notification.createdAt?.seconds 
+                                  ? new Date(notification.createdAt.seconds * 1000).toLocaleString('ro-RO')
+                                  : 'N/A'
+                                }
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteNotification(notification.id)}
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors shrink-0"
+                              title="Șterge notificarea"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 rounded-xl p-6 text-center text-gray-500 text-sm">
+                        Nu există notificări pentru acest utilizator.
                       </div>
                     )}
                   </div>

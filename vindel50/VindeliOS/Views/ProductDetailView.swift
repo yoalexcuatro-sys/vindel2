@@ -7,7 +7,7 @@ struct ProductDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 // Main Image
-                AsyncImage(url: URL(string: product.image)) { image in
+                AsyncImage(url: product.safeImageURL) { image in
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fit)
@@ -15,6 +15,11 @@ struct ProductDetailView: View {
                     Rectangle()
                         .fill(Color.gray.opacity(0.1))
                         .frame(height: 300)
+                        .overlay(
+                            Image(systemName: "photo")
+                                .font(.largeTitle)
+                                .foregroundColor(.gray)
+                        )
                 }
                 .frame(maxWidth: .infinity)
                 .background(Color.black)

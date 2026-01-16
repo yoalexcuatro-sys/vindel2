@@ -18,6 +18,11 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Sync query state with URL params
+  useEffect(() => {
+    setQuery(searchParams.get('q') || '');
+  }, [searchParams]);
+
   // Load recent searches from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('recentSearches');
@@ -40,12 +45,26 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
   const handleSearch = (term: string) => {
     if (!term.trim()) return;
     
-    // Save to recent searches
-    const newRecent = [term, ...recentSearches.filter(s => s !== term)].slice(0, 5);
-    setRecentSearches(newRecent);
-    localStorage.setItem('recentSearches', JSON.stringify(newRecent));
+    // Save to recent searches (con manejo de error de quota)
+    try {
+      const newRecent = [term, ...recentSearches.filter(s => s !== term)].slice(0, 5);
+      setRecentSearches(newRecent);
+      localStorage.setItem('recentSearches', JSON.stringify(newRecent));
+    } catch (e) {
+      // Si hay error de quota, limpiar localStorage y reintentar
+      try {
+        localStorage.clear();
+        localStorage.setItem('recentSearches', JSON.stringify([term]));
+        setRecentSearches([term]);
+      } catch {
+        // Si sigue fallando, ignorar silenciosamente
+      }
+    }
 
     setIsFocused(false);
+    
+    // When searching, only use the search query - don't preserve category filters
+    // User is searching for something specific, so search across all categories
     router.push(`/search?q=${encodeURIComponent(term)}`);
   };
 

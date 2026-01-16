@@ -2,7 +2,7 @@ import { Home, Briefcase, Smartphone, Shirt, PawPrint } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="relative mt-56 text-sm overflow-hidden">
+    <footer className="relative mt-8 text-sm overflow-hidden">
         {/* Wave Background */}
         <div className="absolute inset-0 z-0">
             {/* Base gradient */}
@@ -54,7 +54,7 @@ export default function Footer() {
             <div className="absolute top-1/2 left-1/3 w-48 h-48 bg-teal-400/5 rounded-full blur-2xl"></div>
         </div>
         
-        <div className="relative z-10 pt-16 pb-12">
+        <div className="relative z-10 pt-4 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
                 
@@ -87,35 +87,35 @@ export default function Footer() {
                 {/* Column 2: Categories */}
                 <div>
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-6">Categorii</h3>
-                    <ul className="space-y-4">
-                        <CategoryLink icon={Home} label="Imobiliare" />
-                        <CategoryLink icon={Briefcase} label="Locuri de muncă" />
-                        <CategoryLink icon={Smartphone} label="Electronice" />
-                        <CategoryLink icon={Shirt} label="Modă" />
-                        <CategoryLink icon={PawPrint} label="Animale" />
+                    <ul className="space-y-3">
+                        <CategoryLink icon={Home} label="Imobiliare" category="imobiliare" />
+                        <CategoryLink icon={Briefcase} label="Locuri de muncă" category="locuri-de-munca" />
+                        <CategoryLink icon={Smartphone} label="Electronice" category="electronice" />
+                        <CategoryLink icon={Shirt} label="Modă" category="moda" />
+                        <CategoryLink icon={PawPrint} label="Animale" category="animale" />
                     </ul>
                 </div>
 
                 {/* Column 3: Help */}
                 <div>
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-6">Ajutor</h3>
-                    <ul className="space-y-4">
-                        <li><FooterLink href="#">Centru de ajutor</FooterLink></li>
-                        <li><FooterLink href="#">Cum să vinzi</FooterLink></li>
-                        <li><FooterLink href="#">Cum să cumperi</FooterLink></li>
-                        <li><FooterLink href="#">Siguranță</FooterLink></li>
-                        <li><FooterLink href="#">Contact</FooterLink></li>
+                    <ul className="space-y-3">
+                        <li><HelpLink href="/ajutor">Centru de ajutor</HelpLink></li>
+                        <li><HelpLink href="/cum-sa-vinzi">Cum să vinzi</HelpLink></li>
+                        <li><HelpLink href="/cum-sa-cumperi">Cum să cumperi</HelpLink></li>
+                        <li><HelpLink href="/siguranta">Siguranță</HelpLink></li>
+                        <li><HelpLink href="/contact">Contact</HelpLink></li>
                     </ul>
                 </div>
 
                 {/* Column 4: Legal */}
                 <div>
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-6">Legal</h3>
-                    <ul className="space-y-4">
-                        <li><FooterLink href="#">Termeni de utilizare</FooterLink></li>
-                        <li><FooterLink href="#">Politică de confidențialitate</FooterLink></li>
-                        <li><FooterLink href="#">Politică de cookies</FooterLink></li>
-                        <li><FooterLink href="#">Aviz legal</FooterLink></li>
+                    <ul className="space-y-3">
+                        <li><HelpLink href="/termeni">Termeni de utilizare</HelpLink></li>
+                        <li><HelpLink href="/confidentialitate">Politică de confidențialitate</HelpLink></li>
+                        <li><HelpLink href="/cookies">Politică de cookies</HelpLink></li>
+                        <li><HelpLink href="/aviz-legal">Aviz legal</HelpLink></li>
                     </ul>
                 </div>
 
@@ -161,11 +161,11 @@ function SocialButton({ children, label }: { children: React.ReactNode, label: s
     )
 }
 
-function CategoryLink({ icon: Icon, label }: { icon: any, label: string }) {
+function CategoryLink({ icon: Icon, label, category }: { icon: any, label: string, category: string }) {
      return (
         <li>
-            <a href="#" className="flex items-center text-slate-500 hover:text-[#13C1AC] transition-colors group">
-                <Icon className="h-5 w-5 mr-3 text-slate-500 group-hover:text-[#13C1AC] transition-colors" strokeWidth={1.5} />
+            <a href={`/search?category=${category}`} className="flex items-center text-slate-500 hover:text-[#13C1AC] transition-colors group">
+                <Icon className="h-5 w-5 mr-3 text-[#13C1AC]" strokeWidth={1.5} />
                 <span>{label}</span>
             </a>
         </li>
@@ -176,6 +176,15 @@ function FooterLink({ href, children }: { href: string, children: React.ReactNod
     return (
         <a href={href} className="text-slate-500 hover:text-[#13C1AC] transition-colors block">
             {children}
+        </a>
+    )
+}
+
+function HelpLink({ href, children }: { href: string, children: React.ReactNode }) {
+    return (
+        <a href={href} className="group flex items-center text-slate-500 hover:text-[#13C1AC] transition-all">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#13C1AC]/40 mr-2.5 group-hover:bg-[#13C1AC] group-hover:scale-125 transition-all"></span>
+            <span className="group-hover:translate-x-0.5 transition-transform">{children}</span>
         </a>
     )
 }

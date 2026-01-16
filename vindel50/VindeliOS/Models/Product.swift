@@ -43,7 +43,18 @@ struct Product: Identifiable, Codable {
     
     // Helper for formatting price
     var formattedPrice: String {
-        return "\(price) \(currency.rawValue)"
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        let priceString = formatter.string(from: NSNumber(value: price)) ?? "\(Int(price))"
+        return "\(priceString) \(currency.rawValue)"
+    }
+    
+    // Safe image URL
+    var safeImageURL: URL? {
+        guard !image.isEmpty else { return nil }
+        return URL(string: image)
     }
 }
 

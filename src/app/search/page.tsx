@@ -5,13 +5,130 @@ import { Suspense, useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { getProducts, Product } from '@/lib/products-service';
 import ProductCard from '@/components/ProductCard';
-import { Filter, SlidersHorizontal, MapPin, Tag, ChevronDown, X, ChevronUp, Grid3X3, LayoutList, ArrowUpDown, Sparkles, Star, ThumbsUp, Package, Heart, Clock, CheckCircle, Home, Car, Briefcase, Wrench, Smartphone, Shirt, PawPrint, Armchair, Dumbbell, Baby, Plane, Gamepad2, Layers } from 'lucide-react';
+import { Filter, SlidersHorizontal, MapPin, Tag, ChevronDown, X, ChevronUp, Grid3X3, LayoutList, ArrowUpDown, Sparkles, Star, ThumbsUp, Package, Heart, Clock, CheckCircle, Home, Car, Briefcase, Wrench, Smartphone, Shirt, PawPrint, Armchair, Dumbbell, Baby, Plane, Gamepad2, Layers, Building2, TreeDeciduous, Store, Building, Warehouse, Key, BedDouble, Bike, Disc, Truck, Tractor, Ship, FileText, Users, Shield, Leaf, ShoppingCart, Search, Scissors, Hammer, Calculator, UtensilsCrossed, UserCircle, Utensils, Laptop, Monitor, Megaphone, Stethoscope, TrendingUp, GraduationCap, Globe, Tablet, Tv, Camera, Plug, Cpu, Footprints, ShoppingBag, Gem, Watch, Glasses, Fish, Tent, Map, Music, Bed, Ticket, Droplets, Zap } from 'lucide-react';
 import { localidades, Localidad } from '@/data/localidades';
 import Link from 'next/link';
 import Image from 'next/image';
 import { createProductLink } from '@/lib/slugs';
 
 import { Timestamp } from 'firebase/firestore';
+
+// Subcategories by category with icons
+interface SubcategoryItem {
+  name: string;
+  icon: any;
+}
+
+const SUBCATEGORIES: Record<string, SubcategoryItem[]> = {
+  'imobiliare': [
+    { name: 'Apartamente', icon: Building2 },
+    { name: 'Case / Vile', icon: Home },
+    { name: 'Terenuri', icon: TreeDeciduous },
+    { name: 'Spații comerciale', icon: Store },
+    { name: 'Birouri', icon: Building },
+    { name: 'Garaje / Parcări', icon: Warehouse },
+    { name: 'Închirieri', icon: Key },
+    { name: 'Camere de închiriat', icon: BedDouble }
+  ],
+  'auto-moto': [
+    { name: 'Autoturisme', icon: Car },
+    { name: 'Moto', icon: Bike },
+    { name: 'Anvelope', icon: Disc },
+    { name: 'Jante / Roți', icon: Disc },
+    { name: 'Piese și accesorii', icon: Wrench },
+    { name: 'Transport', icon: Truck },
+    { name: 'Utilaje', icon: Tractor },
+    { name: 'Camioane', icon: Truck },
+    { name: 'Rulote', icon: Truck },
+    { name: 'Bărci / Ambarcațiuni', icon: Ship }
+  ],
+  'locuri-de-munca': [
+    { name: 'Administratie', icon: FileText },
+    { name: 'Agenti - consultanti vanzari', icon: Users },
+    { name: 'IT - Telecomunicatii', icon: Laptop },
+    { name: 'Horeca', icon: UtensilsCrossed },
+    { name: 'Constructii', icon: Hammer },
+    { name: 'Transporturi', icon: Truck }
+  ],
+  'matrimoniale': [
+    { name: 'Femei', icon: Heart },
+    { name: 'Bărbați', icon: Heart },
+    { name: 'Prietenii', icon: Users },
+    { name: 'Întâlniri', icon: Heart }
+  ],
+  'servicii': [
+    { name: 'Construcții', icon: Hammer },
+    { name: 'Reparații', icon: Wrench },
+    { name: 'Transport', icon: Truck },
+    { name: 'Curățenie', icon: Home },
+    { name: 'IT / Web', icon: Laptop },
+    { name: 'Evenimente', icon: Star },
+    { name: 'Educație / Meditații', icon: GraduationCap }
+  ],
+  'electronice': [
+    { name: 'Telefoane', icon: Smartphone },
+    { name: 'Laptopuri', icon: Laptop },
+    { name: 'Calculatoare', icon: Monitor },
+    { name: 'Tablete', icon: Tablet },
+    { name: 'TV / Audio', icon: Tv },
+    { name: 'Foto / Video', icon: Camera },
+    { name: 'Electrocasnice', icon: Plug },
+    { name: 'Componente PC', icon: Cpu },
+    { name: 'Console / Gaming', icon: Gamepad2 },
+    { name: 'Accesorii', icon: Smartphone }
+  ],
+  'moda': [
+    { name: 'Îmbrăcăminte femei', icon: Shirt },
+    { name: 'Îmbrăcăminte bărbați', icon: Shirt },
+    { name: 'Încălțăminte', icon: Footprints },
+    { name: 'Genți', icon: ShoppingBag },
+    { name: 'Bijuterii', icon: Gem },
+    { name: 'Ceasuri', icon: Watch },
+    { name: 'Ochelari', icon: Glasses }
+  ],
+  'animale': [
+    { name: 'Câini', icon: PawPrint },
+    { name: 'Pisici', icon: PawPrint },
+    { name: 'Păsări', icon: PawPrint },
+    { name: 'Pești', icon: Fish },
+    { name: 'Accesorii animale', icon: PawPrint }
+  ],
+  'casa-gradina': [
+    { name: 'Mobilier', icon: Armchair },
+    { name: 'Decorațiuni', icon: Home },
+    { name: 'Electrocasnice', icon: Plug },
+    { name: 'Grădinărit', icon: TreeDeciduous },
+    { name: 'Unelte', icon: Hammer },
+    { name: 'Scule electrice', icon: Zap }
+  ],
+  'sport': [
+    { name: 'Fitness', icon: Dumbbell },
+    { name: 'Ciclism', icon: Bike },
+    { name: 'Camping', icon: Tent },
+    { name: 'Pescuit / Vânătoare', icon: Fish }
+  ],
+  'copii': [
+    { name: 'Îmbrăcăminte copii', icon: Shirt },
+    { name: 'Jucării', icon: Gamepad2 },
+    { name: 'Cărucioare', icon: Baby },
+    { name: 'Mobilier copii', icon: Bed }
+  ],
+  'turism': [
+    { name: 'Hoteluri', icon: Bed },
+    { name: 'Pensiuni', icon: Home },
+    { name: 'Camping', icon: Tent },
+    { name: 'Excursii', icon: Map },
+    { name: 'Bilete / Vouchere', icon: Ticket }
+  ],
+  'gaming': [
+    { name: 'PlayStation', icon: Gamepad2 },
+    { name: 'Xbox', icon: Gamepad2 },
+    { name: 'Nintendo', icon: Gamepad2 },
+    { name: 'PC Gaming', icon: Monitor },
+    { name: 'Jocuri', icon: Disc },
+    { name: 'Accesorii gaming', icon: Gamepad2 }
+  ],
+};
 
 // Helper to convert publishedAt to Date
 const getPublishedDate = (publishedAt: any): Date => {
@@ -63,6 +180,32 @@ function SearchResults() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('relevant');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showSubcategoryMenu, setShowSubcategoryMenu] = useState(false);
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+  const subcategoryRef = useRef<HTMLDivElement>(null);
+  const [currentTheme, setCurrentTheme] = useState(1);
+
+  // Listen for theme changes
+  useEffect(() => {
+    const loadTheme = () => {
+      const saved = localStorage.getItem('user_card_theme');
+      if (saved) setCurrentTheme(parseInt(saved));
+    };
+    loadTheme();
+    window.addEventListener('themeChange', loadTheme);
+    return () => window.removeEventListener('themeChange', loadTheme);
+  }, []);
+
+  // Close subcategory menu on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (subcategoryRef.current && !subcategoryRef.current.contains(event.target as Node)) {
+        setShowSubcategoryMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     async function loadProducts() {
@@ -87,11 +230,17 @@ function SearchResults() {
   const conditionParam = searchParams.get('condition'); // "new", "used", etc.
   const negotiableParam = searchParams.get('negotiable') === 'true';
 
+  // Reset subcategory when category changes
+  useEffect(() => {
+    setSelectedSubcategory(null);
+  }, [categoryParam]);
+
   // Filtering Logic
   const filteredProducts = products.filter((product) => {
     // Text Search - buscar en título, descripción Y ubicación
+    // Si no hay query, mostrar todos
     const searchQuery = query.toLowerCase();
-    const matchesText = 
+    const matchesText = !query || 
         product.title.toLowerCase().includes(searchQuery) || 
         product.description.toLowerCase().includes(searchQuery) ||
         product.location.toLowerCase().includes(searchQuery);
@@ -116,15 +265,20 @@ function SearchResults() {
         ? conditionParam.split(',').some(cond => product.condition?.toLowerCase() === cond.toLowerCase())
         : true;
     
-    // Category - support multiple categories separated by comma
+    // Category - support multiple categories separated by comma (case-insensitive)
     const matchesCategory = categoryParam
-        ? categoryParam.split(',').some(cat => product.category === cat)
+        ? categoryParam.split(',').some(cat => product.category.toLowerCase() === cat.toLowerCase())
+        : true;
+
+    // Subcategory filter
+    const matchesSubcategory = selectedSubcategory
+        ? product.subcategory === selectedSubcategory
         : true;
 
     // Negotiable
     const matchesNegotiable = negotiableParam ? product.negotiable === true : true;
 
-    return matchesText && matchesCurrency && matchesMinPrice && matchesMaxPrice && matchesLocation && matchesCondition && matchesCategory && matchesNegotiable;
+    return matchesText && matchesCurrency && matchesMinPrice && matchesMaxPrice && matchesLocation && matchesCondition && matchesCategory && matchesSubcategory && matchesNegotiable;
   });
 
   // Sorting
@@ -265,6 +419,74 @@ function SearchResults() {
                 )}
               </div>
               
+              {/* Subcategory Dropdown - Only show when category is selected */}
+              {categoryParam && SUBCATEGORIES[categoryParam] && (
+                <div className="relative z-[90]" ref={subcategoryRef}>
+                  <button 
+                    onClick={() => setShowSubcategoryMenu(!showSubcategoryMenu)}
+                    className={`flex items-center gap-2 px-4 py-2.5 bg-white border rounded-xl text-sm font-medium hover:shadow-sm active:scale-[0.98] transition-all shadow-sm ${
+                      selectedSubcategory 
+                        ? 'border-[#13C1AC] text-[#13C1AC]' 
+                        : 'border-gray-200 text-gray-700 hover:border-[#13C1AC]'
+                    }`}
+                  >
+                    <Layers className="w-4 h-4" />
+                    <span className="hidden sm:inline">{selectedSubcategory || 'Subcategorie'}</span>
+                    <span className="sm:hidden">{selectedSubcategory ? selectedSubcategory.substring(0, 10) + (selectedSubcategory.length > 10 ? '...' : '') : 'Sub.'}</span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showSubcategoryMenu ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {showSubcategoryMenu && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-[80]" 
+                        onClick={() => setShowSubcategoryMenu(false)}
+                      />
+                      <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl z-[90] overflow-hidden max-h-72 overflow-y-auto">
+                        <div className="py-1">
+                          {/* All subcategories option */}
+                          <button
+                            onClick={() => { setSelectedSubcategory(null); setShowSubcategoryMenu(false); }}
+                            className={`w-full px-4 py-2.5 text-left text-sm transition-all flex items-center gap-3 ${
+                              !selectedSubcategory 
+                                ? 'bg-gradient-to-r from-[#13C1AC]/10 to-transparent text-[#13C1AC] font-semibold' 
+                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            }`}
+                          >
+                            <Layers className="w-4 h-4" />
+                            <span>Toate subcategoriile</span>
+                            {!selectedSubcategory && (
+                              <span className="ml-auto w-2 h-2 bg-[#13C1AC] rounded-full"></span>
+                            )}
+                          </button>
+                          <div className="h-px bg-gray-100 my-1"></div>
+                          {SUBCATEGORIES[categoryParam].map((subcat) => {
+                            const SubIcon = subcat.icon;
+                            return (
+                              <button
+                                key={subcat.name}
+                                onClick={() => { setSelectedSubcategory(subcat.name); setShowSubcategoryMenu(false); }}
+                                className={`w-full px-4 py-2.5 text-left text-sm transition-all flex items-center gap-3 ${
+                                  selectedSubcategory === subcat.name 
+                                    ? 'bg-gradient-to-r from-[#13C1AC]/10 to-transparent text-[#13C1AC] font-semibold' 
+                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                }`}
+                              >
+                                <SubIcon className="w-4 h-4" />
+                                <span>{subcat.name}</span>
+                                {selectedSubcategory === subcat.name && (
+                                  <span className="ml-auto w-2 h-2 bg-[#13C1AC] rounded-full"></span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+              
               {/* View Toggle - Now visible on mobile too */}
               <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                 <button 
@@ -295,7 +517,7 @@ function SearchResults() {
                   
                   return (
                     <Link
-                      key={product.id}
+                      key={`${product.id}-theme-${currentTheme}`}
                       href={createProductLink(product)}
                       className="group flex bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 hover:border-[#13C1AC]/30 animate-listFadeIn"
                       style={{ animationDelay: `${Math.min(index * 60, 400)}ms` }}
@@ -388,7 +610,7 @@ function SearchResults() {
               <div className="grid gap-2 sm:gap-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                 {sortedProducts.map((product) => (
                     <div 
-                      key={product.id} 
+                      key={`${product.id}-theme-${currentTheme}`} 
                       className="animate-card"
                     >
                       <ProductCard product={product} />
@@ -449,9 +671,21 @@ function SearchFiltersSidebar({ onClose }: { onClose?: () => void }) {
     ];
 
     const toggleCategory = (catId: string) => {
-      setSelectedCategories(prev => 
-        prev.includes(catId) ? prev.filter(c => c !== catId) : [...prev, catId]
-      );
+      // Update local state
+      const newCategories = selectedCategories.includes(catId) 
+        ? selectedCategories.filter(c => c !== catId) 
+        : [catId]; // Only allow one category at a time for subcategory filtering
+      
+      setSelectedCategories(newCategories);
+      
+      // Also update URL immediately so subcategory selector updates
+      const params = new URLSearchParams(searchParams.toString());
+      if (newCategories.length > 0) {
+        params.set('category', newCategories.join(','));
+      } else {
+        params.delete('category');
+      }
+      router.push(`/search?${params.toString()}`, { scroll: false });
     };
 
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
@@ -602,6 +836,11 @@ function SearchFiltersSidebar({ onClose }: { onClose?: () => void }) {
                           onClick={() => {
                             setSelectedCategories([]);
                             setShowCategoryDropdown(false);
+                            // Update URL immediately - clear query when changing category
+                            const params = new URLSearchParams(searchParams.toString());
+                            params.delete('category');
+                            params.delete('q'); // Clear search query when browsing categories
+                            router.push(`/search?${params.toString()}`, { scroll: false });
                           }}
                           className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all ${
                             selectedCategories.length === 0
@@ -635,6 +874,11 @@ function SearchFiltersSidebar({ onClose }: { onClose?: () => void }) {
                               onClick={() => {
                                 setSelectedCategories([cat.id]);
                                 setShowCategoryDropdown(false);
+                                // Update URL immediately - clear query when changing category
+                                const params = new URLSearchParams(searchParams.toString());
+                                params.set('category', cat.id);
+                                params.delete('q'); // Clear search query when browsing categories
+                                router.push(`/search?${params.toString()}`, { scroll: false });
                               }}
                               className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all ${
                                 isSelected

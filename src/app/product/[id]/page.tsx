@@ -8,8 +8,38 @@ import { notFound, useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, memo } from 'react';
 import { getProduct, getProducts, Product } from '@/lib/products-service';
 import { createOrGetConversation } from '@/lib/messages';
-import { extractIdFromSlug } from '@/lib/slugs';
+import { Timestamp } from 'firebase/firestore';
+import { extractIdFromSlug, createProductLink } from '@/lib/slugs';
 import Avatar from '@/components/Avatar';
+import { createReport, REPORT_REASONS, hasUserReported } from '@/lib/reports-service';
+import { useAuth } from '@/lib/auth-context';
+
+// Helper para tiempo relativo
+const getRelativeTime = (publishedAt?: string | Timestamp): string => {
+  if (!publishedAt) return 'Azi';
+  let date: Date;
+  if (typeof publishedAt === 'string') {
+    date = new Date(publishedAt);
+  } else if (publishedAt && 'seconds' in publishedAt) {
+    date = new Date(publishedAt.seconds * 1000);
+  } else {
+    return 'Azi';
+  }
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMins < 1) return 'Acum';
+  if (diffMins < 60) return `${diffMins} min`;
+  if (diffHours < 24) return diffHours === 1 ? '1 oră' : `${diffHours} ore`;
+  if (diffDays < 7) return diffDays === 1 ? 'Ieri' : `${diffDays} zile`;
+  if (diffWeeks < 4) return diffWeeks === 1 ? '1 săpt' : `${diffWeeks} săpt`;
+  if (diffMonths < 12) return diffMonths === 1 ? '1 lună' : `${diffMonths} luni`;
+  return '+1 an';
+};
 
 // Lazy load ProductCard solo cuando hay productos del vendedor
 const ProductCard = dynamic(() => import('@/components/ProductCard'), {
@@ -53,25 +83,102 @@ const getConditionInfo = (condition?: string): { label: string; color: string; i
 export default function ProductPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const [product, setProduct] = useState<Product | null>(null);
   const [sellerProducts, setSellerProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState(1);
+  
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+  
+  // Handle report submit
+  const handleReportSubmit = async () => {
+    if (!reportReason || !product) return;
+    
+    setReportLoading(true);
+    try {
+      // Check if already reported
+      if (user) {
+        const alreadyReported = await hasUserReported(product.id, user.uid);
+        if (alreadyReported) {
+          alert('Ai raportat deja acest anunț.');
+          setShowReportModal(false);
+          return;
+        }
+      }
+      
+      console.log('[REPORT-UI] Creating report for product:', product.id);
+      console.log('[REPORT-UI] Product sellerId:', product.sellerId);
+      console.log('[REPORT-UI] Product seller.id:', product.seller?.id);
+      
+      await createReport({
+        targetId: product.id,
+        targetType: 'product',
+        reason: reportReason,
+        description: reportDescription,
+        reporterId: user?.uid,
+        reporterEmail: user?.email || undefined,
+        productTitle: product.title,
+        productImage: product.images?.[0] || product.image,
+        productCategory: product.category,
+        productLink: createProductLink(product),
+        sellerId: product.sellerId || product.seller?.id,
+      });
+      
+      setReportSuccess(true);
+      setTimeout(() => {
+        setShowReportModal(false);
+        setReportSuccess(false);
+        setReportReason('');
+        setReportDescription('');
+      }, 2000);
+    } catch (error) {
+      console.error('Error creating report:', error);
+      alert('Eroare la trimiterea raportului. Încearcă din nou.');
+    } finally {
+      setReportLoading(false);
+    }
+  };
 
-  // Precargar imágenes en background para cambio instantáneo
+  // Listen for theme changes
+  useEffect(() => {
+    const loadTheme = () => {
+      const saved = localStorage.getItem('user_card_theme');
+      if (saved) setCurrentTheme(parseInt(saved));
+    };
+    loadTheme();
+    window.addEventListener('themeChange', loadTheme);
+    return () => window.removeEventListener('themeChange', loadTheme);
+  }, []);
+
+  // Precargar imágenes adyacentes para cambio instantáneo
   useEffect(() => {
     if (product && product.images && product.images.length > 1) {
-      // Precargar resto de imágenes después de 100ms
-      const timer = setTimeout(() => {
-        product.images.slice(1).forEach((url) => {
-          const img = new window.Image();
-          img.src = url;
+      const preloadAdjacent = () => {
+        const prevIdx = currentImageIndex === 0 ? product.images.length - 1 : currentImageIndex - 1;
+        const nextIdx = currentImageIndex === product.images.length - 1 ? 0 : currentImageIndex + 1;
+        
+        // Preload previous and next images
+        [prevIdx, nextIdx].forEach((idx) => {
+          if (idx !== currentImageIndex) {
+            const img = new window.Image();
+            img.src = product.images[idx];
+          }
         });
-      }, 100);
+      };
+      
+      // Preload on mount and when image changes
+      const timer = setTimeout(preloadAdjacent, 50);
       return () => clearTimeout(timer);
     }
-  }, [product]);
+  }, [product, currentImageIndex]);
 
   useEffect(() => {
     // Force scroll to top when entering the page to ensure full visibility
@@ -83,6 +190,22 @@ export default function ProductPage() {
           const productId = extractIdFromSlug(params.id as string);
           const foundProduct = await getProduct(productId);
           if (foundProduct) {
+            // Redirect to canonical URL /anunturi/...
+            const canonicalUrl = createProductLink(foundProduct);
+            if (!window.location.pathname.startsWith('/anunturi/')) {
+              router.replace(canonicalUrl);
+              return;
+            }
+            
+            // Debug DETALLADO: ver publishedAt
+            console.log('=== DEBUG PRODUCTO ===');
+            console.log('ID:', foundProduct.id);
+            console.log('Title:', foundProduct.title);
+            console.log('publishedAt:', foundProduct.publishedAt);
+            console.log('publishedAt type:', typeof foundProduct.publishedAt);
+            console.log('Has seconds?:', (foundProduct.publishedAt as any)?.seconds);
+            console.log('All keys:', Object.keys(foundProduct));
+            console.log('======================');
             setProduct(foundProduct);
             
             // Dynamic Title for SEO & UX
@@ -137,18 +260,13 @@ export default function ProductPage() {
 
   const nextImage = () => {
     const newIndex = (currentImageIndex + 1) % images.length;
-    console.log('Next image:', currentImageIndex, '->', newIndex);
     setCurrentImageIndex(newIndex);
   };
 
   const prevImage = () => {
     const newIndex = (currentImageIndex - 1 + images.length) % images.length;
-    console.log('Prev image:', currentImageIndex, '->', newIndex);
     setCurrentImageIndex(newIndex);
   };
-
-  // Debug log
-  console.log('Current image index:', currentImageIndex, 'Total images:', images.length, 'Current URL:', images[currentImageIndex]);
 
   return (
     <div className="bg-gray-50 min-h-screen pb-12">
@@ -164,46 +282,50 @@ export default function ProductPage() {
             {/* Left Column: Images & Description */}
             <div className="lg:col-span-2 space-y-6">
                 
-                {/* Image Gallery - Simple and Fast */}
-                <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                {/* Image Gallery - Optimized with navigation */}
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
                   {/* Main Image Container */}
                   <div 
-                      className="relative h-[400px] md:h-[500px] bg-gray-100 flex items-center justify-center group cursor-pointer"
+                      className="relative aspect-[4/5] max-h-[480px] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center cursor-pointer overflow-hidden"
                       onClick={() => setLightboxOpen(true)}
                   >
-                      {/* All images preloaded, show/hide for instant switching */}
-                      {images.map((img, idx) => (
-                        <Image 
-                          key={idx}
-                          src={img} 
-                          alt={product.title} 
-                          fill
-                          sizes="(max-width: 1024px) 100vw, 66vw"
-                          className="object-contain"
-                          style={{ display: idx === currentImageIndex ? 'block' : 'none' }}
-                          priority={idx === 0}
-                          quality={75}
-                        />
-                      ))}
+                      {/* Shimmer skeleton effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite] z-[1]" />
                       
-                      {/* Image counter */}
-                      <div className="absolute top-4 left-4 bg-black/60 text-white text-sm px-3 py-1 rounded-lg backdrop-blur-md font-medium z-10">
-                          {currentImageIndex + 1}/{images.length}
-                      </div>
-                      
+                      {/* Current image - priority for first, lazy for rest */}
+                      <Image 
+                        key={currentImageIndex}
+                        src={images[currentImageIndex]} 
+                        alt={product.title} 
+                        fill
+                        sizes="(max-width: 768px) 100vw, 600px"
+                        className="object-contain animate-[fadeIn_0.3s_ease-out] z-[2]"
+                        priority={currentImageIndex === 0}
+                        quality={60}
+                        placeholder="blur"
+                        blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAB//2Q=="
+                      />
+
+                      {/* Navigation arrows */}
                       {images.length > 1 && (
                         <>
-                          <button 
-                              onClick={(e) => { e.stopPropagation(); prevImage(); }}
-                              className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-gray-100 rounded-full text-gray-800 shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentImageIndex(currentImageIndex === 0 ? images.length - 1 : currentImageIndex - 1);
+                            }}
+                            className="absolute left-3 top-1/2 -translate-y-1/2 p-2 bg-white/90 hover:bg-white rounded-full shadow-lg transition-colors z-10"
                           >
-                              <ChevronLeft className="h-6 w-6" />
+                            <ChevronLeft className="w-5 h-5 text-gray-700" />
                           </button>
-                          <button 
-                              onClick={(e) => { e.stopPropagation(); nextImage(); }}
-                              className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-white hover:bg-gray-100 rounded-full text-gray-800 shadow-lg transition-all opacity-0 group-hover:opacity-100 z-10"
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentImageIndex(currentImageIndex === images.length - 1 ? 0 : currentImageIndex + 1);
+                            }}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-white/90 hover:bg-white rounded-full shadow-lg transition-colors z-10"
                           >
-                              <ChevronRight className="h-6 w-6" />
+                            <ChevronRight className="w-5 h-5 text-gray-700" />
                           </button>
                         </>
                       )}
@@ -223,21 +345,27 @@ export default function ProductPage() {
                         </button>
                       </div>
                       
+                      {/* Image counter */}
+                      {images.length > 1 && (
+                        <div className="absolute bottom-4 right-4 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-md z-10 font-medium">
+                          {currentImageIndex + 1}/{images.length}
+                        </div>
+                      )}
+                      
                       <div className="absolute bottom-4 left-4 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-md flex items-center z-10">
                           <Eye className="h-3 w-3 mr-1" />
                           {product.views || 0}
                       </div>
                   </div>
 
-                  {/* Thumbnails - click or hover to change instantly */}
+                  {/* Thumbnails bar */}
                   {images.length > 1 && (
-                    <div className="flex gap-1.5 p-2 bg-gray-50 border-t border-gray-100 overflow-x-auto">
+                    <div className="flex gap-2 p-3 bg-gray-50 border-t border-gray-100 overflow-x-auto">
                       {images.map((img, idx) => (
                         <button
                           key={idx}
                           onClick={() => setCurrentImageIndex(idx)}
-                          onMouseEnter={() => setCurrentImageIndex(idx)}
-                          className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden flex-shrink-0 border-2 ${
+                          className={`relative w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 border-2 transition-all ${
                             currentImageIndex === idx 
                               ? 'border-[#13C1AC] ring-2 ring-[#13C1AC]/20' 
                               : 'border-transparent opacity-60 hover:opacity-100'
@@ -245,11 +373,12 @@ export default function ProductPage() {
                         >
                           <Image 
                             src={img} 
-                            alt={`Miniatura ${idx + 1}`} 
-                            fill
-                            sizes="64px"
+                            alt={`Foto ${idx + 1}`} 
+                            fill 
+                            sizes="56px" 
                             className="object-cover"
                             quality={50}
+                            loading={idx < 4 ? "eager" : "lazy"}
                           />
                         </button>
                       ))}
@@ -259,7 +388,13 @@ export default function ProductPage() {
 
                 {/* Description Card */}
                 <div className="bg-white rounded-xl shadow-sm p-6 md:p-8">
-                     <h2 className="description-text text-xl font-semibold text-gray-900 mb-4">Descriere</h2>
+                     <div className="flex items-center justify-between mb-4">
+                       <h2 className="description-text text-xl font-semibold text-gray-900">Descriere</h2>
+                       <span className="flex items-center gap-1.5 text-sm text-gray-500">
+                         <Clock className="h-4 w-4" />
+                         {getRelativeTime(product.publishedAt)}
+                       </span>
+                     </div>
                      <p className="description-text text-gray-600 whitespace-pre-line leading-relaxed">
                         {product.description}
                      </p>
@@ -269,7 +404,14 @@ export default function ProductPage() {
                         <div className="flex items-center text-xs text-gray-400">
                            <span>Ref: {product.id.toString().slice(0, 8)}</span>
                            <span className="mx-2">•</span>
-                           <button className="flex items-center hover:text-red-500 transition-colors">
+                           <span className="flex items-center">
+                              <Clock className="h-3.5 w-3.5 mr-1" /> {getRelativeTime(product.publishedAt)}
+                           </span>
+                           <span className="mx-2">•</span>
+                           <button 
+                              onClick={() => setShowReportModal(true)}
+                              className="flex items-center hover:text-red-500 transition-colors"
+                           >
                               <Flag className="h-3.5 w-3.5 mr-1" /> Raportează anunțul
                            </button>
                         </div>
@@ -292,6 +434,7 @@ export default function ProductPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2">
                       {Object.entries(product.customFields)
+                        .filter(([key, value]) => value !== undefined && value !== null && value !== '')
                         .sort(([keyA], [keyB]) => {
                           // Ordenar: marca primero, luego model, después el resto
                           const order = ['marca', 'marcaAnvelopa', 'marcaJanta', 'model', 'tip', 'tipMoto', 'tipAnvelopa', 'tipJanta'];
@@ -592,6 +735,18 @@ export default function ProductPage() {
                           </div>
                         );
                       })}
+                      {/* Publicat - siempre al final */}
+                      <div className="px-6 py-4 flex justify-between items-center hover:bg-[#13C1AC]/5 transition-colors border-t border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className="text-[#13C1AC]">
+                            <Clock className="w-4 h-4" />
+                          </div>
+                          <span className="text-gray-500">Publicat</span>
+                        </div>
+                        <span className="text-gray-900 font-medium border border-[#13C1AC]/30 bg-[#13C1AC]/5 px-2.5 py-0.5 rounded-full text-xs">
+                          {getRelativeTime(product.publishedAt)}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -638,7 +793,7 @@ export default function ProductPage() {
                         </span>
                       </div>
                       {/* Metoda de predare */}
-                      <div className="px-6 py-4 flex justify-between items-center hover:bg-[#13C1AC]/5 transition-colors border-gray-100">
+                      <div className="px-6 py-4 flex justify-between items-center hover:bg-[#13C1AC]/5 transition-colors md:border-r border-gray-100 border-b">
                         <div className="flex items-center gap-3">
                           <div className={product.deliveryType === 'shipping' || product.deliveryType === 'both' ? 'text-purple-500' : 'text-[#13C1AC]'}>
                             {product.deliveryType === 'shipping' || product.deliveryType === 'both' ? <Truck className="w-4 h-4" /> : <Users className="w-4 h-4" />}
@@ -653,6 +808,16 @@ export default function ProductPage() {
                           {product.deliveryType === 'shipping' ? 'Livrare disponibilă' : 
                            product.deliveryType === 'both' ? 'Personal + Livrare' : 
                            'Predare personală'}
+                        </span>
+                      </div>
+                      {/* Publicat */}
+                      <div className="px-6 py-4 flex justify-between items-center hover:bg-[#13C1AC]/5 transition-colors border-gray-100">
+                        <div className="flex items-center gap-3">
+                          <div className="text-[#13C1AC]"><Clock className="w-4 h-4" /></div>
+                          <span className="text-gray-500">Publicat</span>
+                        </div>
+                        <span className="text-gray-900 font-medium border border-[#13C1AC]/30 bg-[#13C1AC]/5 px-2.5 py-0.5 rounded-full text-xs">
+                          {getRelativeTime(product.publishedAt)}
                         </span>
                       </div>
                     </div>
@@ -706,6 +871,12 @@ export default function ProductPage() {
                             Negociabil
                           </span>
                         )}
+                        
+                        {/* Time badge */}
+                        <span className="px-2 py-1 text-xs font-medium rounded-md flex items-center gap-1 bg-gray-100 text-gray-600">
+                          <Clock className="w-3 h-3" />
+                          {getRelativeTime(product.publishedAt)}
+                        </span>
                     </div>
                     
                     <button 
@@ -799,7 +970,7 @@ export default function ProductPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {sellerProducts.map((item, index) => (
                  <div 
-                   key={item.id} 
+                   key={`${item.id}-theme-${currentTheme}`} 
                    className="h-full"
                   
                  >
@@ -830,7 +1001,7 @@ export default function ProductPage() {
             {currentImageIndex + 1}/{images.length}
           </div>
 
-          {/* Imagen principal */}
+          {/* Imagen principal - only load current and adjacent */}
           <div 
             className="flex-1 flex items-center justify-center p-4 relative"
             onClick={(e) => e.stopPropagation()}
@@ -848,20 +1019,18 @@ export default function ProductPage() {
               </button>
             )}
 
-            {/* All images with display toggle for instant switching */}
+            {/* Single current image - optimized loading */}
             <div className="relative max-w-5xl w-full h-full max-h-[75vh] flex items-center justify-center">
-              {images.map((img, idx) => (
-                <Image
-                  key={idx}
-                  src={img}
-                  alt={product.title}
-                  fill
-                  sizes="100vw"
-                  className="object-contain"
-                  style={{ display: idx === currentImageIndex ? 'block' : 'none' }}
-                  quality={85}
-                />
-              ))}
+              <Image
+                key={currentImageIndex}
+                src={images[currentImageIndex]}
+                alt={product.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 1200px"
+                className="object-contain"
+                priority
+                quality={75}
+              />
             </div>
 
             {/* Flecha derecha */}
@@ -930,6 +1099,116 @@ export default function ProductPage() {
               >
                 Chat
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Report Modal */}
+      {showReportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowReportModal(false)}>
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeInUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-red-500 to-rose-500 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <Flag className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Raportează anunțul</h3>
+                </div>
+                <button 
+                  onClick={() => setShowReportModal(false)}
+                  className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div className="p-6">
+              {reportSuccess ? (
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-8 h-8 text-green-600" />
+                  </div>
+                  <h4 className="text-lg font-bold text-gray-900 mb-2">Mulțumim pentru raport!</h4>
+                  <p className="text-sm text-gray-500">Vom analiza anunțul în cel mai scurt timp.</p>
+                </div>
+              ) : (
+                <>
+                  {/* Product preview */}
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl mb-5">
+                    {product?.images?.[0] && (
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
+                        <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-gray-900 truncate">{product?.title}</p>
+                      <p className="text-xs text-gray-500">ID: {product?.id.slice(0, 8)}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Reason select */}
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Motivul raportării *</label>
+                    <select
+                      value={reportReason}
+                      onChange={(e) => setReportReason(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white"
+                    >
+                      <option value="">Selectează un motiv...</option>
+                      {REPORT_REASONS.map((reason) => (
+                        <option key={reason.value} value={reason.value}>{reason.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* Description */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Detalii suplimentare (opțional)</label>
+                    <textarea
+                      value={reportDescription}
+                      onChange={(e) => setReportDescription(e.target.value)}
+                      placeholder="Descrie problema în detaliu..."
+                      rows={3}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                    />
+                  </div>
+                  
+                  {/* Actions */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowReportModal(false)}
+                      className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                    >
+                      Anulează
+                    </button>
+                    <button
+                      onClick={handleReportSubmit}
+                      disabled={!reportReason || reportLoading}
+                      className="flex-1 px-4 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {reportLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                          <span>Se trimite...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Flag className="w-4 h-4" />
+                          <span>Trimite raportul</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

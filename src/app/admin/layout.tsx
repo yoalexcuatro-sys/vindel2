@@ -15,7 +15,8 @@ import {
   Megaphone,
   Scale,
   BadgeCheck,
-  Loader2
+  Loader2,
+  HeadphonesIcon
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -78,6 +79,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { icon: LayoutDashboard, label: 'Dashboard', href: '/admin', badge: null },
     { icon: ShoppingBag, label: 'Anunțuri', href: '/admin/products', badge: null },
     { icon: ShieldCheck, label: 'Moderare', href: '/admin/moderation', badge: pendingCount > 0 ? pendingCount : null },
+    { icon: HeadphonesIcon, label: 'Suport', href: '/admin/suport', badge: null },
     { icon: Megaphone, label: 'Marketing', href: '/admin/promotions', badge: null },
     { icon: Users, label: 'Utilizatori', href: '/admin/users', badge: null },
     { icon: Globe, label: 'SEO & Config', href: '/admin/seo', badge: null },

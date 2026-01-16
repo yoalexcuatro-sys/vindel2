@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { PlusCircle, MessageCircle, Heart, User, Menu, X, LogOut, Settings, Shield } from 'lucide-react';
+import { PlusCircle, MessageCircle, Heart, User, Menu, X, LogOut, Settings, Shield, Bell } from 'lucide-react';
 import { useState, Suspense, useRef, useEffect } from 'react';
 import SearchBar from './SearchBar';
 import { useAuth } from '@/lib/auth-context';
 import { subscribeToUnreadCount } from '@/lib/messages-service';
+import { subscribeToUnreadNotifications } from '@/lib/notifications-service';
 import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
@@ -23,6 +24,7 @@ export default function Navbar() {
     }
     return 0;
   });
+  const [notificationCount, setNotificationCount] = useState(0);
   const { user, userProfile, logout, loading } = useAuth();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
@@ -68,6 +70,20 @@ export default function Navbar() {
       try {
         sessionStorage.setItem('unread-count-cache', count.toString());
       } catch {}
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // Subscribe to unread notifications count
+  useEffect(() => {
+    if (!user) {
+      setNotificationCount(0);
+      return;
+    }
+
+    const unsubscribe = subscribeToUnreadNotifications(user.uid, (count) => {
+      setNotificationCount(count);
     });
 
     return () => unsubscribe();
@@ -152,6 +168,21 @@ export default function Navbar() {
                  <span className="text-xs mt-1 font-medium">Favorite</span>
               </button>
               
+              {/* Notifications Bell - Only shown when logged in */}
+              {user && (
+                <Link href="/profile?tab=notifications" className="group flex flex-col items-center hover:text-[#13C1AC] transition-colors relative">
+                  <div className="relative">
+                    <Bell className="h-6 w-6 group-hover:scale-110 transition-transform" />
+                    {notificationCount > 0 && (
+                      <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                        {notificationCount > 9 ? '9+' : notificationCount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs mt-1 font-medium">Notificări</span>
+                </Link>
+              )}
+              
               {/* User Menu */}
               {!loading && (
                 user ? (
@@ -194,7 +225,7 @@ export default function Navbar() {
                           Profilul meu
                         </Link>
                         <Link 
-                          href="/profile" 
+                          href="/profile?tab=settings" 
                           className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                           onClick={() => setIsUserMenuOpen(false)}
                         >
@@ -269,9 +300,16 @@ export default function Navbar() {
                           <span className="text-xs">Favorite</span>
                       </button>
                       {user ? (
-                        <Link href="/profile" className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC]">
-                          <User className="h-6 w-6 mb-1" />
-                          <span className="text-xs">Profil</span>
+                        <Link href="/profile?tab=notifications" className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC] relative">
+                          <div className="relative">
+                            <Bell className="h-6 w-6 mb-1" />
+                            {notificationCount > 0 && (
+                              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5 text-[10px]">
+                                {notificationCount > 9 ? '9+' : notificationCount}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs">Notificări</span>
                         </Link>
                       ) : (
                         <Link href="/login" className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC]">
@@ -281,13 +319,19 @@ export default function Navbar() {
                       )}
                   </div>
                   {user && (
-                    <button 
-                      onClick={handleLogout}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg border-t border-gray-100 mt-2"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Deconectare
-                    </button>
+                    <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+                      <Link href="/profile" className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC]">
+                        <User className="h-6 w-6 mb-1" />
+                        <span className="text-xs">Profil</span>
+                      </Link>
+                      <button 
+                        onClick={handleLogout}
+                        className="flex flex-col items-center text-red-500 hover:text-red-600"
+                      >
+                        <LogOut className="h-6 w-6 mb-1" />
+                        <span className="text-xs">Ieșire</span>
+                      </button>
+                    </div>
                   )}
               </div>
           </div>

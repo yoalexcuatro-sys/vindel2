@@ -11,12 +11,24 @@ import Avatar from '@/components/Avatar';
 export default function UserProfile({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<'selling' | 'reviews'>('selling');
+  const [currentTheme, setCurrentTheme] = useState(1);
   
   // SWR para productos del usuario - carga instantánea
   const { data: products, isLoading: loading } = useUserProducts(id);
   
   // SWR para perfil del usuario (foto actualizada)
   const { data: userProfile } = useUserProfile(id);
+
+  // Listen for theme changes
+  useEffect(() => {
+    const loadTheme = () => {
+      const saved = localStorage.getItem('user_card_theme');
+      if (saved) setCurrentTheme(parseInt(saved));
+    };
+    loadTheme();
+    window.addEventListener('themeChange', loadTheme);
+    return () => window.removeEventListener('themeChange', loadTheme);
+  }, []);
 
   if (loading) {
     return (
@@ -111,7 +123,7 @@ export default function UserProfile({ params }: { params: Promise<{ id: string }
                 {activeTab === 'selling' && (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-4">
                         {products.map(product => (
-                            <ProductCard key={product.id} product={product} />
+                            <ProductCard key={`${product.id}-theme-${currentTheme}`} product={product} />
                         ))}
                          {products.length === 0 && (
                             <p className="col-span-full text-center text-gray-500 py-8 sm:py-10 text-sm sm:text-base">Acest utilizator nu are produse în vânzare.</p>

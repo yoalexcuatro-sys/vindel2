@@ -71,7 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      console.log('Auth state changed:', firebaseUser?.email || 'no user');
       setUser(firebaseUser);
       setLoading(false);
       // If no user, profile loading is also done (it's null)
@@ -100,10 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             
             if (docSnap.exists()) {
               profile = docSnap.data() as UserProfile;
-              console.log('Profile found:', profile.displayName);
               break;
             } else {
-              console.log('Profile not found, attempt', attempt + 1);
               if (attempt < 4) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
               }
@@ -126,7 +123,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         } else {
             // Self-repair: Create a default profile if it is missing after retries
-            console.log('Creating default profile for missing user document');
             const newProfile: UserProfile = {
                 uid: user.uid,
                 email: user.email,
@@ -158,7 +154,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     sessionStorage.setItem('user-profile-cache', JSON.stringify(newProfile));
                   } catch {}
                 }
-                console.log('Defaut profile created successfully');
             } catch (createError) {
                 console.error('Failed to create default profile:', createError);
                 setUserProfile(null);

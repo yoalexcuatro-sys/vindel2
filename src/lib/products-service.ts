@@ -67,6 +67,7 @@ const PRODUCTS_COLLECTION = 'products';
 export async function createProduct(productData: ProductInput): Promise<string> {
   // Calcular tiempo de auto-aprobación (20 minutos)
   const pendingUntil = new Date(Date.now() + 20 * 60 * 1000); // 20 minutos
+  const now = Timestamp.now(); // Usar Timestamp.now() en lugar de serverTimestamp() para disponibilidad inmediata
   
   const docRef = await addDoc(collection(db, PRODUCTS_COLLECTION), {
     ...productData,
@@ -75,8 +76,8 @@ export async function createProduct(productData: ProductInput): Promise<string> 
     sold: false,
     status: 'pending', // Empieza pendiente de moderación
     pendingUntil: Timestamp.fromDate(pendingUntil), // Auto-aprueba después de 20 min
-    publishedAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    publishedAt: now,
+    updatedAt: now,
   });
   return docRef.id;
 }
@@ -118,7 +119,7 @@ export async function updateProduct(productId: string, data: Partial<Product>): 
   const docRef = doc(db, PRODUCTS_COLLECTION, productId);
   await updateDoc(docRef, {
     ...data,
-    updatedAt: serverTimestamp(),
+    updatedAt: Timestamp.now(),
   });
 }
 
@@ -197,7 +198,6 @@ export async function incrementProductViews(productId: string, visitorId?: strin
       localStorage.setItem(viewedKey, JSON.stringify(cleanedProducts));
     } catch (e) {
       // Si falla por quota, limpiar todo y empezar de nuevo
-      console.warn('localStorage quota exceeded, clearing viewed_products');
       localStorage.removeItem(viewedKey);
       localStorage.setItem(viewedKey, JSON.stringify({ [productId]: now }));
     }

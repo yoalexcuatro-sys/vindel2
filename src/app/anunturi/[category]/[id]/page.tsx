@@ -6,11 +6,38 @@ import { notFound, useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getProducts, Product, incrementProductViews } from '@/lib/products-service';
 import { getOrCreateConversation } from '@/lib/messages-service';
+import { Timestamp } from 'firebase/firestore';
 import { toggleFavorite } from '@/lib/favorites-service';
 import { useAuth } from '@/lib/auth-context';
 import ProductCard from '@/components/ProductCard';
+import { createReport, REPORT_REASONS, hasUserReported } from '@/lib/reports-service';
 import { extractIdFromSlug } from '@/lib/slugs';
 import { useProduct, useUserProducts, useUserProfile, useUserFavorites } from '@/lib/swr-hooks';
+
+// Helper para tiempo relativo
+const getRelativeTime = (publishedAt?: Timestamp | { seconds: number; nanoseconds: number }): string => {
+  if (!publishedAt) return 'Azi';
+  let date: Date;
+  if ('seconds' in publishedAt) {
+    date = new Date(publishedAt.seconds * 1000);
+  } else {
+    return 'Azi';
+  }
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffWeeks = Math.floor(diffDays / 7);
+  const diffMonths = Math.floor(diffDays / 30);
+  if (diffMins < 1) return 'Acum';
+  if (diffMins < 60) return `${diffMins} min`;
+  if (diffHours < 24) return diffHours === 1 ? '1 oră' : `${diffHours} ore`;
+  if (diffDays < 7) return diffDays === 1 ? 'Ieri' : `${diffDays} zile`;
+  if (diffWeeks < 4) return diffWeeks === 1 ? '1 săpt' : `${diffWeeks} săpt`;
+  if (diffMonths < 12) return diffMonths === 1 ? '1 lună' : `${diffMonths} luni`;
+  return '+1 an';
+};
 
 // Helper para obtener info de condición
 const getConditionInfo = (condition?: string): { label: string; color: string; icon: any } | null => {
@@ -71,6 +98,56 @@ export default function ProductPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const hasTrackedView = useRef(false);
   
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDescription, setReportDescription] = useState('');
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
+  
+  // Handle report submit
+  const handleReportSubmit = async () => {
+    if (!reportReason) return;
+    
+    setReportLoading(true);
+    try {
+      // Check if already reported
+      if (user) {
+        const alreadyReported = await hasUserReported(product?.id || '', user.uid);
+        if (alreadyReported) {
+          alert('Ai raportat deja acest anunț.');
+          setShowReportModal(false);
+          return;
+        }
+      }
+      
+      await createReport({
+        targetId: product?.id || '',
+        targetType: 'product',
+        reason: reportReason,
+        description: reportDescription,
+        reporterId: user?.uid,
+        reporterEmail: user?.email || undefined,
+        productTitle: product?.title,
+        productImage: product?.images?.[0] || product?.image,
+        sellerId: product?.sellerId, // Para notificar al vendedor
+      });
+      
+      setReportSuccess(true);
+      setTimeout(() => {
+        setShowReportModal(false);
+        setReportSuccess(false);
+        setReportReason('');
+        setReportDescription('');
+      }, 2000);
+    } catch (error) {
+      console.error('Error creating report:', error);
+      alert('Eroare la trimiterea raportului. Încearcă din nou.');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   // Handle favorite toggle
   const handleFavoriteClick = useCallback(async () => {
     if (!user) {
@@ -331,7 +408,13 @@ export default function ProductPage() {
 
                 {/* Description Card */}
                 <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 md:p-8 animate-fadeInUp animate-delay-200">
-                     <h2 className="description-text text-lg sm:text-xl font-semibold text-gray-900 mb-3 sm:mb-4">Descriere</h2>
+                     <div className="flex items-center justify-between mb-3 sm:mb-4">
+                       <h2 className="description-text text-lg sm:text-xl font-semibold text-gray-900">Descriere</h2>
+                       <span className="flex items-center gap-1.5 text-sm text-gray-500">
+                         <Clock className="h-4 w-4" />
+                         {getRelativeTime(product.publishedAt)}
+                       </span>
+                     </div>
                      <p className="description-text text-sm sm:text-base text-gray-600 whitespace-pre-line leading-relaxed">
                         {product.description}
                      </p>
@@ -347,7 +430,10 @@ export default function ProductPage() {
                             </div>
                             
                             {/* Report Button */}
-                            <button className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200">
+                            <button 
+                              onClick={() => setShowReportModal(true)}
+                              className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 text-[10px] sm:text-xs text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all duration-200"
+                            >
                               <Flag className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
                               <span>Raportează</span>
                             </button>
@@ -712,6 +798,116 @@ export default function ProductPage() {
 
             </div>
         </div>
+
+        {/* Report Modal */}
+        {showReportModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowReportModal(false)}>
+            <div 
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeInUp"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-red-500 to-rose-500 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Flag className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Raportează anunțul</h3>
+                  </div>
+                  <button 
+                    onClick={() => setShowReportModal(false)}
+                    className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-white" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="p-6">
+                {reportSuccess ? (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircle className="w-8 h-8 text-green-600" />
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900 mb-2">Mulțumim pentru raport!</h4>
+                    <p className="text-sm text-gray-500">Vom analiza anunțul în cel mai scurt timp.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Product preview */}
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl mb-5">
+                      {product?.images?.[0] && (
+                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
+                          <img src={product.images[0]} alt="" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 truncate">{product?.title}</p>
+                        <p className="text-xs text-gray-500">ID: {product?.id.slice(0, 8)}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Reason select */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Motivul raportării *</label>
+                      <select
+                        value={reportReason}
+                        onChange={(e) => setReportReason(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white"
+                      >
+                        <option value="">Selectează un motiv...</option>
+                        {REPORT_REASONS.map((reason) => (
+                          <option key={reason.value} value={reason.value}>{reason.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Description */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Detalii suplimentare (opțional)</label>
+                      <textarea
+                        value={reportDescription}
+                        onChange={(e) => setReportDescription(e.target.value)}
+                        placeholder="Descrie problema în detaliu..."
+                        rows={3}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+                      />
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowReportModal(false)}
+                        className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                      >
+                        Anulează
+                      </button>
+                      <button
+                        onClick={handleReportSubmit}
+                        disabled={!reportReason || reportLoading}
+                        className="flex-1 px-4 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        {reportLoading ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                            <span>Se trimite...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Flag className="w-4 h-4" />
+                            <span>Trimite raportul</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* More from seller section */}
         {sellerProducts.length > 0 && (
