@@ -71,6 +71,55 @@ export type ProductInput = Omit<Product, 'id' | 'publishedAt' | 'updatedAt' | 'v
 
 const PRODUCTS_COLLECTION = 'products';
 
+// Helper: verificar si un producto está activamente promocionado
+function isActivelyPromoted(product: Product): boolean {
+  if (!product.promoted || !product.promotionEnd) return false;
+  
+  const now = new Date();
+  let endDate: Date;
+  
+  if (product.promotionEnd instanceof Timestamp) {
+    endDate = product.promotionEnd.toDate();
+  } else if (typeof product.promotionEnd === 'object' && 'seconds' in product.promotionEnd) {
+    endDate = new Date((product.promotionEnd as any).seconds * 1000);
+  } else {
+    return false;
+  }
+  
+  return endDate > now;
+}
+
+// Helper: obtener prioridad de promoción (VIP > Premium > Promovat > sin promoción)
+function getPromotionPriority(product: Product): number {
+  if (!isActivelyPromoted(product)) return 0;
+  
+  switch (product.promotionType) {
+    case 'lunar': return 3;      // VIP - máxima prioridad
+    case 'saptamanal': return 2; // Premium
+    case 'zilnic': return 1;     // Promovat
+    default: return 0;
+  }
+}
+
+// Helper: ordenar productos con promocionados primero
+function sortProductsWithPromotedFirst(products: Product[]): Product[] {
+  return [...products].sort((a, b) => {
+    const priorityA = getPromotionPriority(a);
+    const priorityB = getPromotionPriority(b);
+    
+    // Primero por prioridad de promoción (mayor primero)
+    if (priorityB !== priorityA) {
+      return priorityB - priorityA;
+    }
+    
+    // Si tienen la misma prioridad, ordenar por fecha (más reciente primero)
+    const dateA = a.publishedAt instanceof Timestamp ? a.publishedAt.toDate() : new Date((a.publishedAt as any)?.seconds * 1000 || 0);
+    const dateB = b.publishedAt instanceof Timestamp ? b.publishedAt.toDate() : new Date((b.publishedAt as any)?.seconds * 1000 || 0);
+    
+    return dateB.getTime() - dateA.getTime();
+  });
+}
+
 // Create a new product (starts in pending, auto-approves after 20 min)
 export async function createProduct(productData: ProductInput): Promise<string> {
   // Calcular tiempo de auto-aprobación (20 minutos)
@@ -312,6 +361,9 @@ export async function getProducts(
       p.description.toLowerCase().includes(searchLower)
     );
   }
+
+  // Ordenar con productos promocionados primero
+  filteredProducts = sortProductsWithPromotedFirst(filteredProducts);
 
   return {
     products: filteredProducts,

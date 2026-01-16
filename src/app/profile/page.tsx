@@ -2231,7 +2231,7 @@ function ProfilePageContent() {
 
                   <hr className={isBusiness ? 'border-slate-700' : 'border-gray-200'} />
 
-                  {/* ===== PRIVACY ===== */
+                  {/* ===== PRIVACY ===== */}
                   <div>
                     <h3 className={`flex items-center gap-2 font-semibold text-sm sm:text-base mb-4 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
                       <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-[#13C1AC]" />

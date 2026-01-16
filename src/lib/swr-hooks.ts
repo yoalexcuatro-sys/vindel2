@@ -14,7 +14,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Product } from './products-service';
+import { Product, PromotionType } from './products-service';
 import { 
   hasValidCachedData,
   invalidateCache,
@@ -24,6 +24,55 @@ import {
 // ============================================
 // FETCHERS
 // ============================================
+
+// Helper: verificar si un producto está activamente promocionado
+function isActivelyPromoted(product: Product): boolean {
+  if (!product.promoted || !product.promotionEnd) return false;
+  
+  const now = new Date();
+  let endDate: Date;
+  
+  if (product.promotionEnd instanceof Timestamp) {
+    endDate = product.promotionEnd.toDate();
+  } else if (typeof product.promotionEnd === 'object' && 'seconds' in product.promotionEnd) {
+    endDate = new Date((product.promotionEnd as any).seconds * 1000);
+  } else {
+    return false;
+  }
+  
+  return endDate > now;
+}
+
+// Helper: obtener prioridad de promoción (VIP > Premium > Promovat > sin promoción)
+function getPromotionPriority(product: Product): number {
+  if (!isActivelyPromoted(product)) return 0;
+  
+  switch (product.promotionType) {
+    case 'lunar': return 3;      // VIP - máxima prioridad
+    case 'saptamanal': return 2; // Premium
+    case 'zilnic': return 1;     // Promovat
+    default: return 0;
+  }
+}
+
+// Helper: ordenar productos con promocionados primero
+function sortProductsWithPromotedFirst(products: Product[]): Product[] {
+  return [...products].sort((a, b) => {
+    const priorityA = getPromotionPriority(a);
+    const priorityB = getPromotionPriority(b);
+    
+    // Primero por prioridad de promoción (mayor primero)
+    if (priorityB !== priorityA) {
+      return priorityB - priorityA;
+    }
+    
+    // Si tienen la misma prioridad, ordenar por fecha (más reciente primero)
+    const dateA = a.publishedAt instanceof Timestamp ? a.publishedAt.toDate() : new Date((a.publishedAt as any)?.seconds * 1000 || 0);
+    const dateB = b.publishedAt instanceof Timestamp ? b.publishedAt.toDate() : new Date((b.publishedAt as any)?.seconds * 1000 || 0);
+    
+    return dateB.getTime() - dateA.getTime();
+  });
+}
 
 // Helper: Verificar si un producto está aprobado (o auto-aprobado)
 function isProductApproved(product: Product): boolean {
@@ -70,8 +119,9 @@ async function fetchHomeProductsFromFirebase(): Promise<Product[]> {
   const snapshot = await getDocs(q);
   const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
   
-  // Filtrar solo aprobados o auto-aprobados
-  return products.filter(isProductApproved).slice(0, 50);
+  // Filtrar solo aprobados o auto-aprobados y ordenar con promocionados primero
+  const approvedProducts = products.filter(isProductApproved);
+  return sortProductsWithPromotedFirst(approvedProducts).slice(0, 50);
 }
 
 // Fetcher para un producto individual - el caché lo maneja SWR
@@ -159,7 +209,8 @@ async function fetchSearchProducts(params: {
     );
   }
 
-  return products;
+  // Ordenar con productos promocionados primero
+  return sortProductsWithPromotedFirst(products);
 }
 
 // ============================================
