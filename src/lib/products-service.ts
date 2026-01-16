@@ -22,6 +22,9 @@ import {
 import { getAuth } from 'firebase/auth';
 import { db } from './firebase';
 
+// Tipos de promoción disponibles
+export type PromotionType = 'zilnic' | 'saptamanal' | 'lunar';
+
 export interface Product {
   id: string;
   title: string;
@@ -45,6 +48,11 @@ export interface Product {
   status: 'pending' | 'approved' | 'rejected'; // Estado de moderación
   pendingUntil?: Timestamp; // Auto-aprobación después de este tiempo
   rejectionReason?: string; // Motivo de rechazo si aplica
+  // Campos de promoción
+  promoted?: boolean;
+  promotionType?: PromotionType;
+  promotionStart?: Timestamp;
+  promotionEnd?: Timestamp;
   sellerId: string;
   seller: {
     id: string;

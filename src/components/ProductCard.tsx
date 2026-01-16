@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, memo } from 'react';
-import { Heart, Clock, Package, Star, Sparkles, CheckCircle, AlertTriangle, MessageCircle, Truck, Users } from 'lucide-react';
+import { Heart, Clock, Package, Star, Sparkles, CheckCircle, AlertTriangle, MessageCircle, Truck, Users, Crown, Zap, Award } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -10,6 +10,7 @@ import { createProductLink } from '@/lib/slugs';
 import { useAuth } from '@/lib/auth-context';
 import { toggleFavorite } from '@/lib/favorites-service';
 import { useUserFavorites } from '@/lib/swr-hooks';
+import { PromotionType } from '@/lib/products-service';
 
 // Helper para formatear tiempo relativo
 const getRelativeTime = (publishedAt?: string | Timestamp): string => {
@@ -55,6 +56,10 @@ interface Product {
   reserved?: boolean;
   publishedAt?: string | Timestamp;
   deliveryType?: 'personal' | 'shipping' | 'both';
+  // Promotion fields
+  promoted?: boolean;
+  promotionType?: PromotionType;
+  promotionEnd?: Timestamp | { seconds: number };
   seller?: {
     id: string;
     name: string;
@@ -64,6 +69,37 @@ interface Product {
     joined?: string;
   };
 }
+
+// Helper para verificar si el producto está promocionado
+const isProductPromoted = (product: Product): boolean => {
+  if (!product.promoted || !product.promotionEnd) return false;
+  
+  const now = new Date();
+  let endDate: Date;
+  
+  if (product.promotionEnd instanceof Timestamp) {
+    endDate = product.promotionEnd.toDate();
+  } else if (typeof product.promotionEnd === 'object' && 'seconds' in product.promotionEnd) {
+    endDate = new Date((product.promotionEnd as any).seconds * 1000);
+  } else {
+    return false;
+  }
+  
+  return endDate > now;
+};
+
+// Helper para obtener el badge de promoción
+const getPromotionBadgeInfo = (product: Product): { label: string; color: string; icon: any } | null => {
+  if (!isProductPromoted(product)) return null;
+  
+  const badges: Record<PromotionType, { label: string; color: string; icon: any }> = {
+    'zilnic': { label: 'Promovat', color: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-500/30', icon: Zap },
+    'saptamanal': { label: 'Premium', color: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30', icon: Award },
+    'lunar': { label: 'VIP', color: 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white shadow-lg shadow-amber-500/30', icon: Crown },
+  };
+  
+  return product.promotionType ? badges[product.promotionType] : null;
+};
 
 // Helper para obtener el label y color del estado
 const getConditionInfo = (condition?: string): { label: string; color: string; icon: any } | null => {
@@ -227,6 +263,17 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
             <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs font-semibold rounded-md backdrop-blur-sm pointer-events-none">
                 Reservat
             </div>
+        )}
+
+        {/* Badge de promoción - top right */}
+        {getPromotionBadgeInfo(product) && (
+          <div className={`absolute top-2 right-2 px-2 py-1 text-[10px] font-bold rounded-md flex items-center gap-1 pointer-events-none z-20 ${getPromotionBadgeInfo(product)?.color}`}>
+            {(() => {
+              const Icon = getPromotionBadgeInfo(product)?.icon;
+              return Icon ? <Icon className="w-3 h-3" /> : null;
+            })()}
+            {getPromotionBadgeInfo(product)?.label}
+          </div>
         )}
 
         {/* Badge de condición */}

@@ -17,10 +17,20 @@ import {
   FileText, Download, Megaphone, TrendingUp, Trash2, Building2, 
   Eye, Euro, BarChart3, ShoppingBag, ArrowUpRight, ArrowDownRight,
   Receipt, Activity, Bell, Lock, List, Ban, AlertCircle, Loader2, Camera,
-  Flag, ExternalLink, HeadphonesIcon, Globe, Monitor, AlertTriangle
+  Flag, ExternalLink, HeadphonesIcon, Globe, Monitor, AlertTriangle, 
+  Crown, Zap, Award, X, Check, Timer
 } from 'lucide-react';
 import { markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, Notification } from '@/lib/notifications-service';
 import { subscribeToUserTickets, SupportTicket, STATUS_LABELS, CATEGORY_LABELS } from '@/lib/support-service';
+import { 
+  PROMOTION_PLANS, 
+  promoteProduct, 
+  isProductPromoted, 
+  getPromotionRemainingTime, 
+  formatRemainingTime,
+  getPromotionPlan,
+  PromotionPlan
+} from '@/lib/promotion-service';
 
 type ViewType = 'dashboard' | 'products' | 'profile' | 'favorites' | 'settings' | 'invoices' | 'promotion' | 'analytics' | 'notifications' | 'support';
 
@@ -60,6 +70,16 @@ function ProfilePageContent() {
   });
   const [themeInitialized, setThemeInitialized] = useState(false);
   const [rejectionModal, setRejectionModal] = useState<{ show: boolean; reason: string; productTitle: string }>({ show: false, reason: '', productTitle: '' });
+  
+  // Promotion states
+  const [promotionModal, setPromotionModal] = useState<{ 
+    show: boolean; 
+    selectedProduct: Product | null;
+    selectedPlan: PromotionPlan | null;
+    step: 'select-product' | 'select-plan' | 'confirm';
+  }>({ show: false, selectedProduct: null, selectedPlan: null, step: 'select-product' });
+  const [promotingProduct, setPromotingProduct] = useState(false);
+  const [promotionError, setPromotionError] = useState<string | null>(null);
   
   // ============================================
   // HOOKS CON CACHÉ SWR - Carga instantánea
@@ -250,6 +270,47 @@ function ProfilePageContent() {
       console.error('Error deleting notification:', error);
     }
   }, [notifications, mutateNotifications]);
+
+  // Productos disponibles para promoción (activos y no promocionados)
+  const availableForPromotion = useMemo(() => {
+    const now = new Date();
+    return products.filter(p => {
+      // Solo productos aprobados y no vendidos
+      const isApproved = p.status === 'approved' || (p.status === 'pending' && p.pendingUntil && new Date(p.pendingUntil.seconds * 1000) <= now) || !p.status;
+      if (!isApproved || p.sold) return false;
+      // No promocionados actualmente
+      return !isProductPromoted(p);
+    });
+  }, [products]);
+
+  // Productos actualmente promocionados
+  const promotedProducts = useMemo(() => {
+    return products.filter(p => isProductPromoted(p));
+  }, [products]);
+
+  // Handler para promocionar un producto
+  const handlePromoteProduct = useCallback(async () => {
+    if (!promotionModal.selectedProduct || !promotionModal.selectedPlan || !user) return;
+    
+    setPromotingProduct(true);
+    setPromotionError(null);
+    
+    const result = await promoteProduct(
+      promotionModal.selectedProduct.id,
+      promotionModal.selectedPlan.id,
+      user.uid
+    );
+    
+    if (result.success) {
+      // Actualizar productos localmente
+      mutateProducts();
+      setPromotionModal({ show: false, selectedProduct: null, selectedPlan: null, step: 'select-product' });
+    } else {
+      setPromotionError(result.error || 'A apărut o eroare');
+    }
+    
+    setPromotingProduct(false);
+  }, [promotionModal.selectedProduct, promotionModal.selectedPlan, user, mutateProducts]);
 
   // Memoized menu items - evita recreación en cada render
   const menuItems = useMemo(() => [
@@ -1540,6 +1601,7 @@ function ProfilePageContent() {
             {/* ========== PROMOTION ========== */}
             {activeView === 'promotion' && (
               <div className="space-y-4 sm:space-y-6">
+                {/* Header Banner */}
                 <div className="bg-gradient-to-r from-teal-600 to-teal-500 rounded-xl sm:rounded-2xl p-4 sm:p-8 text-white">
                   <div className="flex items-center gap-3 sm:gap-4">
                     <Megaphone className="w-8 h-8 sm:w-10 sm:h-10 shrink-0" />
@@ -1550,13 +1612,76 @@ function ProfilePageContent() {
                   </div>
                 </div>
 
+                {/* Currently Promoted Products */}
+                {promotedProducts.length > 0 && (
+                  <div className={`rounded-xl sm:rounded-2xl p-4 sm:p-6 ${isBusiness ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'}`}>
+                    <h3 className={`flex items-center gap-2 font-semibold text-sm sm:text-base mb-4 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                      <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-[#13C1AC]" />
+                      Anunțuri Promovate Active ({promotedProducts.length})
+                    </h3>
+                    <div className="space-y-3">
+                      {promotedProducts.map(product => {
+                        const remaining = getPromotionRemainingTime(product);
+                        const plan = product.promotionType ? getPromotionPlan(product.promotionType) : null;
+                        const badgeIcons: Record<string, any> = { 'zilnic': Zap, 'saptamanal': Award, 'lunar': Crown };
+                        const BadgeIcon = product.promotionType ? badgeIcons[product.promotionType] : Zap;
+                        const badgeColors: Record<string, string> = {
+                          'zilnic': 'from-amber-500 to-orange-500',
+                          'saptamanal': 'from-purple-500 to-pink-500',
+                          'lunar': 'from-yellow-400 to-amber-500'
+                        };
+                        
+                        return (
+                          <div key={product.id} className={`flex items-center gap-3 sm:gap-4 p-3 rounded-xl ${isBusiness ? 'bg-slate-700/50' : 'bg-gray-50'}`}>
+                            {/* Product Image */}
+                            <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden shrink-0">
+                              <Image
+                                src={product.images?.[0] || product.image || '/placeholder.jpg'}
+                                alt={product.title}
+                                fill
+                                className="object-cover"
+                              />
+                              {/* Badge */}
+                              <div className={`absolute top-1 right-1 px-1.5 py-0.5 text-[8px] font-bold rounded bg-gradient-to-r ${product.promotionType ? badgeColors[product.promotionType] : ''} text-white flex items-center gap-0.5`}>
+                                <BadgeIcon className="w-2.5 h-2.5" />
+                                {plan?.badge}
+                              </div>
+                            </div>
+                            
+                            {/* Product Info */}
+                            <div className="flex-1 min-w-0">
+                              <h4 className={`font-medium text-sm truncate ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                                {product.title}
+                              </h4>
+                              <p className={`text-xs ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>
+                                {plan?.name} • {plan?.price} lei
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-1">
+                                <Timer className="w-3.5 h-3.5 text-[#13C1AC]" />
+                                <span className={`text-xs font-medium ${isBusiness ? 'text-teal-400' : 'text-teal-600'}`}>
+                                  {formatRemainingTime(remaining)} rămase
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Link to product */}
+                            <Link 
+                              href={createProductLink(product)}
+                              className={`p-2 rounded-lg transition-colors ${isBusiness ? 'hover:bg-slate-600 text-slate-400' : 'hover:bg-gray-200 text-gray-400'}`}
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </Link>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Promotion Plans */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-                  {[
-                    { name: 'Zilnic', price: '9.99', period: 'zi', features: ['Top 24h', 'Badge "Promovat"'] },
-                    { name: 'Săptămânal', price: '39.99', period: 'săptămână', features: ['Top 7 zile', 'Badge Premium', 'Pagina principală'], popular: true },
-                    { name: 'Lunar', price: '99.99', period: 'lună', features: ['Top 30 zile', 'Badge VIP', 'Toate beneficiile'] },
-                  ].map((plan, i) => (
-                    <div key={i} className={`relative rounded-xl sm:rounded-2xl p-4 sm:p-6 ${
+                  {PROMOTION_PLANS.map((plan, i) => (
+                    <div key={plan.id} className={`relative rounded-xl sm:rounded-2xl p-4 sm:p-6 ${
                       plan.popular 
                         ? isBusiness ? 'bg-slate-900 border-2 border-teal-500' : 'bg-white border-2 border-teal-500'
                         : isBusiness ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'
@@ -1566,10 +1691,15 @@ function ProfilePageContent() {
                           Popular
                         </span>
                       )}
-                      <h3 className={`text-base sm:text-lg font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        {plan.id === 'zilnic' && <Zap className="w-5 h-5 text-orange-500" />}
+                        {plan.id === 'saptamanal' && <Award className="w-5 h-5 text-purple-500" />}
+                        {plan.id === 'lunar' && <Crown className="w-5 h-5 text-amber-500" />}
+                        <h3 className={`text-base sm:text-lg font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
+                      </div>
                       <div className="mt-3 sm:mt-4 mb-4 sm:mb-6">
                         <span className={`text-2xl sm:text-3xl font-black ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{plan.price}</span>
-                        <span className={`text-xs sm:text-sm ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}> lei/{plan.period}</span>
+                        <span className={`text-xs sm:text-sm ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}> lei/{plan.duration === 1 ? 'zi' : plan.duration === 7 ? 'săptămână' : 'lună'}</span>
                       </div>
                       <ul className="space-y-1.5 sm:space-y-2 mb-4 sm:mb-6">
                         {plan.features.map((f, j) => (
@@ -1579,15 +1709,222 @@ function ProfilePageContent() {
                           </li>
                         ))}
                       </ul>
-                      <button className={`w-full py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold text-sm transition-colors ${
-                        plan.popular 
-                          ? 'bg-teal-500 text-white hover:bg-teal-600' 
-                          : isBusiness ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}>
+                      <button 
+                        onClick={() => {
+                          if (availableForPromotion.length === 0) {
+                            alert('Nu ai anunțuri disponibile pentru promovare. Toate anunțurile tale sunt deja promovate sau nu ai anunțuri active.');
+                            return;
+                          }
+                          setPromotionModal({ 
+                            show: true, 
+                            selectedProduct: null, 
+                            selectedPlan: plan, 
+                            step: 'select-product' 
+                          });
+                        }}
+                        disabled={availableForPromotion.length === 0}
+                        className={`w-full py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-semibold text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                          plan.popular 
+                            ? 'bg-teal-500 text-white hover:bg-teal-600' 
+                            : isBusiness ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
                         Alege
                       </button>
                     </div>
                   ))}
+                </div>
+
+                {/* Info box */}
+                <div className={`rounded-xl p-4 ${isBusiness ? 'bg-slate-800/50 border border-slate-700' : 'bg-blue-50 border border-blue-100'}`}>
+                  <div className="flex gap-3">
+                    <AlertCircle className={`w-5 h-5 shrink-0 mt-0.5 ${isBusiness ? 'text-blue-400' : 'text-blue-500'}`} />
+                    <div>
+                      <h4 className={`font-medium text-sm ${isBusiness ? 'text-white' : 'text-blue-900'}`}>Cum funcționează promovarea?</h4>
+                      <ul className={`mt-2 space-y-1 text-xs ${isBusiness ? 'text-slate-400' : 'text-blue-700'}`}>
+                        <li>• Anunțurile promovate apar în topul rezultatelor de căutare</li>
+                        <li>• Badge-ul special atrage mai mulți cumpărători</li>
+                        <li>• Nu poți promova același anunț de mai multe ori simultan</li>
+                        <li>• După expirarea promovării, poți reînnoi</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ========== PROMOTION MODAL ========== */}
+            {promotionModal.show && (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className={`w-full max-w-lg rounded-2xl overflow-hidden ${isBusiness ? 'bg-slate-800' : 'bg-white'}`}>
+                  {/* Modal Header */}
+                  <div className={`p-4 sm:p-6 border-b ${isBusiness ? 'border-slate-700' : 'border-gray-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {promotionModal.selectedPlan?.id === 'zilnic' && <Zap className="w-6 h-6 text-orange-500" />}
+                        {promotionModal.selectedPlan?.id === 'saptamanal' && <Award className="w-6 h-6 text-purple-500" />}
+                        {promotionModal.selectedPlan?.id === 'lunar' && <Crown className="w-6 h-6 text-amber-500" />}
+                        <div>
+                          <h2 className={`text-lg font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                            {promotionModal.step === 'select-product' ? 'Selectează Anunțul' : 'Confirmă Promovarea'}
+                          </h2>
+                          <p className={`text-sm ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>
+                            Plan {promotionModal.selectedPlan?.name} • {promotionModal.selectedPlan?.price} lei
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setPromotionModal({ show: false, selectedProduct: null, selectedPlan: null, step: 'select-product' })}
+                        className={`p-2 rounded-full transition-colors ${isBusiness ? 'hover:bg-slate-700 text-slate-400' : 'hover:bg-gray-100 text-gray-400'}`}
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Modal Content */}
+                  <div className="p-4 sm:p-6 max-h-[60vh] overflow-y-auto">
+                    {promotionModal.step === 'select-product' && (
+                      <div className="space-y-3">
+                        {availableForPromotion.length === 0 ? (
+                          <div className="text-center py-8">
+                            <Package className={`w-12 h-12 mx-auto mb-3 ${isBusiness ? 'text-slate-600' : 'text-gray-300'}`} />
+                            <p className={`${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>
+                              Nu ai anunțuri disponibile pentru promovare
+                            </p>
+                          </div>
+                        ) : (
+                          availableForPromotion.map(product => (
+                            <button
+                              key={product.id}
+                              onClick={() => setPromotionModal(prev => ({ 
+                                ...prev, 
+                                selectedProduct: product, 
+                                step: 'confirm' 
+                              }))}
+                              className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all ${
+                                isBusiness 
+                                  ? 'bg-slate-700/50 hover:bg-slate-700 border border-slate-600 hover:border-teal-500' 
+                                  : 'bg-gray-50 hover:bg-gray-100 border border-gray-200 hover:border-teal-500'
+                              }`}
+                            >
+                              <div className="relative w-14 h-14 rounded-lg overflow-hidden shrink-0">
+                                <Image
+                                  src={product.images?.[0] || product.image || '/placeholder.jpg'}
+                                  alt={product.title}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h4 className={`font-medium text-sm truncate ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                                  {product.title}
+                                </h4>
+                                <p className={`text-sm font-semibold ${isBusiness ? 'text-teal-400' : 'text-teal-600'}`}>
+                                  {product.price.toLocaleString('ro-RO')} {product.currency || 'LEI'}
+                                </p>
+                              </div>
+                              <ChevronRight className={`w-5 h-5 ${isBusiness ? 'text-slate-500' : 'text-gray-400'}`} />
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                    
+                    {promotionModal.step === 'confirm' && promotionModal.selectedProduct && (
+                      <div className="space-y-4">
+                        {/* Selected Product Preview */}
+                        <div className={`flex items-center gap-3 p-4 rounded-xl ${isBusiness ? 'bg-slate-700/50' : 'bg-gray-50'}`}>
+                          <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0">
+                            <Image
+                              src={promotionModal.selectedProduct.images?.[0] || promotionModal.selectedProduct.image || '/placeholder.jpg'}
+                              alt={promotionModal.selectedProduct.title}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className={`font-medium truncate ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                              {promotionModal.selectedProduct.title}
+                            </h4>
+                            <p className={`text-sm font-semibold ${isBusiness ? 'text-teal-400' : 'text-teal-600'}`}>
+                              {promotionModal.selectedProduct.price.toLocaleString('ro-RO')} {promotionModal.selectedProduct.currency || 'LEI'}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* Plan Summary */}
+                        <div className={`p-4 rounded-xl ${isBusiness ? 'bg-teal-500/10 border border-teal-500/20' : 'bg-teal-50 border border-teal-100'}`}>
+                          <h4 className={`font-semibold mb-2 ${isBusiness ? 'text-teal-400' : 'text-teal-700'}`}>
+                            Rezumat Plan {promotionModal.selectedPlan?.name}
+                          </h4>
+                          <div className={`space-y-1 text-sm ${isBusiness ? 'text-slate-300' : 'text-gray-600'}`}>
+                            <div className="flex justify-between">
+                              <span>Durată:</span>
+                              <span className="font-medium">{promotionModal.selectedPlan?.duration} {promotionModal.selectedPlan?.duration === 1 ? 'zi' : 'zile'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>Badge:</span>
+                              <span className="font-medium">{promotionModal.selectedPlan?.badge}</span>
+                            </div>
+                            <div className="flex justify-between pt-2 border-t border-dashed border-teal-500/30">
+                              <span className="font-semibold">Total:</span>
+                              <span className="font-bold text-lg">{promotionModal.selectedPlan?.price} lei</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* Error message */}
+                        {promotionError && (
+                          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 shrink-0" />
+                            {promotionError}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Modal Footer */}
+                  <div className={`p-4 sm:p-6 border-t ${isBusiness ? 'border-slate-700' : 'border-gray-200'}`}>
+                    <div className="flex gap-3">
+                      {promotionModal.step === 'confirm' && (
+                        <button
+                          onClick={() => setPromotionModal(prev => ({ ...prev, step: 'select-product', selectedProduct: null }))}
+                          className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-colors ${
+                            isBusiness ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          Înapoi
+                        </button>
+                      )}
+                      <button
+                        onClick={promotionModal.step === 'confirm' ? handlePromoteProduct : () => {}}
+                        disabled={
+                          promotionModal.step === 'select-product' || 
+                          !promotionModal.selectedProduct || 
+                          promotingProduct
+                        }
+                        className={`flex-1 py-2.5 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                          promotionModal.step === 'confirm' 
+                            ? 'bg-teal-500 text-white hover:bg-teal-600'
+                            : isBusiness ? 'bg-slate-700 text-slate-400' : 'bg-gray-200 text-gray-400'
+                        }`}
+                      >
+                        {promotingProduct ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Se procesează...
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4" />
+                            Confirmă și Plătește
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
