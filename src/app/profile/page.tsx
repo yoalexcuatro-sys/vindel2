@@ -1678,7 +1678,7 @@ function ProfilePageContent() {
                             : 'bg-gray-50 border-gray-200 text-gray-700'
                         }`}>
                           {userProfile?.createdAt 
-                            ? new Date(userProfile.createdAt.seconds * 1000).toLocaleDateString('ro-RO', { year: 'numeric', month: 'long', day: 'numeric' })
+                            ? new Date((userProfile.createdAt as any).seconds ? (userProfile.createdAt as any).seconds * 1000 : userProfile.createdAt).toLocaleDateString('ro-RO', { year: 'numeric', month: 'long', day: 'numeric' })
                             : 'N/A'
                           }
                         </div>
