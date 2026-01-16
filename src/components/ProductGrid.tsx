@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { Tag } from 'lucide-react';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { Tag, Crown, ChevronLeft, ChevronRight } from 'lucide-react';
 import ProductCard from './ProductCard';
 import { Product } from '@/lib/products-service';
 import { useHomeProducts } from '@/lib/swr-hooks';
+import { Timestamp } from 'firebase/firestore';
 
 // Precargar imágenes de los primeros productos para carga instantánea
 function preloadProductImages(products: Product[], count: number = 10) {
@@ -16,15 +17,57 @@ function preloadProductImages(products: Product[], count: number = 10) {
   });
 }
 
+// Helper: verificar si un producto está activamente promocionado como VIP
+function isVipProduct(product: Product): boolean {
+  if (!product.promoted || !product.promotionEnd || product.promotionType !== 'lunar') return false;
+  
+  const now = new Date();
+  let endDate: Date;
+  
+  if (product.promotionEnd instanceof Timestamp) {
+    endDate = product.promotionEnd.toDate();
+  } else if (typeof product.promotionEnd === 'object' && 'seconds' in product.promotionEnd) {
+    endDate = new Date((product.promotionEnd as any).seconds * 1000);
+  } else {
+    return false;
+  }
+  
+  return endDate > now;
+}
+
 export default function ProductGrid() {
   const { data: products, isLoading, isValidating } = useHomeProducts();
   const [currentTheme, setCurrentTheme] = useState(1);
   const [visibleCount, setVisibleCount] = useState(35);
   const preloadedRef = useRef(false);
+  const vipScrollRef = useRef<HTMLDivElement>(null);
   
   // Estados para animación - solo aplicar en primera carga real
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const hasAnimated = useRef(false);
+  
+  // Filtrar productos VIP
+  const vipProducts = useMemo(() => {
+    if (!products) return [];
+    return products.filter(isVipProduct);
+  }, [products]);
+  
+  // Productos normales (excluyendo VIP para no duplicar)
+  const regularProducts = useMemo(() => {
+    if (!products) return [];
+    return products.filter(p => !isVipProduct(p));
+  }, [products]);
+  
+  // Scroll del carrusel VIP
+  const scrollVip = (direction: 'left' | 'right') => {
+    if (vipScrollRef.current) {
+      const scrollAmount = 320;
+      vipScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
   
   // Activar animación solo la primera vez que llegan productos
   useEffect(() => {
@@ -68,7 +111,7 @@ export default function ProductGrid() {
 
   // Usar productos de SWR - mostrar skeletons solo mientras carga sin datos
   const showSkeletons = isLoading && !products;
-  const displayProducts = products;
+  const displayProducts = regularProducts;
   const visibleProducts = displayProducts?.slice(0, visibleCount) || [];
   const hasMoreProducts = displayProducts && displayProducts.length > visibleCount;
 
@@ -143,6 +186,72 @@ export default function ProductGrid() {
         </div>
       ) : (
         <div>
+          {/* ========== SECCIÓN VIP ========== */}
+          {vipProducts.length > 0 && (
+            <div className="mb-8 sm:mb-10">
+              {/* Header VIP */}
+              <div className="flex justify-between items-center mb-4 sm:mb-5 px-1">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-500 shadow-lg shadow-amber-500/30">
+                    <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-yellow-500 to-amber-600 bg-clip-text text-transparent">
+                      Anunțuri VIP
+                    </h2>
+                    <p className="text-xs sm:text-sm text-gray-500">Oferte premium selectate</p>
+                  </div>
+                </div>
+                
+                {/* Navigation arrows - only on desktop */}
+                <div className="hidden sm:flex items-center gap-2">
+                  <button 
+                    onClick={() => scrollVip('left')}
+                    className="p-2 rounded-full bg-white border border-gray-200 hover:border-amber-400 hover:bg-amber-50 transition-all shadow-sm"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-gray-600" />
+                  </button>
+                  <button 
+                    onClick={() => scrollVip('right')}
+                    className="p-2 rounded-full bg-white border border-gray-200 hover:border-amber-400 hover:bg-amber-50 transition-all shadow-sm"
+                  >
+                    <ChevronRight className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* VIP Carousel */}
+              <div className="relative">
+                {/* Gradient edges */}
+                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none hidden sm:block"></div>
+                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none hidden sm:block"></div>
+                
+                {/* Scrollable container */}
+                <div 
+                  ref={vipScrollRef}
+                  className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {vipProducts.map((product, index) => (
+                    <div 
+                      key={`vip-${product.id}`}
+                      className="flex-shrink-0 w-[160px] sm:w-[200px] md:w-[220px] snap-start"
+                    >
+                      <div className="relative">
+                        {/* Golden border effect */}
+                        <div className="absolute -inset-0.5 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 rounded-2xl opacity-75"></div>
+                        <div className="relative bg-white rounded-2xl overflow-hidden">
+                          <ProductCard product={product} priority={index < 4} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========== ANUNȚURI RECENTE ========== */}
           {/* Header - Mobile optimized */}
           <div className="flex justify-between items-end mb-4 sm:mb-6 md:mb-8 px-1">
             <div>
