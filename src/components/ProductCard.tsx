@@ -368,6 +368,16 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
                       priority={priority}
                       quality={50}
                     />
+                    {/* Badge de promoción */}
+                    {getPromotionBadgeInfo(product) && (
+                      <div className={`absolute top-2 right-2 px-2 py-1 text-[10px] font-bold rounded-md flex items-center gap-1 pointer-events-none z-20 ${getPromotionBadgeInfo(product)?.color}`}>
+                        {(() => {
+                          const Icon = getPromotionBadgeInfo(product)?.icon;
+                          return Icon ? <Icon className="w-3 h-3" /> : null;
+                        })()}
+                        {getPromotionBadgeInfo(product)?.label}
+                      </div>
+                    )}
                 </div>
             </div>
             
@@ -498,6 +508,16 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
                     {conditionData.label}
                   </span>
                 )}
+                {/* Badge de promoción */}
+                {getPromotionBadgeInfo(product) && (
+                  <div className={`absolute top-2 right-2 px-2 py-1 text-[10px] font-bold rounded-md flex items-center gap-1 pointer-events-none z-20 ${getPromotionBadgeInfo(product)?.color}`}>
+                    {(() => {
+                      const Icon = getPromotionBadgeInfo(product)?.icon;
+                      return Icon ? <Icon className="w-3 h-3" /> : null;
+                    })()}
+                    {getPromotionBadgeInfo(product)?.label}
+                  </div>
+                )}
              </div>
           </div>
           
@@ -592,6 +612,17 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
                                 {DefaultCondIcon && <DefaultCondIcon className="w-3.5 h-3.5" />}
                                 {defaultConditionData.label}
                             </span>
+                        )}
+                        
+                        {/* Badge de promoción */}
+                        {getPromotionBadgeInfo(product) && (
+                          <div className={`absolute top-3 right-3 px-2.5 py-1 text-[10px] font-bold rounded-lg flex items-center gap-1 pointer-events-none z-20 ${getPromotionBadgeInfo(product)?.color}`}>
+                            {(() => {
+                              const Icon = getPromotionBadgeInfo(product)?.icon;
+                              return Icon ? <Icon className="w-3.5 h-3.5" /> : null;
+                            })()}
+                            {getPromotionBadgeInfo(product)?.label}
+                          </div>
                         )}
                         
                         {/* Badge Reservat */}
