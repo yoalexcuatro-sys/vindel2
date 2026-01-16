@@ -1161,6 +1161,47 @@ const SUBCATEGORY_FIELDS: Record<string, FormField[]> = {
     ], required: true },
     { id: 'marca', label: 'Marcă', type: 'text', placeholder: 'ex: Bosch, Makita, DeWalt' },
   ],
+  'Scule electrice': [
+    { id: 'tipScula', label: 'Tip sculă electrică', type: 'select', options: [
+      'Bormasină/Șurubelniță', 'Flex/Polizor unghiular', 'Fierăstrău circular', 
+      'Fierăstrău pendular', 'Drujbă', 'Motocoasă/Trimmer', 'Rindelă electrică',
+      'Șlefuitor', 'Frezător', 'Pistol cu aer cald', 'Ciocan rotopercutor',
+      'Demolator', 'Compresor', 'Generator', 'Invertor sudură', 'Staţie lipit',
+      'Polizor de banc', 'Masă de tăiat', 'Aparat de sudură', 'Set scule electrice', 'Altele'
+    ], required: true },
+    { id: 'marca', label: 'Marcă', type: 'select', options: [
+      'Bosch', 'Makita', 'DeWalt', 'Milwaukee', 'Metabo', 'Hilti', 'Festool',
+      'Einhell', 'Stanley', 'Black+Decker', 'Ryobi', 'Hitachi/HiKOKI', 'Parkside',
+      'Stihl', 'Husqvarna', 'Karcher', 'Güde', 'Scheppach', 'Stayer', 'Altă marcă'
+    ], required: true },
+    { id: 'model', label: 'Model', type: 'text', placeholder: 'ex: GBH 2-26 DRE, HR2470' },
+    { id: 'putere', label: 'Putere', type: 'select', options: [
+      'Sub 500W', '500W - 800W', '800W - 1200W', '1200W - 1800W', '1800W - 2500W', 
+      'Peste 2500W', 'N/A (acumulator)'
+    ] },
+    { id: 'alimentare', label: 'Alimentare', type: 'select', options: [
+      '230V (rețea)', 'Acumulator 12V', 'Acumulator 18V', 'Acumulator 20V', 
+      'Acumulator 36V', 'Acumulator 40V', 'Benzină', 'Mixt (acumulator inclus)'
+    ], required: true },
+    { id: 'acumulator', label: 'Acumulator inclus', type: 'select', options: [
+      'Da, 1 acumulator', 'Da, 2 acumulatoare', 'Nu, doar corpul', 'Nu se aplică (cablu)'
+    ] },
+    { id: 'capacitateAcumulator', label: 'Capacitate acumulator', type: 'select', options: [
+      '1.5Ah', '2.0Ah', '3.0Ah', '4.0Ah', '5.0Ah', '6.0Ah', '8.0Ah', '12Ah', 'N/A'
+    ] },
+    { id: 'turatieMaxima', label: 'Turație maximă', type: 'text', placeholder: 'ex: 3000 rpm, 10000 rpm' },
+    { id: 'greutate', label: 'Greutate', type: 'text', placeholder: 'ex: 2.5 kg' },
+    { id: 'accesoriiIncluse', label: 'Accesorii incluse', type: 'text', placeholder: 'ex: Valiză, set burghie, încărcător' },
+    { id: 'garantie', label: 'Garanție', type: 'select', options: [
+      'Cu garanție producător', 'Garanție expirată', 'Fără garanție'
+    ] },
+    { id: 'anFabricatie', label: 'An fabricație', type: 'select', options: [
+      '2024', '2023', '2022', '2021', '2020', '2019', '2018', 'Înainte de 2018', 'Nu știu'
+    ] },
+    { id: 'utilizare', label: 'Utilizare', type: 'select', options: [
+      'Nefolosit (nou)', 'Foarte puțin folosit', 'Folosit ocazional', 'Folosit frecvent'
+    ] },
+  ],
   'Materiale construcții': [
     { id: 'tipMaterial', label: 'Tip material', type: 'select', options: [
       'Cărămizi/BCA', 'Ciment/Beton', 'Lemn', 'Fier/Metal', 'Izolații', 'Acoperișuri',
