@@ -1884,7 +1884,7 @@ function ProfilePageContent() {
                             <p className={`text-xs ${isBusiness ? 'text-slate-500' : 'text-gray-500'}`}>{setting.desc}</p>
                           </div>
                           <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" defaultChecked={setting.id === 'msg' || setting.id === 'price'} className="sr-only peer" />
+                            <input type="checkbox" defaultChecked={true} className="sr-only peer" />
                             <div className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#13C1AC] ${isBusiness ? 'bg-slate-600' : 'bg-gray-300'}`}></div>
                           </label>
                         </div>
@@ -1894,7 +1894,7 @@ function ProfilePageContent() {
 
                   <hr className={isBusiness ? 'border-slate-700' : 'border-gray-200'} />
 
-                  {/* ===== PRIVACY ===== */}
+                  {/* ===== PRIVACY ===== */
                   <div>
                     <h3 className={`flex items-center gap-2 font-semibold text-sm sm:text-base mb-4 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
                       <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-[#13C1AC]" />
@@ -1912,7 +1912,7 @@ function ProfilePageContent() {
                             <p className={`text-xs ${isBusiness ? 'text-slate-500' : 'text-gray-500'}`}>{setting.desc}</p>
                           </div>
                           <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" defaultChecked={setting.id === 'profile_visible'} className="sr-only peer" />
+                            <input type="checkbox" defaultChecked={true} className="sr-only peer" />
                             <div className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#13C1AC] ${isBusiness ? 'bg-slate-600' : 'bg-gray-300'}`}></div>
                           </label>
                         </div>
