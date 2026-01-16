@@ -17,7 +17,7 @@ import {
   FileText, Download, Megaphone, TrendingUp, Trash2, Building2, 
   Eye, Euro, BarChart3, ShoppingBag, ArrowUpRight, ArrowDownRight,
   Receipt, Activity, Bell, Lock, List, Ban, AlertCircle, Loader2, Camera,
-  Flag, ExternalLink, HeadphonesIcon
+  Flag, ExternalLink, HeadphonesIcon, Globe, Monitor, AlertTriangle
 } from 'lucide-react';
 import { markNotificationAsRead, markAllNotificationsAsRead, deleteNotification, Notification } from '@/lib/notifications-service';
 import { subscribeToUserTickets, SupportTicket, STATUS_LABELS, CATEGORY_LABELS } from '@/lib/support-service';
@@ -1597,13 +1597,141 @@ function ProfilePageContent() {
               <div className={`rounded-xl sm:rounded-2xl overflow-hidden ${isBusiness ? 'bg-slate-800 border border-slate-700' : 'bg-white border border-gray-200'}`}>
                 <div className={`p-4 sm:p-6 border-b ${isBusiness ? 'border-slate-700' : 'border-gray-200'}`}>
                   <h2 className={`text-lg sm:text-xl font-bold ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Setări</h2>
+                  <p className={`text-sm mt-1 ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Gestionează preferințele și securitatea contului tău</p>
                 </div>
                 
                 <div className="p-4 sm:p-6 space-y-6 sm:space-y-8">
+                  
+                  {/* ===== ACCOUNT INFORMATION ===== */}
+                  <div>
+                    <h3 className={`flex items-center gap-2 font-semibold text-sm sm:text-base mb-4 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-[#13C1AC]" />
+                      Informații Cont
+                    </h3>
+                    
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {/* Email */}
+                      <div>
+                        <label className={`block text-sm font-medium mb-1.5 ${isBusiness ? 'text-slate-300' : 'text-gray-700'}`}>
+                          Email
+                        </label>
+                        <input 
+                          type="email"
+                          value={user?.email || ''}
+                          disabled
+                          className={`w-full px-4 py-2.5 rounded-lg border text-sm ${
+                            isBusiness 
+                              ? 'bg-slate-700/50 border-slate-600 text-slate-400' 
+                              : 'bg-gray-100 border-gray-200 text-gray-500'
+                          } cursor-not-allowed`}
+                        />
+                        <p className={`text-xs mt-1 ${isBusiness ? 'text-slate-500' : 'text-gray-400'}`}>
+                          Emailul nu poate fi modificat
+                        </p>
+                      </div>
+                      
+                      {/* Phone */}
+                      <div>
+                        <label className={`block text-sm font-medium mb-1.5 ${isBusiness ? 'text-slate-300' : 'text-gray-700'}`}>
+                          Telefon
+                        </label>
+                        <input 
+                          type="tel"
+                          defaultValue={userProfile?.phone || ''}
+                          placeholder="07XX XXX XXX"
+                          className={`w-full px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+                            isBusiness 
+                              ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-500 focus:border-[#13C1AC] focus:ring-1 focus:ring-[#13C1AC]' 
+                              : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-[#13C1AC] focus:ring-1 focus:ring-[#13C1AC]'
+                          }`}
+                        />
+                      </div>
+
+                      {/* Account Type */}
+                      <div>
+                        <label className={`block text-sm font-medium mb-1.5 ${isBusiness ? 'text-slate-300' : 'text-gray-700'}`}>
+                          Tip cont
+                        </label>
+                        <div className={`w-full px-4 py-2.5 rounded-lg border text-sm ${
+                          isBusiness 
+                            ? 'bg-slate-700/50 border-slate-600 text-slate-300' 
+                            : 'bg-gray-50 border-gray-200 text-gray-700'
+                        }`}>
+                          <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+                            isBusiness 
+                              ? 'bg-amber-500/20 text-amber-400' 
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {isBusiness ? '🏢 Business' : '👤 Personal'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Member Since */}
+                      <div>
+                        <label className={`block text-sm font-medium mb-1.5 ${isBusiness ? 'text-slate-300' : 'text-gray-700'}`}>
+                          Membru din
+                        </label>
+                        <div className={`w-full px-4 py-2.5 rounded-lg border text-sm ${
+                          isBusiness 
+                            ? 'bg-slate-700/50 border-slate-600 text-slate-300' 
+                            : 'bg-gray-50 border-gray-200 text-gray-700'
+                        }`}>
+                          {userProfile?.createdAt 
+                            ? new Date(userProfile.createdAt.seconds * 1000).toLocaleDateString('ro-RO', { year: 'numeric', month: 'long', day: 'numeric' })
+                            : 'N/A'
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr className={isBusiness ? 'border-slate-700' : 'border-gray-200'} />
+
+                  {/* ===== LANGUAGE & REGION ===== */}
+                  <div>
+                    <h3 className={`flex items-center gap-2 font-semibold text-sm sm:text-base mb-4 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                      <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-[#13C1AC]" />
+                      Limbă și Regiune
+                    </h3>
+                    
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className={`block text-sm font-medium mb-1.5 ${isBusiness ? 'text-slate-300' : 'text-gray-700'}`}>
+                          Limbă
+                        </label>
+                        <select className={`w-full px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+                          isBusiness 
+                            ? 'bg-slate-700 border-slate-600 text-white focus:border-[#13C1AC]' 
+                            : 'bg-white border-gray-300 text-gray-900 focus:border-[#13C1AC]'
+                        }`}>
+                          <option value="ro">🇷🇴 Română</option>
+                          <option value="en">🇬🇧 English</option>
+                        </select>
+                      </div>
+                      
+                      <div>
+                        <label className={`block text-sm font-medium mb-1.5 ${isBusiness ? 'text-slate-300' : 'text-gray-700'}`}>
+                          Monedă preferată
+                        </label>
+                        <select className={`w-full px-4 py-2.5 rounded-lg border text-sm transition-colors ${
+                          isBusiness 
+                            ? 'bg-slate-700 border-slate-600 text-white focus:border-[#13C1AC]' 
+                            : 'bg-white border-gray-300 text-gray-900 focus:border-[#13C1AC]'
+                        }`}>
+                          <option value="RON">Lei (RON)</option>
+                          <option value="EUR">Euro (EUR)</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr className={isBusiness ? 'border-slate-700' : 'border-gray-200'} />
+
                   {/* Theme Selection */}
                   <div>
                     <h3 className={`flex items-center gap-2 font-semibold text-sm sm:text-base mb-4 sm:mb-6 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
-                      <LayoutGrid className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+                      <LayoutGrid className="w-4 h-4 sm:w-5 sm:h-5 text-[#13C1AC]" />
                       Aspect Card Produs
                     </h3>
                     <p className={`text-xs sm:text-sm mb-3 sm:mb-4 ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Alege stilul de afișare pentru anunțurile din platformă.</p>
@@ -1736,49 +1864,156 @@ function ProfilePageContent() {
 
                   <hr className={isBusiness ? 'border-slate-700' : 'border-gray-200'} />
 
-                  {/* Notifications */}
+                  {/* ===== NOTIFICATIONS PREFERENCES ===== */}
                   <div>
-                    <h3 className={`flex items-center gap-2 font-semibold mb-4 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
-                      <Bell className="w-5 h-5 text-slate-400" />
-                      Notificări
+                    <h3 className={`flex items-center gap-2 font-semibold text-sm sm:text-base mb-4 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                      <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-[#13C1AC]" />
+                      Preferințe Notificări
                     </h3>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {[
-                        { label: 'Mesaje noi', desc: 'Primește notificări pentru mesaje' },
-                        { label: 'Oferte și promoții', desc: 'Informații despre reduceri' },
-                      ].map((setting, i) => (
-                        <div key={i} className={`flex items-center justify-between py-3 border-b ${isBusiness ? 'border-slate-700' : 'border-gray-200'}`}>
+                        { id: 'msg', label: 'Mesaje noi', desc: 'Primește notificări când primești un mesaj' },
+                        { id: 'offers', label: 'Oferte și promoții', desc: 'Informații despre reduceri și campanii' },
+                        { id: 'price', label: 'Alertă de preț', desc: 'Notifică-mă când prețul unui produs favorizat scade' },
+                        { id: 'news', label: 'Noutăți platformă', desc: 'Funcționalități noi și actualizări' },
+                        { id: 'email', label: 'Newsletter email', desc: 'Rezumat săptămânal cu cele mai bune oferte' },
+                      ].map((setting) => (
+                        <div key={setting.id} className={`flex items-center justify-between py-3 px-4 rounded-lg ${isBusiness ? 'bg-slate-700/30' : 'bg-gray-50'}`}>
                           <div>
-                            <p className={`font-medium ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{setting.label}</p>
-                            <p className={`text-sm ${isBusiness ? 'text-slate-500' : 'text-gray-500'}`}>{setting.desc}</p>
+                            <p className={`font-medium text-sm ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{setting.label}</p>
+                            <p className={`text-xs ${isBusiness ? 'text-slate-500' : 'text-gray-500'}`}>{setting.desc}</p>
                           </div>
                           <label className="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" defaultChecked className="sr-only peer" />
-                            <div className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500 ${isBusiness ? 'bg-slate-600' : 'bg-gray-300'}`}></div>
+                            <input type="checkbox" defaultChecked={setting.id === 'msg' || setting.id === 'price'} className="sr-only peer" />
+                            <div className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#13C1AC] ${isBusiness ? 'bg-slate-600' : 'bg-gray-300'}`}></div>
                           </label>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Security */}
+                  <hr className={isBusiness ? 'border-slate-700' : 'border-gray-200'} />
+
+                  {/* ===== PRIVACY ===== */}
                   <div>
-                    <h3 className={`flex items-center gap-2 font-semibold mb-4 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
-                      <Lock className="w-5 h-5 text-slate-400" />
+                    <h3 className={`flex items-center gap-2 font-semibold text-sm sm:text-base mb-4 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                      <Eye className="w-4 h-4 sm:w-5 sm:h-5 text-[#13C1AC]" />
+                      Confidențialitate
+                    </h3>
+                    <div className="space-y-3">
+                      {[
+                        { id: 'profile_visible', label: 'Profil public', desc: 'Permite altor utilizatori să vadă profilul tău' },
+                        { id: 'show_phone', label: 'Afișează telefonul', desc: 'Afișează numărul de telefon în anunțuri' },
+                        { id: 'show_online', label: 'Status online', desc: 'Arată când ești activ pe platformă' },
+                      ].map((setting) => (
+                        <div key={setting.id} className={`flex items-center justify-between py-3 px-4 rounded-lg ${isBusiness ? 'bg-slate-700/30' : 'bg-gray-50'}`}>
+                          <div>
+                            <p className={`font-medium text-sm ${isBusiness ? 'text-white' : 'text-gray-900'}`}>{setting.label}</p>
+                            <p className={`text-xs ${isBusiness ? 'text-slate-500' : 'text-gray-500'}`}>{setting.desc}</p>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" defaultChecked={setting.id === 'profile_visible'} className="sr-only peer" />
+                            <div className={`w-11 h-6 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#13C1AC] ${isBusiness ? 'bg-slate-600' : 'bg-gray-300'}`}></div>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <hr className={isBusiness ? 'border-slate-700' : 'border-gray-200'} />
+
+                  {/* ===== SECURITY ===== */}
+                  <div>
+                    <h3 className={`flex items-center gap-2 font-semibold text-sm sm:text-base mb-4 ${isBusiness ? 'text-white' : 'text-gray-900'}`}>
+                      <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-[#13C1AC]" />
                       Securitate
                     </h3>
-                    <button className={`px-4 py-2 rounded-lg text-sm font-medium ${isBusiness ? 'bg-slate-700 text-white hover:bg-slate-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
-                      Schimbă parola
+                    
+                    <div className="space-y-4">
+                      {/* Change Password */}
+                      <div className={`p-4 rounded-xl ${isBusiness ? 'bg-slate-700/30' : 'bg-gray-50'}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className={`font-medium text-sm ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Parolă</p>
+                            <p className={`text-xs ${isBusiness ? 'text-slate-500' : 'text-gray-500'}`}>Ultima modificare: niciodată</p>
+                          </div>
+                          <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            isBusiness 
+                              ? 'bg-slate-600 text-white hover:bg-slate-500' 
+                              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          }`}>
+                            Schimbă parola
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Two Factor Auth */}
+                      <div className={`p-4 rounded-xl ${isBusiness ? 'bg-slate-700/30' : 'bg-gray-50'}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className={`font-medium text-sm ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Autentificare în 2 pași</p>
+                            <p className={`text-xs ${isBusiness ? 'text-slate-500' : 'text-gray-500'}`}>Protejează-ți contul cu verificare suplimentară</p>
+                          </div>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${isBusiness ? 'bg-slate-600 text-slate-400' : 'bg-gray-200 text-gray-500'}`}>
+                            În curând
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Active Sessions */}
+                      <div className={`p-4 rounded-xl ${isBusiness ? 'bg-slate-700/30' : 'bg-gray-50'}`}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className={`font-medium text-sm ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Sesiuni active</p>
+                            <p className={`text-xs ${isBusiness ? 'text-slate-500' : 'text-gray-500'}`}>Dispozitive conectate la contul tău</p>
+                          </div>
+                        </div>
+                        <div className={`flex items-center gap-3 p-3 rounded-lg ${isBusiness ? 'bg-slate-600/50' : 'bg-white border border-gray-200'}`}>
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isBusiness ? 'bg-slate-500' : 'bg-gray-100'}`}>
+                            <Monitor className={`w-5 h-5 ${isBusiness ? 'text-white' : 'text-gray-600'}`} />
+                          </div>
+                          <div className="flex-1">
+                            <p className={`text-sm font-medium ${isBusiness ? 'text-white' : 'text-gray-900'}`}>Acest dispozitiv</p>
+                            <p className={`text-xs ${isBusiness ? 'text-slate-400' : 'text-gray-500'}`}>Activ acum • Chrome pe macOS</p>
+                          </div>
+                          <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr className={isBusiness ? 'border-slate-700' : 'border-gray-200'} />
+
+                  {/* ===== SAVE BUTTON ===== */}
+                  <div className="flex justify-end">
+                    <button className="px-6 py-2.5 bg-[#13C1AC] text-white rounded-lg text-sm font-semibold hover:bg-[#0fa899] transition-colors shadow-sm">
+                      Salvează modificările
                     </button>
                   </div>
 
-                  {/* Danger */}
+                  <hr className={isBusiness ? 'border-slate-700' : 'border-gray-200'} />
+
+                  {/* ===== DANGER ZONE ===== */}
                   <div className={`p-4 rounded-xl ${isBusiness ? 'bg-red-500/10 border border-red-500/20' : 'bg-red-50 border border-red-100'}`}>
-                    <h3 className="font-semibold text-red-500 mb-2">Zonă periculoasă</h3>
-                    <p className={`text-sm mb-4 ${isBusiness ? 'text-slate-400' : 'text-gray-600'}`}>Ștergerea contului este permanentă.</p>
-                    <button className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">
-                      Șterge contul
-                    </button>
+                    <h3 className="font-semibold text-red-500 mb-2 flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5" />
+                      Zonă periculoasă
+                    </h3>
+                    <p className={`text-sm mb-4 ${isBusiness ? 'text-slate-400' : 'text-gray-600'}`}>
+                      Aceste acțiuni sunt permanente și nu pot fi anulate.
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <button className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        isBusiness 
+                          ? 'bg-slate-700 text-slate-300 hover:bg-slate-600' 
+                          : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                      }`}>
+                        Dezactivează contul
+                      </button>
+                      <button className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors">
+                        Șterge contul definitiv
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
