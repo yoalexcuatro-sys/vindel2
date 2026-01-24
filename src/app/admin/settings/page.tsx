@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Save, Globe, Phone, Mail, MapPin } from 'lucide-react';
+import { Save, Globe, Phone, Mail, MapPin, Megaphone } from 'lucide-react';
 
 interface SiteSettings {
   siteName: string;
@@ -13,6 +13,7 @@ interface SiteSettings {
   metaTitle: string;
   metaDescription: string;
   maintenanceMode: boolean;
+  promotionEnabled: boolean;
 }
 
 export default function SettingsPage() {
@@ -23,7 +24,8 @@ export default function SettingsPage() {
     address: '',
     metaTitle: 'Vindel - Anunțuri Gratuite',
     metaDescription: 'Platforma ta preferată de anunțuri din România.',
-    maintenanceMode: false
+    maintenanceMode: false,
+    promotionEnabled: false
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -176,6 +178,28 @@ export default function SettingsPage() {
                     onChange={(e) => setSettings({...settings, maintenanceMode: e.target.checked})}
                 />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+        </div>
+
+        {/* Promotion Feature */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
+                    <Megaphone className="w-5 h-5 text-orange-600" />
+                </div>
+                <div>
+                    <h3 className="font-semibold text-gray-900">Funcția de Promovare</h3>
+                    <p className="text-sm text-gray-500">Activează pentru ca utilizatorii să poată promova anunțuri.</p>
+                </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+                <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={settings.promotionEnabled}
+                    onChange={(e) => setSettings({...settings, promotionEnabled: e.target.checked})}
+                />
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
             </label>
         </div>
       </form>

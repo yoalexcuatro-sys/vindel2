@@ -21,6 +21,8 @@ export type NotificationType =
   | 'product_rejected'     // Vendedor: tu anuncio fue rechazado
   | 'new_message'          // Usuario: nuevo mensaje
   | 'price_drop'           // Usuario: bajó el precio de un favorito
+  | 'new_follower'         // Usuario: alguien te empezó a seguir
+  | 'new_product_followed' // Usuario: alguien que sigues publicó un producto
   | 'system';              // Sistema: avisos generales
 
 export interface Notification {
@@ -38,6 +40,11 @@ export interface Notification {
     productImage?: string;
     reportReason?: string;
     reportId?: string;
+    followerId?: string;
+    followerName?: string;
+    followerAvatar?: string;
+    sellerId?: string;
+    sellerName?: string;
   };
 }
 
@@ -87,8 +94,6 @@ export function subscribeToUnreadNotifications(
   userId: string,
   callback: (count: number) => void
 ): () => void {
-  console.log('[NOTIFICATIONS-SUBSCRIBE] Subscribing for user:', userId);
-  
   // Simple query - filter read status in client to avoid composite index
   const q = query(
     collection(db, 'notifications'),
@@ -97,11 +102,6 @@ export function subscribeToUnreadNotifications(
 
   return onSnapshot(q, (snapshot) => {
     const unreadCount = snapshot.docs.filter(d => d.data().read === false).length;
-    console.log('[NOTIFICATIONS-SUBSCRIBE] Total docs:', snapshot.docs.length, 'Unread:', unreadCount);
-    snapshot.docs.forEach(d => {
-      const data = d.data();
-      console.log('[NOTIFICATIONS-SUBSCRIBE] Doc:', d.id, 'userId:', data.userId, 'read:', data.read);
-    });
     callback(unreadCount);
   }, (error) => {
     console.error('Error subscribing to notifications:', error);

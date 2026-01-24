@@ -1,6 +1,7 @@
 import { doc, updateDoc, Timestamp, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { Product, PromotionType } from './products-service';
+import { createPromotionInvoice, Invoice } from './invoices-service';
 
 // Planes de promoción disponibles
 export interface PromotionPlan {
@@ -16,25 +17,25 @@ export interface PromotionPlan {
 export const PROMOTION_PLANS: PromotionPlan[] = [
   {
     id: 'zilnic',
-    name: 'Zilnic',
-    price: 9.99,
-    duration: 1,
-    features: ['Top 24h', 'Badge "Promovat"'],
+    name: 'Săptămânal',
+    price: 1,
+    duration: 7,
+    features: ['Top 7 zile', 'Badge "Promovat"'],
     badge: 'Promovat',
   },
   {
     id: 'saptamanal',
-    name: 'Săptămânal',
-    price: 39.99,
-    duration: 7,
-    features: ['Top 7 zile', 'Badge Premium', 'Pagina principală'],
+    name: 'Bisăptămânal',
+    price: 2,
+    duration: 15,
+    features: ['Top 15 zile', 'Badge Premium', 'Pagina principală'],
     badge: 'Premium',
     popular: true,
   },
   {
     id: 'lunar',
     name: 'Lunar',
-    price: 99.99,
+    price: 4,
     duration: 30,
     features: ['Top 30 zile', 'Badge VIP', 'Toate beneficiile'],
     badge: 'VIP',
@@ -123,8 +124,29 @@ export function getPromotionBadge(product: Product): { label: string; color: str
 export async function promoteProduct(
   productId: string, 
   planId: PromotionType,
-  userId: string
-): Promise<{ success: boolean; error?: string }> {
+  userId: string,
+  userProfile?: {
+    displayName?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    accountType?: 'personal' | 'business';
+    businessName?: string;
+    cui?: string;
+    regCom?: string;
+    // Datos adicionales de empresa para facturación
+    nrRegistruComert?: string;
+    adresaSediu?: string;
+    oras?: string;
+    judet?: string;
+    codPostal?: string;
+    tara?: string;
+    reprezentantLegal?: string;
+    telefonFirma?: string;
+    emailFirma?: string;
+    website?: string;
+  }
+): Promise<{ success: boolean; error?: string; invoice?: Invoice }> {
   try {
     const docRef = doc(db, 'products', productId);
     const docSnap = await getDoc(docRef);
@@ -154,16 +176,35 @@ export async function promoteProduct(
     const now = new Date();
     const endDate = new Date(now.getTime() + plan.duration * 24 * 60 * 60 * 1000);
     
-    // Actualizar producto
+    // Actualizar producto - también aprobar automáticamente si está pendiente
     await updateDoc(docRef, {
       promoted: true,
       promotionType: planId,
       promotionStart: Timestamp.fromDate(now),
       promotionEnd: Timestamp.fromDate(endDate),
+      status: 'approved', // Auto-aprobar al promocionar
       updatedAt: Timestamp.now(),
     });
     
-    return { success: true };
+    // Generar factura si tenemos datos del usuario
+    let invoice: Invoice | undefined;
+    if (userProfile) {
+      try {
+        invoice = await createPromotionInvoice(
+          userId,
+          userProfile,
+          plan,
+          productId,
+          product.title,
+          'card' // Método de pago por defecto
+        );
+      } catch (invoiceError) {
+        console.error('Error creating invoice:', invoiceError);
+        // No falla la promoción si la factura falla
+      }
+    }
+    
+    return { success: true, invoice };
   } catch (error) {
     console.error('Error promoting product:', error);
     return { success: false, error: 'A apărut o eroare. Încearcă din nou.' };

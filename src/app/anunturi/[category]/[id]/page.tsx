@@ -1,11 +1,13 @@
 'use client';
 
-import { Heart, Share2, Eye, Flag, MessageCircle, MapPin, ShieldCheck, ChevronLeft, ChevronRight, Tag, Gauge, Ruler, Calendar, Hash, Car, CircleDot, Package, Settings, Zap, Thermometer, Clock, CheckCircle, Info, X, Home, Bed, Bath, Building, Sofa, Waves, ParkingCircle, Trees, Star, Sparkles, AlertTriangle, Truck, Users } from 'lucide-react';
+import { Heart, Share2, Eye, Flag, MessageCircle, MapPin, ShieldCheck, ChevronLeft, ChevronRight, Tag, Gauge, Ruler, Calendar, Hash, Car, CircleDot, Package, Settings, Zap, Thermometer, Clock, CheckCircle, Info, X, Home, Bed, Bath, Building, Building2, Sofa, Waves, ParkingCircle, Trees, Star, Sparkles, AlertTriangle, Truck, Users, ChevronDown, ChevronUp, User, Phone, Mail, Globe } from 'lucide-react';
+import Image from 'next/image';
+import Avatar from '@/components/Avatar';
 import Link from 'next/link';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { getProducts, Product, incrementProductViews } from '@/lib/products-service';
-import { getOrCreateConversation } from '@/lib/messages-service';
+import { getOrCreateConversation, sendMessage, findExistingConversation } from '@/lib/messages-service';
 import { Timestamp } from 'firebase/firestore';
 import { toggleFavorite } from '@/lib/favorites-service';
 import { useAuth } from '@/lib/auth-context';
@@ -13,6 +15,7 @@ import ProductCard from '@/components/ProductCard';
 import { createReport, REPORT_REASONS, hasUserReported } from '@/lib/reports-service';
 import { extractIdFromSlug } from '@/lib/slugs';
 import { useProduct, useUserProducts, useUserProfile, useUserFavorites } from '@/lib/swr-hooks';
+import { formatPublicName } from '@/lib/messages';
 
 // Helper para tiempo relativo
 const getRelativeTime = (publishedAt?: Timestamp | { seconds: number; nanoseconds: number }): string => {
@@ -38,6 +41,167 @@ const getRelativeTime = (publishedAt?: Timestamp | { seconds: number; nanosecond
   if (diffMonths < 12) return diffMonths === 1 ? '1 lună' : `${diffMonths} luni`;
   return '+1 an';
 };
+
+// Helper para formatear precios con separador de miles (12900 -> 12.900)
+const formatPrice = (price: number): string => {
+  return price.toLocaleString('ro-RO');
+};
+
+// Interfaz para BusinessDetails
+interface BusinessDetailsProps {
+  sellerProfile: {
+    businessName?: string;
+    cui?: string;
+    nrRegistruComert?: string;
+    adresaSediu?: string;
+    oras?: string;
+    judet?: string;
+    codPostal?: string;
+    tara?: string;
+    reprezentantLegal?: string;
+    telefonFirma?: string;
+    emailFirma?: string;
+    website?: string;
+    accountType?: string;
+  };
+}
+
+function BusinessDetails({ sellerProfile }: BusinessDetailsProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const hasBusinessData = sellerProfile.businessName || sellerProfile.cui || 
+    sellerProfile.nrRegistruComert || sellerProfile.adresaSediu || 
+    sellerProfile.telefonFirma || sellerProfile.emailFirma || sellerProfile.website;
+  
+  if (!hasBusinessData) return null;
+  
+  const fullAddress = [
+    sellerProfile.adresaSediu,
+    sellerProfile.oras,
+    sellerProfile.judet && `Jud. ${sellerProfile.judet}`,
+    sellerProfile.codPostal,
+    sellerProfile.tara
+  ].filter(Boolean).join(', ');
+  
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="bg-purple-100 p-2 rounded-lg">
+            <Building2 className="h-5 w-5 text-purple-600" />
+          </div>
+          <div className="text-left">
+            <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Date Firmă</h3>
+            <p className="text-[10px] sm:text-xs text-gray-500">Informații despre vânzător</p>
+          </div>
+        </div>
+        {isExpanded ? (
+          <ChevronUp className="h-5 w-5 text-gray-400" />
+        ) : (
+          <ChevronDown className="h-5 w-5 text-gray-400" />
+        )}
+      </button>
+      
+      {isExpanded && (
+        <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+          {sellerProfile.businessName && (
+            <div className="flex items-start gap-3">
+              <Building2 className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] sm:text-xs text-gray-500">Denumire</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-900">{sellerProfile.businessName}</p>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.cui && (
+            <div className="flex items-start gap-3">
+              <Hash className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] sm:text-xs text-gray-500">CUI</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-900">{sellerProfile.cui}</p>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.nrRegistruComert && (
+            <div className="flex items-start gap-3">
+              <Hash className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] sm:text-xs text-gray-500">Nr. Registru Comerț</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-900">{sellerProfile.nrRegistruComert}</p>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.reprezentantLegal && (
+            <div className="flex items-start gap-3">
+              <User className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] sm:text-xs text-gray-500">Reprezentant Legal</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-900">{sellerProfile.reprezentantLegal}</p>
+              </div>
+            </div>
+          )}
+          
+          {fullAddress && (
+            <div className="flex items-start gap-3">
+              <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] sm:text-xs text-gray-500">Sediu Social</p>
+                <p className="text-xs sm:text-sm font-medium text-gray-900">{fullAddress}</p>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.telefonFirma && (
+            <div className="flex items-start gap-3">
+              <Phone className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] sm:text-xs text-gray-500">Telefon</p>
+                <a href={`tel:${sellerProfile.telefonFirma}`} className="text-xs sm:text-sm font-medium text-[#13C1AC] hover:underline">
+                  {sellerProfile.telefonFirma}
+                </a>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.emailFirma && (
+            <div className="flex items-start gap-3">
+              <Mail className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] sm:text-xs text-gray-500">Email</p>
+                <a href={`mailto:${sellerProfile.emailFirma}`} className="text-xs sm:text-sm font-medium text-[#13C1AC] hover:underline">
+                  {sellerProfile.emailFirma}
+                </a>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.website && (
+            <div className="flex items-start gap-3">
+              <Globe className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-[10px] sm:text-xs text-gray-500">Website</p>
+                <a 
+                  href={sellerProfile.website.startsWith('http') ? sellerProfile.website : `https://${sellerProfile.website}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-xs sm:text-sm font-medium text-[#13C1AC] hover:underline"
+                >
+                  {sellerProfile.website}
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Helper para obtener info de condición
 const getConditionInfo = (condition?: string): { label: string; color: string; icon: any } | null => {
@@ -96,7 +260,22 @@ export default function ProductPage() {
   const [isFavoriteLoading, setIsFavoriteLoading] = useState(false);
   
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const hasTrackedView = useRef(false);
+  
+  // Chat modal state
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [checkingConversation, setCheckingConversation] = useState(false);
+  
+  // Quick message options
+  const quickMessages = [
+    'Bună, mă interesează anunțul tău. Este încă disponibil?',
+    'Bună! Care este prețul final? Acceptă negociere?',
+    'Bună! Aș dori să văd produsul. Când ne putem întâlni?',
+    'Bună! Poți trimite mai multe poze cu produsul?'
+  ];
   
   // Report modal state
   const [showReportModal, setShowReportModal] = useState(false);
@@ -181,7 +360,7 @@ export default function ProductPage() {
     // Preload remaining images after first one
     const preloadImages = () => {
       images.slice(1).forEach((src) => {
-        const img = new Image();
+        const img = new window.Image();
         img.src = src;
       });
     };
@@ -319,12 +498,15 @@ export default function ProductPage() {
                 {/* Image Gallery - Ultra Fast */}
                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden animate-fadeInUp animate-delay-100">
                   {/* Main Image */}
-                  <div className="relative aspect-[4/3] sm:aspect-[16/10] bg-gray-100">
+                  <div 
+                    className="relative aspect-[4/3] sm:aspect-[16/10] bg-gray-100 cursor-pointer"
+                    onClick={() => setLightboxOpen(true)}
+                  >
                     {/* First image always visible and eager loaded */}
                     <img 
                       src={images[0]} 
                       alt={product.title}
-                      className="absolute inset-0 w-full h-full object-contain"
+                      className="absolute inset-0 w-full h-full object-cover"
                       style={{ display: currentImageIndex === 0 ? 'block' : 'none' }}
                       loading="eager"
                       decoding="sync"
@@ -336,7 +518,7 @@ export default function ProductPage() {
                         key={idx + 1}
                         src={src} 
                         alt={product.title}
-                        className="absolute inset-0 w-full h-full object-contain"
+                        className="absolute inset-0 w-full h-full object-cover"
                         style={{ display: idx + 1 === currentImageIndex ? 'block' : 'none' }}
                         loading="eager"
                         decoding="async"
@@ -346,13 +528,19 @@ export default function ProductPage() {
                     {images.length > 1 && (
                       <>
                         <button
-                          onClick={() => setCurrentImageIndex(currentImageIndex === 0 ? images.length - 1 : currentImageIndex - 1)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentImageIndex(currentImageIndex === 0 ? images.length - 1 : currentImageIndex - 1);
+                          }}
                           className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 bg-white/90 rounded-full shadow-md hover:bg-white transition-all"
                         >
                           <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                         <button
-                          onClick={() => setCurrentImageIndex(currentImageIndex === images.length - 1 ? 0 : currentImageIndex + 1)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCurrentImageIndex(currentImageIndex === images.length - 1 ? 0 : currentImageIndex + 1);
+                          }}
                           className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1.5 sm:p-2 bg-white/90 rounded-full shadow-md hover:bg-white transition-all"
                         >
                           <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -364,16 +552,28 @@ export default function ProductPage() {
                       </>
                     )}
                     
+                    {/* Views count */}
+                    <div className="absolute bottom-3 left-3 bg-black/70 text-white px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1">
+                      <Eye className="w-3 h-3" />
+                      {product.views || 0}
+                    </div>
+
                     {/* Action buttons */}
                     <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex gap-1.5 sm:gap-2">
                       <button 
-                        onClick={handleFavoriteClick}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleFavoriteClick();
+                        }}
                         disabled={isFavoriteLoading}
                         className={`p-1.5 sm:p-2 rounded-full shadow-md transition-all ${isFavorited ? 'bg-red-500 text-white' : 'bg-white/90 hover:bg-white text-gray-600'} ${isFavoriteLoading ? 'opacity-50' : ''}`}
                       >
                         <Heart className={`w-4 h-4 sm:w-5 sm:h-5 ${isFavorited ? 'fill-current' : ''}`} />
                       </button>
-                      <button className="p-1.5 sm:p-2 bg-white/90 rounded-full shadow-md hover:bg-white transition-all">
+                      <button 
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1.5 sm:p-2 bg-white/90 rounded-full shadow-md hover:bg-white transition-all"
+                      >
                         <Share2 className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
                       </button>
                     </div>
@@ -464,7 +664,18 @@ export default function ProductPage() {
                     {/* Grid tabla simple */}
                     <div className="relative grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
                       {Object.entries(product.customFields)
-                        .filter(([key]) => key !== 'stareTehnica' && key !== 'stare')
+                        .filter(([key, value]) => {
+                          // Skip technical state fields (shown separately)
+                          if (key === 'stareTehnica' || key === 'stare') return false;
+                          // Skip if value is empty, null, undefined, or falsy string
+                          if (value === undefined || value === null || value === '') return false;
+                          if (typeof value === 'string' && (value.trim() === '' || value === '0')) return false;
+                          // Skip boolean false values (not selected checkboxes)
+                          if (typeof value === 'boolean' && !value) return false;
+                          // Skip 0 values that don't make sense
+                          if (typeof value === 'number' && value === 0) return false;
+                          return true;
+                        })
                         .sort(([keyA], [keyB]) => {
                           // Ordenar: marca primero, luego model, después el resto
                           const order = ['marca', 'marcaAnvelopa', 'marcaJanta', 'model', 'tip', 'tipMoto', 'tipAnvelopa', 'tipJanta'];
@@ -656,7 +867,7 @@ export default function ProductPage() {
                         </h1>
                     </div>
                     <div className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-gray-900 mb-2 sm:mb-3">
-                        {product.price} {product.currency === 'EUR' ? '€' : 'lei'}
+                        {formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'lei'}
                     </div>
                     
                     {/* Condition & Negotiable Badges */}
@@ -702,57 +913,97 @@ export default function ProductPage() {
                                 return;
                             }
                             if (product && user.uid !== product.sellerId) {
+                                setCheckingConversation(true);
                                 try {
-                                    const conversationId = await getOrCreateConversation(
+                                    // Check if conversation already exists for this product
+                                    const existingConvId = await findExistingConversation(
                                         user.uid,
                                         product.sellerId,
-                                        {
-                                            [user.uid]: userProfile?.displayName || user.displayName || 'Usuario',
-                                            [product.sellerId]: product.seller.name
-                                        },
-                                        {
-                                            [user.uid]: userProfile?.photoURL || user.photoURL || '',
-                                            [product.sellerId]: sellerAvatar || ''
-                                        },
-                                        {
-                                            productId: product.id,
-                                            productTitle: product.title,
-                                            productImage: product.images?.[0] || product.image || ''
-                                        }
+                                        product.id
                                     );
-                                    router.push(`/messages?conversation=${conversationId}`);
+                                    
+                                    if (existingConvId) {
+                                        // Go directly to existing conversation
+                                        router.push(`/messages?conversation=${existingConvId}`);
+                                    } else {
+                                        // Show modal for first message
+                                        setShowChatModal(true);
+                                    }
                                 } catch (error) {
-                                    console.error('Error creating conversation:', error);
+                                    console.error('Error checking conversation:', error);
+                                    setShowChatModal(true);
+                                } finally {
+                                    setCheckingConversation(false);
                                 }
                             }
                         }}
-                        disabled={user?.uid === product?.sellerId}
+                        disabled={user?.uid === product?.sellerId || checkingConversation}
                         className={`w-full font-bold py-2.5 sm:py-3 px-4 rounded-full transition-colors mb-2 sm:mb-3 flex items-center justify-center text-sm sm:text-base ${
                             user?.uid === product?.sellerId 
                                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
                                 : 'bg-[#13C1AC] text-white hover:bg-[#10a593] shadow-lg shadow-teal-500/30'
                         }`}
                     >
-                        <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-                        {user?.uid === product?.sellerId ? 'Tu anuncio' : 'Chat'}
+                        {checkingConversation ? (
+                            <>
+                                <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                                Se verifică...
+                            </>
+                        ) : (
+                            <>
+                                <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
+                                {user?.uid === product?.sellerId ? 'Tu anuncio' : 'Chat'}
+                            </>
+                        )}
                     </button>
-                    <button className="w-full bg-[#E5F9F6] text-[#13C1AC] font-bold py-2.5 sm:py-3 px-4 rounded-full hover:bg-[#d0f5f0] transition-colors text-sm sm:text-base">
-                        Cumpără acum
-                    </button>
+                    
+                    {/* Phone Button - Only show if seller has phone and showPhone is explicitly true */}
+                    {sellerProfile?.phone && sellerProfile?.settings?.showPhone === true && user?.uid !== product?.sellerId ? (
+                      <a 
+                        href={`tel:${sellerProfile.phone}`}
+                        className="w-full bg-[#E5F9F6] text-[#13C1AC] font-bold py-2.5 sm:py-3 px-4 rounded-full hover:bg-[#d0f5f0] transition-colors text-sm sm:text-base flex items-center justify-center gap-2"
+                      >
+                        <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        {sellerProfile.phone}
+                      </a>
+                    ) : user?.uid === product?.sellerId ? (
+                      <button 
+                        disabled
+                        className="w-full bg-gray-100 text-gray-400 font-bold py-2.5 sm:py-3 px-4 rounded-full cursor-not-allowed text-sm sm:text-base"
+                      >
+                        Tu anuncio
+                      </button>
+                    ) : (
+                      <button 
+                        disabled
+                        className="w-full bg-[#E5F9F6] text-[#13C1AC]/50 font-bold py-2.5 sm:py-3 px-4 rounded-full cursor-not-allowed text-sm sm:text-base flex items-center justify-center gap-2"
+                      >
+                        <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        Telefon ascuns
+                      </button>
+                    )}
                 </div>
 
                 {/* Seller Card */}
                 <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 animate-fadeInUp animate-delay-200">
                     <Link href={`/user/${product.seller.id}`} className="flex items-center mb-3 sm:mb-4 group cursor-pointer">
-                        {sellerAvatar ? (
-                          <img src={sellerAvatar} alt={product.seller.name} className="h-10 w-10 sm:h-14 sm:w-14 rounded-full object-cover border border-gray-100 mr-3 sm:mr-4 group-hover:opacity-80 transition-opacity" />
-                        ) : (
-                          <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-full bg-[#13C1AC] flex items-center justify-center mr-3 sm:mr-4 group-hover:opacity-80 transition-opacity">
-                            <span className="text-base sm:text-xl font-bold text-white">{(product.seller.name || 'U')[0].toUpperCase()}</span>
+                        <div className="relative mr-3 sm:mr-4">
+                          <div className={`h-12 w-12 sm:h-16 sm:w-16 rounded-full overflow-hidden ring-[3px] sm:ring-4 ring-[#13C1AC]/30 ${sellerAvatar ? '' : 'bg-[#13C1AC] flex items-center justify-center'}`}>
+                            {sellerAvatar ? (
+                              <img src={sellerAvatar} alt={formatPublicName(product.seller.name)} className="w-full h-full object-cover group-hover:opacity-90 transition-opacity" />
+                            ) : (
+                              <span className="text-lg sm:text-2xl font-bold text-white">{(product.seller.name || 'U')[0].toUpperCase()}</span>
+                            )}
                           </div>
-                        )}
+                          {/* Online indicator */}
+                          <div className="absolute bottom-0 right-0 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                        </div>
                         <div>
-                            <h3 className="font-bold text-gray-900 text-base sm:text-lg group-hover:text-[#13C1AC] transition-colors">{product.seller.name}</h3>
+                            <h3 className="font-bold text-gray-900 text-base sm:text-lg group-hover:text-[#13C1AC] transition-colors">{formatPublicName(product.seller.name)}</h3>
                             <div className="flex items-center text-xs sm:text-sm">
                                 <div className="flex text-yellow-400 mr-1">
                                     {[...Array(5)].map((_, i) => (
@@ -777,6 +1028,11 @@ export default function ProductPage() {
                     </div>
                 </div>
 
+                {/* Business Details - Only for business accounts */}
+                {sellerProfile?.accountType === 'business' && (
+                  <BusinessDetails sellerProfile={sellerProfile} />
+                )}
+
                 {/* Safety Tips */}
                 <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 animate-fadeInUp animate-delay-300">
                     <h3 className="font-bold text-gray-900 text-sm sm:text-base mb-2 sm:mb-3">Sfaturi de siguranță</h3>
@@ -798,6 +1054,152 @@ export default function ProductPage() {
 
             </div>
         </div>
+
+        {/* Chat Modal */}
+        {showChatModal && product && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowChatModal(false)}>
+            <div 
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeInUp"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-gradient-to-r from-[#13C1AC] to-emerald-400 px-6 py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <MessageCircle className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Trimite mesaj</h3>
+                  </div>
+                  <button 
+                    onClick={() => setShowChatModal(false)}
+                    className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5 text-white" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Content */}
+              <div className="p-6">
+                {/* Product preview */}
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl mb-5">
+                  {(product.images?.[0] || product.image) && (
+                    <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
+                      <img src={product.images?.[0] || product.image} alt="" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{product.title}</p>
+                    <p className="text-sm font-bold text-[#13C1AC]">
+                      {formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'lei'}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Quick messages */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {quickMessages.map((msg) => (
+                    <button
+                      key={msg}
+                      onClick={() => setChatMessage(msg)}
+                      className={`px-3 py-1.5 text-sm border rounded-full transition-colors ${
+                        chatMessage === msg 
+                          ? 'border-[#13C1AC] bg-[#13C1AC]/10 text-[#13C1AC]' 
+                          : 'border-gray-200 hover:border-[#13C1AC] hover:text-[#13C1AC]'
+                      }`}
+                    >
+                      {msg}
+                    </button>
+                  ))}
+                </div>
+                
+                {/* Message input */}
+                <div className="mb-5">
+                  <div className="relative">
+                    <textarea
+                      value={chatMessage}
+                      onChange={(e) => setChatMessage(e.target.value)}
+                      placeholder="Scrie mesajul tău aici..."
+                      rows={3}
+                      className="w-full px-4 py-3 border-2 border-[#13C1AC]/30 rounded-xl text-sm focus:outline-none focus:border-[#13C1AC] resize-none"
+                    />
+                    <div className="absolute bottom-3 left-3">
+                      <div className="w-6 h-6 bg-[#13C1AC] rounded-md flex items-center justify-center">
+                        <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShowChatModal(false);
+                      setChatMessage('');
+                    }}
+                    className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Anulează
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!user || !product || !chatMessage.trim()) return;
+                      
+                      setSendingMessage(true);
+                      try {
+                        const conversationId = await getOrCreateConversation(
+                          user.uid,
+                          product.sellerId,
+                          {
+                            [user.uid]: userProfile?.displayName || user.displayName || 'Usuario',
+                            [product.sellerId]: product.seller.name
+                          },
+                          {
+                            [user.uid]: userProfile?.photoURL || user.photoURL || '',
+                            [product.sellerId]: sellerAvatar || ''
+                          },
+                          {
+                            productId: product.id,
+                            productTitle: product.title,
+                            productImage: product.images?.[0] || product.image || ''
+                          }
+                        );
+                        
+                        // Send the message directly
+                        await sendMessage(conversationId, user.uid, chatMessage.trim());
+                        
+                        // Redirect to conversation
+                        router.push(`/messages?conversation=${conversationId}`);
+                      } catch (error) {
+                        console.error('Error sending message:', error);
+                      } finally {
+                        setSendingMessage(false);
+                      }
+                    }}
+                    disabled={sendingMessage || !chatMessage.trim()}
+                    className="flex-1 px-4 py-3 bg-[#13C1AC] text-white font-bold rounded-xl hover:bg-[#10a593] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {sendingMessage ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Se trimite...</span>
+                      </>
+                    ) : (
+                      <>
+                        <MessageCircle className="w-4 h-4" />
+                        <span>Trimite</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Report Modal */}
         {showReportModal && (
@@ -929,6 +1331,166 @@ export default function ProductPage() {
           </div>
         )}
       </div>
+
+      {/* Lightbox Modal */}
+      {lightboxOpen && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/95 flex flex-col"
+          onClick={() => setLightboxOpen(false)}
+        >
+          {/* Botón cerrar */}
+          <button 
+            onClick={() => setLightboxOpen(false)}
+            className="absolute top-4 right-4 z-10 p-2 bg-white/10 hover:bg-white/20 rounded-full transition-colors"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+
+          {/* Contador de imágenes */}
+          <div className="absolute top-6 left-6 text-white/80 text-sm font-medium">
+            {currentImageIndex + 1}/{images.length}
+          </div>
+
+          {/* Imagen principal */}
+          <div 
+            className="flex-1 flex items-center justify-center p-4 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Flecha izquierda */}
+            {images.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex(currentImageIndex === 0 ? images.length - 1 : currentImageIndex - 1);
+                }}
+                className="absolute left-4 p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors z-10"
+              >
+                <ChevronLeft className="w-6 h-6 text-gray-800" />
+              </button>
+            )}
+
+            {/* Imagen actual */}
+            <div className="relative max-w-5xl w-full h-full max-h-[75vh] flex items-center justify-center">
+              <Image
+                key={currentImageIndex}
+                src={images[currentImageIndex]}
+                alt={product.title}
+                fill
+                sizes="(max-width: 768px) 100vw, 1200px"
+                className="object-contain"
+                priority
+                quality={75}
+              />
+            </div>
+
+            {/* Flecha derecha */}
+            {images.length > 1 && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex(currentImageIndex === images.length - 1 ? 0 : currentImageIndex + 1);
+                }}
+                className="absolute right-4 p-3 bg-white rounded-full shadow-lg hover:bg-gray-100 transition-colors z-10"
+              >
+                <ChevronRight className="w-6 h-6 text-gray-800" />
+              </button>
+            )}
+          </div>
+
+          {/* Barra inferior con thumbnails, info y chat */}
+          <div 
+            className="bg-zinc-900 border-t border-white/10 px-4 py-4 md:py-6 pb-8 md:pb-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Thumbnails row */}
+            {images.length > 1 && (
+              <div className="flex justify-center gap-2 mb-4 overflow-x-auto pb-2">
+                {images.map((img, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentImageIndex(idx)}
+                    className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden flex-shrink-0 border-2 ${
+                      currentImageIndex === idx 
+                        ? 'border-[#13C1AC] ring-2 ring-[#13C1AC]/30' 
+                        : 'border-white/20 opacity-50 hover:opacity-100'
+                    }`}
+                  >
+                    <Image src={img} alt={`Miniatura ${idx + 1}`} fill sizes="56px" className="object-cover" quality={50} />
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
+              {/* Info del vendedor y anuncio */}
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="flex-shrink-0">
+                  <Avatar src={sellerAvatar} name={product.seller?.name || 'Utilizator'} size="md" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <p className="text-white font-medium truncate text-lg">{product.title}</p>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                     <span>{formatPublicName(product.seller?.name || 'Utilizator')}</span>
+                     <span className="w-1 h-1 rounded-full bg-gray-600"></span>
+                     <span className="text-emerald-400 font-bold text-base">{formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'Lei'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botón Chat */}
+              <button
+                onClick={async () => {
+                   setLightboxOpen(false);
+                   if (!user) {
+                       router.push('/login');
+                       return;
+                   }
+                   if (user.uid === product?.sellerId) return;
+                   
+                   try {
+                       setCheckingConversation(true);
+                       const existingConvId = await findExistingConversation(
+                           user.uid,
+                           product.sellerId || '',
+                           product.id
+                       );
+                       if (existingConvId) {
+                           router.push(`/messages?conversation=${existingConvId}`);
+                       } else {
+                           setShowChatModal(true);
+                       }
+                   } catch (error) {
+                       console.error('Error checking conversation:', error);
+                       setShowChatModal(true);
+                   } finally {
+                       setCheckingConversation(false);
+                   }
+                }}
+                disabled={user?.uid === product?.sellerId || checkingConversation}
+                className={`px-6 py-2.5 font-semibold rounded-full transition-colors flex-shrink-0 shadow-lg shadow-teal-900/20 flex items-center gap-2 ${
+                    user?.uid === product?.sellerId 
+                        ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                        : 'bg-[#13C1AC] hover:bg-[#0fa895] text-white'
+                }`}
+              >
+                {checkingConversation ? (
+                    <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Se verifică...</span>
+                    </>
+                ) : (
+                    <>
+                        <MessageCircle className="w-4 h-4" />
+                        <span>{user?.uid === product?.sellerId ? 'Anunțul tău' : 'Chat'}</span>
+                    </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ interface AdminProduct {
   id: string;
   title: string;
   price: number;
+  currency?: string;
   image: string;
   status?: string; // pending, active, rejected
   seller: {
@@ -167,7 +168,7 @@ export default function ListingsModeration() {
                                     <div className="text-xs text-gray-400">Seller ID: {product.id.slice(0,5)}...</div>
                                 </td>
                                 <td className="px-6 py-4 font-bold text-gray-900">
-                                    {product.price} €
+                                    {product.price?.toLocaleString('ro-RO')} {product.currency === 'EUR' ? '€' : 'Lei'}
                                 </td>
                                 <td className="px-6 py-4">
                                     {product.status === 'active' && (

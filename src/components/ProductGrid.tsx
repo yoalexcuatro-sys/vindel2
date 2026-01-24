@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { Tag, Crown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Tag, Crown, ChevronRight, LayoutGrid } from 'lucide-react';
+import Link from 'next/link';
 import ProductCard from './ProductCard';
 import { Product } from '@/lib/products-service';
 import { useHomeProducts } from '@/lib/swr-hooks';
@@ -17,9 +18,10 @@ function preloadProductImages(products: Product[], count: number = 10) {
   });
 }
 
-// Helper: verificar si un producto está activamente promocionado como VIP
-function isVipProduct(product: Product): boolean {
-  if (!product.promoted || !product.promotionEnd || product.promotionType !== 'lunar') return false;
+// Helper: verificar si un producto está activamente promocionado como VIP o Premium
+function isPremiumOrVipProduct(product: Product): boolean {
+  if (!product.promoted || !product.promotionEnd) return false;
+  if (product.promotionType !== 'lunar' && product.promotionType !== 'saptamanal') return false;
   
   const now = new Date();
   let endDate: Date;
@@ -35,39 +37,81 @@ function isVipProduct(product: Product): boolean {
   return endDate > now;
 }
 
+// Función para mezclar array (Fisher-Yates shuffle) con seed basado en tiempo
+function shuffleWithSeed(array: Product[], seed: number): Product[] {
+  const shuffled = [...array];
+  let currentIndex = shuffled.length;
+  
+  // Generador de números pseudo-aleatorios con seed
+  const random = () => {
+    seed = (seed * 9301 + 49297) % 233280;
+    return seed / 233280;
+  };
+  
+  while (currentIndex > 0) {
+    const randomIndex = Math.floor(random() * currentIndex);
+    currentIndex--;
+    [shuffled[currentIndex], shuffled[randomIndex]] = [shuffled[randomIndex], shuffled[currentIndex]];
+  }
+  
+  return shuffled;
+}
+
 export default function ProductGrid() {
-  const { data: products, isLoading, isValidating } = useHomeProducts();
+  const { data: products, isLoading, isValidating, error } = useHomeProducts();
   const [currentTheme, setCurrentTheme] = useState(1);
-  const [visibleCount, setVisibleCount] = useState(35);
+  const [isMobile, setIsMobile] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(60);
+  const [visiblePremiumCount, setVisiblePremiumCount] = useState(10);
+  const [rotationSeed, setRotationSeed] = useState(() => Math.floor(Date.now() / 60000)); // Cambia cada minuto
   const preloadedRef = useRef(false);
-  const vipScrollRef = useRef<HTMLDivElement>(null);
+  
+  // Detectar móvil y ajustar cantidad inicial
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // En móvil mostrar 100 productos, en desktop 60
+      setVisibleCount(mobile ? 100 : 60);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+  
+  // DEBUG: Log error if any
+  useEffect(() => {
+    if (error) {
+      console.error('useHomeProducts ERROR:', error);
+    }
+  }, [error]);
+  
+  // Rotar productos premium cada 30 segundos
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRotationSeed(Math.floor(Date.now() / 60000) + Math.random() * 1000);
+    }, 30000); // Rota cada 30 segundos
+    
+    return () => clearInterval(interval);
+  }, []);
   
   // Estados para animación - solo aplicar en primera carga real
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const hasAnimated = useRef(false);
   
-  // Filtrar productos VIP
-  const vipProducts = useMemo(() => {
+  // Filtrar y rotar productos VIP y Premium
+  const premiumProducts = useMemo(() => {
     if (!products) return [];
-    return products.filter(isVipProduct);
-  }, [products]);
+    const filtered = products.filter(isPremiumOrVipProduct);
+    // Aplicar rotación/shuffle con el seed actual
+    return shuffleWithSeed(filtered, rotationSeed);
+  }, [products, rotationSeed]);
   
-  // Productos normales (excluyendo VIP para no duplicar)
+  // Productos normales (excluyendo VIP/Premium para no duplicar)
   const regularProducts = useMemo(() => {
     if (!products) return [];
-    return products.filter(p => !isVipProduct(p));
+    return products.filter(p => !isPremiumOrVipProduct(p));
   }, [products]);
-  
-  // Scroll del carrusel VIP
-  const scrollVip = (direction: 'left' | 'right') => {
-    if (vipScrollRef.current) {
-      const scrollAmount = 320;
-      vipScrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
-    }
-  };
   
   // Activar animación solo la primera vez que llegan productos
   useEffect(() => {
@@ -106,7 +150,8 @@ export default function ProductGrid() {
   }, []);
 
   const handleLoadMore = () => {
-    setVisibleCount(prev => prev + 35);
+    // En móvil cargar 60 más, en desktop 60 más
+    setVisibleCount(prev => prev + 60);
   };
 
   // Usar productos de SWR - mostrar skeletons solo mientras carga sin datos
@@ -115,28 +160,30 @@ export default function ProductGrid() {
   const visibleProducts = displayProducts?.slice(0, visibleCount) || [];
   const hasMoreProducts = displayProducts && displayProducts.length > visibleCount;
 
+
+
   // Skeletons para carga - igual que en el buscador
   const renderSkeletons = () => (
     <>
       {/* Header Skeleton */}
-      <div className="flex justify-between items-end mb-4 sm:mb-6 md:mb-8 px-1">
+      <div className="flex justify-between items-end mb-3 sm:mb-6 md:mb-8 px-1">
         <div>
-          <div className="h-5 sm:h-6 md:h-7 w-32 sm:w-40 md:w-48 bg-gray-200 rounded-lg animate-pulse"></div>
-          <div className="h-0.5 sm:h-1 w-16 bg-[#13C1AC]/30 rounded-full mt-1.5"></div>
+          <div className="h-5 sm:h-6 md:h-7 w-28 sm:w-40 md:w-48 bg-gray-200 rounded-lg animate-pulse"></div>
+          <div className="h-0.5 sm:h-1 w-14 sm:w-16 bg-[#13C1AC]/30 rounded-full mt-1.5"></div>
         </div>
-        <div className="h-4 w-16 sm:w-20 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-3 sm:h-4 w-14 sm:w-20 bg-gray-200 rounded animate-pulse"></div>
       </div>
       
       {/* Grid Skeleton */}
       <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
         {[...Array(10)].map((_, i) => (
-          <div key={i} className="bg-white rounded-xl sm:rounded-2xl p-2 sm:p-3 border border-gray-100 shadow-sm">
-            <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 rounded-lg sm:rounded-xl mb-2 sm:mb-3 animate-pulse"></div>
-            <div className="h-3 sm:h-4 bg-gray-200 rounded w-3/4 mb-1.5 sm:mb-2 animate-pulse"></div>
-            <div className="h-2.5 sm:h-3 bg-gray-100 rounded w-1/2 mb-2 sm:mb-3 animate-pulse"></div>
-            <div className="flex justify-between items-center pt-1 sm:pt-2">
-              <div className="h-4 sm:h-5 bg-gray-200 rounded w-1/3 animate-pulse"></div>
-              <div className="h-6 sm:h-8 bg-gray-100 rounded w-12 sm:w-16 animate-pulse"></div>
+          <div key={i} className="bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-3 border border-gray-100 shadow-sm">
+            <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 rounded-lg sm:rounded-xl mb-1.5 sm:mb-3 animate-pulse"></div>
+            <div className="h-2.5 sm:h-4 bg-gray-200 rounded w-3/4 mb-1 sm:mb-2 animate-pulse"></div>
+            <div className="h-2 sm:h-3 bg-gray-100 rounded w-1/2 mb-1.5 sm:mb-3 animate-pulse"></div>
+            <div className="flex justify-between items-center pt-0.5 sm:pt-2">
+              <div className="h-3.5 sm:h-5 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+              <div className="h-5 sm:h-8 bg-gray-100 rounded w-10 sm:w-16 animate-pulse"></div>
             </div>
           </div>
         ))}
@@ -145,7 +192,7 @@ export default function ProductGrid() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-10 lg:px-16 py-3 sm:py-4 md:py-6 bg-gray-50">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-10 lg:px-16 py-3 sm:py-4 md:py-6 bg-gray-50 pb-20 md:pb-6">
       <style jsx>{`
         @keyframes cardFadeIn {
           from { 
@@ -186,89 +233,90 @@ export default function ProductGrid() {
         </div>
       ) : (
         <div>
-          {/* ========== SECCIÓN VIP ========== */}
-          {vipProducts.length > 0 && (
-            <div className="mb-8 sm:mb-10">
-              {/* Header VIP */}
-              <div className="flex justify-between items-center mb-4 sm:mb-5 px-1">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-amber-500 shadow-lg shadow-amber-500/30">
-                    <Crown className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-yellow-500 to-amber-600 bg-clip-text text-transparent">
-                      Anunțuri VIP
-                    </h2>
-                    <p className="text-xs sm:text-sm text-gray-500">Oferte premium selectate</p>
-                  </div>
+          {/* ========== SECCIÓN VIP & PREMIUM ========== */}
+          {premiumProducts.length > 0 && (
+            <div className="mb-6 sm:mb-10">
+              {/* Header VIP & Premium */}
+              <div className="flex justify-between items-center mb-3 sm:mb-5 px-1">
+                <div>
+                  <h2 className="text-base sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-yellow-500 to-amber-600 bg-clip-text text-transparent">
+                    Anunțuri promovate
+                  </h2>
+                  <p className="text-[10px] sm:text-sm text-gray-500">Oferte VIP și Premium selectate</p>
                 </div>
-                
-                {/* Navigation arrows - only on desktop */}
-                <div className="hidden sm:flex items-center gap-2">
-                  <button 
-                    onClick={() => scrollVip('left')}
-                    className="p-2 rounded-full bg-white border border-gray-200 hover:border-amber-400 hover:bg-amber-50 transition-all shadow-sm"
-                  >
-                    <ChevronLeft className="w-5 h-5 text-gray-600" />
-                  </button>
-                  <button 
-                    onClick={() => scrollVip('right')}
-                    className="p-2 rounded-full bg-white border border-gray-200 hover:border-amber-400 hover:bg-amber-50 transition-all shadow-sm"
-                  >
-                    <ChevronRight className="w-5 h-5 text-gray-600" />
-                  </button>
-                </div>
+                <Link 
+                  href="/anunturi/premium" 
+                  className="flex items-center gap-0.5 sm:gap-1 text-[#13C1AC] hover:text-[#0fa89a] transition-colors text-xs sm:text-sm font-medium"
+                >
+                  Vezi toate
+                  <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                </Link>
               </div>
               
-              {/* VIP Carousel */}
-              <div className="relative">
-                {/* Gradient edges */}
-                <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-gray-50 to-transparent z-10 pointer-events-none hidden sm:block"></div>
-                <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-gray-50 to-transparent z-10 pointer-events-none hidden sm:block"></div>
-                
-                {/* Scrollable container */}
-                <div 
-                  ref={vipScrollRef}
-                  className="flex gap-3 sm:gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x snap-mandatory"
-                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-                >
-                  {vipProducts.map((product, index) => (
-                    <div 
-                      key={`vip-${product.id}`}
-                      className="flex-shrink-0 w-[160px] sm:w-[200px] md:w-[220px] snap-start"
-                    >
-                      <div className="relative">
-                        {/* Golden border effect */}
-                        <div className="absolute -inset-0.5 bg-gradient-to-br from-yellow-400 via-amber-500 to-yellow-600 rounded-2xl opacity-75"></div>
-                        <div className="relative bg-white rounded-2xl overflow-hidden">
-                          <ProductCard product={product} priority={index < 4} />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              {/* Premium Grid - Same as regular products */}
+              <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
+                {premiumProducts.slice(0, visiblePremiumCount).map((product, index) => (
+                  <div key={`premium-${product.id}`}>
+                    <ProductCard product={product} priority={index < 4} />
+                  </div>
+                ))}
               </div>
+              
+              {/* Load More Premium Button */}
+              {premiumProducts.length > visiblePremiumCount && (
+                <div className="mt-3 sm:mt-4 text-center">
+                  <button 
+                    onClick={() => setVisiblePremiumCount(prev => prev + 10)}
+                    className="inline-flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-full hover:from-amber-600 hover:to-orange-600 transition-all active:scale-95 text-xs sm:text-sm shadow-lg shadow-amber-500/20"
+                  >
+                    <span>Mai multe ({premiumProducts.length - visiblePremiumCount})</span>
+                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
           {/* ========== ANUNȚURI RECENTE ========== */}
           {/* Header - Mobile optimized */}
-          <div className="flex justify-between items-end mb-4 sm:mb-6 md:mb-8 px-1">
+          <div className="flex justify-between items-end mb-3 sm:mb-6 md:mb-8 px-1">
             <div>
               <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2">
-                <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[#13C1AC] tracking-tight">Anunțuri recente</h2>
-                <span className={`text-[#13C1AC]/70 font-medium text-xs sm:text-sm md:text-base ${isValidating ? 'revalidating' : ''}`}>
+                <h2 className="text-base sm:text-xl md:text-2xl font-bold text-[#13C1AC] tracking-tight">Anunțuri recente</h2>
+                <span className={`text-[#13C1AC]/70 font-medium text-[10px] sm:text-sm md:text-base ${isValidating ? 'revalidating' : ''}`}>
                   {displayProducts.length} găsite
                 </span>
               </div>
-              <div className="h-0.5 sm:h-1 w-16 sm:w-full max-w-[150px] bg-[#13C1AC] rounded-full mt-1 opacity-80"></div>
+              <div className="h-0.5 sm:h-1 w-14 sm:w-full max-w-[150px] bg-[#13C1AC] rounded-full mt-1 opacity-80"></div>
             </div>
-            <a href="/search" className="text-[#13C1AC] text-xs sm:text-sm font-semibold hover:underline flex items-center gap-1 active:opacity-70">
-              Vezi toate
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Theme Selector */}
+              <div className="relative group">
+                <button 
+                  className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 text-[10px] sm:text-xs font-medium transition-colors"
+                  onClick={() => {
+                    const themes = [1, 6, 8, 9];
+                    const currentIndex = themes.indexOf(currentTheme);
+                    const nextIndex = (currentIndex + 1) % themes.length;
+                    const newTheme = themes[nextIndex];
+                    setCurrentTheme(newTheme);
+                    localStorage.setItem('user_card_theme', newTheme.toString());
+                    window.dispatchEvent(new Event('themeChange'));
+                  }}
+                >
+                  <LayoutGrid className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <span className="hidden sm:inline">Tema {currentTheme}</span>
+                </button>
+              </div>
+              <a href="/search" className="text-[#13C1AC] text-[10px] sm:text-sm font-semibold hover:underline flex items-center gap-0.5 sm:gap-1 active:opacity-70">
+                Vezi toate
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </a>
+            </div>
           </div>
           
           {/* Product Grid - Responsive columns */}
@@ -285,13 +333,13 @@ export default function ProductGrid() {
           
           {/* Load More Button */}
           {hasMoreProducts && (
-            <div className="mt-4 sm:mt-6 text-center pb-2">
+            <div className="mt-3 sm:mt-6 text-center pb-2">
               <button 
                 onClick={handleLoadMore}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-white border-2 border-[#13C1AC] text-[#13C1AC] font-semibold rounded-full hover:bg-[#13C1AC] hover:text-white transition-all active:scale-95 text-sm sm:text-base"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-white border-2 border-[#13C1AC] text-[#13C1AC] font-semibold rounded-full hover:bg-[#13C1AC] hover:text-white transition-all active:scale-95 text-xs sm:text-base"
               >
-                <span>Încarcă mai multe anunțuri</span>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <span>Încarcă mai multe</span>
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -300,13 +348,13 @@ export default function ProductGrid() {
 
           {/* Ver todos - cuando ya no hay más para cargar */}
           {!hasMoreProducts && displayProducts && displayProducts.length >= 20 && (
-            <div className="mt-4 sm:mt-6 text-center pb-2">
+            <div className="mt-3 sm:mt-6 text-center pb-2">
               <a 
                 href="/search"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#13C1AC] text-white font-semibold rounded-full hover:bg-[#0da896] transition-all active:scale-95 text-sm sm:text-base"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-[#13C1AC] text-white font-semibold rounded-full hover:bg-[#0da896] transition-all active:scale-95 text-xs sm:text-base"
               >
                 <span>Vezi toate anunțurile</span>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
               </a>

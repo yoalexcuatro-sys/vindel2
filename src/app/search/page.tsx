@@ -13,6 +13,22 @@ import { createProductLink } from '@/lib/slugs';
 
 import { Timestamp } from 'firebase/firestore';
 
+// Mapping from URL slug to actual category names (supports both formats)
+const CATEGORY_SLUG_MAP: Record<string, string[]> = {
+  'electronice': ['Electronice', 'electronice'],
+  'auto-moto': ['Auto moto', 'auto-moto'],
+  'moda': ['Modă și accesorii', 'moda'],
+  'gaming': ['Videojocuri', 'gaming'],
+  'sport': ['Timp liber și sport', 'sport'],
+  'casa-gradina': ['Casă și grădină', 'casa-gradina'],
+  'imobiliare': ['Imobiliare', 'imobiliare'],
+  'locuri-de-munca': ['Locuri de muncă', 'locuri-de-munca'],
+  'servicii': ['Servicii', 'servicii'],
+  'animale': ['Animale de companie', 'animale'],
+  'mama-copil': ['Mama și copilul', 'mama-copil'],
+  'agro': ['Agro', 'agro'],
+};
+
 // Subcategories by category with icons
 interface SubcategoryItem {
   name: string;
@@ -50,12 +66,7 @@ const SUBCATEGORIES: Record<string, SubcategoryItem[]> = {
     { name: 'Constructii', icon: Hammer },
     { name: 'Transporturi', icon: Truck }
   ],
-  'matrimoniale': [
-    { name: 'Femei', icon: Heart },
-    { name: 'Bărbați', icon: Heart },
-    { name: 'Prietenii', icon: Users },
-    { name: 'Întâlniri', icon: Heart }
-  ],
+  'matrimoniale': [],
   'servicii': [
     { name: 'Construcții', icon: Hammer },
     { name: 'Reparații', icon: Wrench },
@@ -173,7 +184,7 @@ const getConditionLabel = (condition?: string): { label: string; color: string }
 };
 
 // Separate component to wrap in Suspense because of useSearchParams
-function SearchResults() {
+function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,7 +221,8 @@ function SearchResults() {
   useEffect(() => {
     async function loadProducts() {
       try {
-        const result = await getProducts({}, 100);
+        // Load all products (increased limit to get all available)
+        const result = await getProducts({}, 1000);
         setProducts(result.products);
       } catch (error) {
         console.error('Error loading products:', error);
@@ -237,13 +249,20 @@ function SearchResults() {
 
   // Filtering Logic
   const filteredProducts = products.filter((product) => {
-    // Text Search - buscar en título, descripción Y ubicación
-    // Si no hay query, mostrar todos
-    const searchQuery = query.toLowerCase();
-    const matchesText = !query || 
-        product.title.toLowerCase().includes(searchQuery) || 
-        product.description.toLowerCase().includes(searchQuery) ||
-        product.location.toLowerCase().includes(searchQuery);
+    // Text Search - improved to search for ALL words individually
+    // "bara audi" will find "Bara fata audi a5" because both "bara" AND "audi" are present
+    const matchesText = (() => {
+      if (!query) return true;
+      
+      const searchWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+      const titleLower = product.title.toLowerCase();
+      const descLower = product.description?.toLowerCase() || '';
+      const locationLower = product.location?.toLowerCase() || '';
+      const combinedText = `${titleLower} ${descLower} ${locationLower}`;
+      
+      // ALL search words must be present somewhere in title, description, or location
+      return searchWords.every(word => combinedText.includes(word));
+    })();
     
     // Currency filter - if filtering by price, only show products in that currency
     const productCurrency = product.currency || 'RON';
@@ -255,10 +274,46 @@ function SearchResults() {
     const matchesMinPrice = minPriceParam && matchesCurrency ? product.price >= Number(minPriceParam) : true;
     const matchesMaxPrice = maxPriceParam && matchesCurrency ? product.price <= Number(maxPriceParam) : true;
 
-    // Location
-    const matchesLocation = locationParam 
-      ? product.location.toLowerCase().includes(locationParam.toLowerCase()) 
-      : true;
+    // Location - improved matching
+    // Splits location param into parts (city, county) and matches if ANY part is found
+    const matchesLocation = (() => {
+      if (!locationParam) return true;
+      
+      const productLoc = product.location?.toLowerCase() || '';
+      const searchLoc = locationParam.toLowerCase();
+      
+      // Direct match first
+      if (productLoc.includes(searchLoc)) return true;
+      
+      // Split by comma and check each part separately
+      // For example: "Slatina, Olt" -> check if product contains "Slatina" OR "Olt"
+      const searchParts = searchLoc.split(',').map(p => p.trim()).filter(p => p.length > 0);
+      
+      // Check if the main city (first part) is in the product location
+      if (searchParts.length > 0) {
+        const mainCity = searchParts[0];
+        if (productLoc.includes(mainCity)) return true;
+      }
+      
+      // Also check if product location contains the county (second part)
+      if (searchParts.length > 1) {
+        const county = searchParts[1];
+        // If searching by county, also match products that have the county
+        if (productLoc.includes(county)) return true;
+      }
+      
+      // Check reverse - product parts against search
+      const productParts = productLoc.split(',').map(p => p.trim()).filter(p => p.length > 0);
+      for (const productPart of productParts) {
+        for (const searchPart of searchParts) {
+          if (productPart.includes(searchPart) || searchPart.includes(productPart)) {
+            return true;
+          }
+        }
+      }
+      
+      return false;
+    })();
 
     // Condition - support multiple conditions separated by comma
     const matchesCondition = conditionParam 
@@ -266,8 +321,20 @@ function SearchResults() {
         : true;
     
     // Category - support multiple categories separated by comma (case-insensitive)
+    // Also supports URL slug format mapping to actual category names
     const matchesCategory = categoryParam
-        ? categoryParam.split(',').some(cat => product.category.toLowerCase() === cat.toLowerCase())
+        ? categoryParam.split(',').some(cat => {
+            const catLower = cat.toLowerCase();
+            const productCatLower = product.category?.toLowerCase() || '';
+            // Direct match
+            if (productCatLower === catLower) return true;
+            // Check slug mapping
+            const mappedNames = CATEGORY_SLUG_MAP[catLower];
+            if (mappedNames) {
+              return mappedNames.some(name => name.toLowerCase() === productCatLower);
+            }
+            return false;
+          })
         : true;
 
     // Subcategory filter
@@ -299,25 +366,25 @@ function SearchResults() {
   ];
 
   if (loading) return (
-    <div className="flex flex-col space-y-4 sm:space-y-6">
+    <div className="flex flex-col space-y-3 sm:space-y-6">
       {/* Skeleton Header - Mobile optimized */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pb-4 border-b border-gray-200">
-        <div className="h-6 sm:h-7 w-40 sm:w-48 bg-gray-200 rounded-lg animate-pulse"></div>
+      <div className="flex items-center justify-between gap-3 pb-3 border-b border-gray-100">
+        <div className="h-5 sm:h-7 w-32 sm:w-48 bg-gray-200 rounded-lg animate-pulse"></div>
         <div className="flex items-center gap-2">
-          <div className="h-9 w-28 bg-gray-100 rounded-lg animate-pulse"></div>
-          <div className="h-9 w-20 bg-gray-100 rounded-lg animate-pulse hidden sm:block"></div>
+          <div className="h-8 sm:h-9 w-20 sm:w-28 bg-gray-100 rounded-lg animate-pulse"></div>
+          <div className="h-8 sm:h-9 w-16 sm:w-20 bg-gray-100 rounded-lg animate-pulse"></div>
         </div>
       </div>
       {/* Skeleton Grid - Responsive */}
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4">
         {[...Array(8)].map((_, i) => (
-          <div key={i} className="bg-white rounded-xl sm:rounded-2xl p-2 sm:p-3 border border-gray-100 shadow-sm">
-            <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 rounded-lg sm:rounded-xl mb-2 sm:mb-3 animate-pulse"></div>
-            <div className="h-3 sm:h-4 bg-gray-200 rounded w-3/4 mb-1.5 sm:mb-2 animate-pulse"></div>
-            <div className="h-2.5 sm:h-3 bg-gray-100 rounded w-1/2 mb-2 sm:mb-3 animate-pulse"></div>
-            <div className="flex justify-between items-center pt-1 sm:pt-2">
-              <div className="h-4 sm:h-5 bg-gray-200 rounded w-1/3 animate-pulse"></div>
-              <div className="h-6 sm:h-8 bg-gray-100 rounded w-12 sm:w-16 animate-pulse"></div>
+          <div key={i} className="bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-3 border border-gray-100 shadow-sm">
+            <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 rounded-lg sm:rounded-xl mb-1.5 sm:mb-3 animate-pulse"></div>
+            <div className="h-2.5 sm:h-4 bg-gray-200 rounded w-3/4 mb-1 sm:mb-2 animate-pulse"></div>
+            <div className="h-2 sm:h-3 bg-gray-100 rounded w-1/2 mb-1.5 sm:mb-3 animate-pulse"></div>
+            <div className="flex justify-between items-center pt-0.5 sm:pt-2">
+              <div className="h-3.5 sm:h-5 bg-gray-200 rounded w-1/3 animate-pulse"></div>
+              <div className="h-5 sm:h-8 bg-gray-100 rounded w-10 sm:w-16 animate-pulse"></div>
             </div>
           </div>
         ))}
@@ -326,7 +393,7 @@ function SearchResults() {
   );
 
   return (
-    <div className="flex flex-col space-y-4 sm:space-y-6">
+    <div className="flex flex-col space-y-3 sm:space-y-6">
         <style jsx>{`
           @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(15px); }
@@ -361,149 +428,181 @@ function SearchResults() {
         `}</style>
         
         {/* Header - Mobile optimized */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 pb-4 border-b border-gray-200 animate-fadeInUp relative z-20">
-            <div>
-              <h1 className="text-lg sm:text-xl font-semibold text-gray-800">
-                  <span className="text-[#13C1AC]">{sortedProducts.length}</span> {sortedProducts.length === 1 ? 'rezultat' : 'rezultate'} 
-                  {query && <span className="text-gray-500 text-sm sm:text-base font-normal"> pentru "{query}"</span>}
+        <div className="flex flex-col gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-gray-100 animate-fadeInUp relative z-20">
+            {/* Results count + Controls Row - Same line on mobile */}
+            <div className="flex items-center justify-between gap-2 relative z-30 w-full">
+              {/* Left side: Results count */}
+              <h1 className="text-base sm:text-xl font-bold text-gray-900 flex-shrink-0">
+                  <span className="text-[#13C1AC]">{sortedProducts.length}</span>
+                  <span className="text-gray-600 font-medium"> rezultate</span>
               </h1>
-              {categoryParam && (
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-gray-500">Categorie:</span>
-                  <span className="text-xs font-medium text-[#13C1AC] bg-[#13C1AC]/10 px-2 py-0.5 rounded-full">{categoryParam}</span>
-                </div>
-              )}
-            </div>
-            
-            {/* Controls Row */}
-            <div className="flex items-center justify-between sm:justify-end gap-2 relative z-30 w-full sm:w-auto">
-              {/* Sort Dropdown - Improved design */}
-              <div className="relative z-[100]">
-                <button 
-                  onClick={() => setShowSortMenu(!showSortMenu)}
-                  className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:border-[#13C1AC] hover:shadow-sm active:scale-[0.98] transition-all shadow-sm"
-                >
-                  <ArrowUpDown className="w-4 h-4 text-[#13C1AC]" />
-                  <span>{sortOptions.find(o => o.value === sortBy)?.label || 'Sortare'}</span>
-                  <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showSortMenu ? 'rotate-180' : ''}`} />
-                </button>
-                
-                {showSortMenu && (
-                  <>
-                    {/* Backdrop to close menu */}
-                    <div 
-                      className="fixed inset-0 z-[90]" 
-                      onClick={() => setShowSortMenu(false)}
-                    />
-                    <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-52 bg-white border border-gray-100 rounded-xl shadow-xl z-[100] overflow-hidden">
-                      <div className="py-1">
-                        {sortOptions.map((option) => (
-                          <button
-                            key={option.value}
-                            onClick={() => { setSortBy(option.value); setShowSortMenu(false); }}
-                            className={`w-full px-4 py-3 text-left text-sm transition-all flex items-center justify-between ${
-                              sortBy === option.value 
-                                ? 'bg-gradient-to-r from-[#13C1AC]/10 to-transparent text-[#13C1AC] font-semibold' 
-                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                            }`}
-                          >
-                            <span>{option.label}</span>
-                            {sortBy === option.value && (
-                              <span className="w-2 h-2 bg-[#13C1AC] rounded-full"></span>
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
               
-              {/* Subcategory Dropdown - Only show when category is selected */}
-              {categoryParam && SUBCATEGORIES[categoryParam] && (
-                <div className="relative z-[90]" ref={subcategoryRef}>
+              {/* Right side: Controls */}
+              <div className="flex items-center gap-2">
+                {/* Sort Dropdown */}
+                <div className="relative z-[100]">
                   <button 
-                    onClick={() => setShowSubcategoryMenu(!showSubcategoryMenu)}
-                    className={`flex items-center gap-2 px-4 py-2.5 bg-white border rounded-xl text-sm font-medium hover:shadow-sm active:scale-[0.98] transition-all shadow-sm ${
-                      selectedSubcategory 
-                        ? 'border-[#13C1AC] text-[#13C1AC]' 
-                        : 'border-gray-200 text-gray-700 hover:border-[#13C1AC]'
-                    }`}
+                    onClick={() => setShowSortMenu(!showSortMenu)}
+                    className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm font-medium text-gray-700 hover:border-[#13C1AC] hover:shadow-sm active:scale-[0.98] transition-all shadow-sm"
                   >
-                    <Layers className="w-4 h-4" />
-                    <span className="hidden sm:inline">{selectedSubcategory || 'Subcategorie'}</span>
-                    <span className="sm:hidden">{selectedSubcategory ? selectedSubcategory.substring(0, 10) + (selectedSubcategory.length > 10 ? '...' : '') : 'Sub.'}</span>
-                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showSubcategoryMenu ? 'rotate-180' : ''}`} />
+                    <ArrowUpDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#13C1AC]" />
+                    <span className="hidden sm:inline">{sortOptions.find(o => o.value === sortBy)?.label || 'Sortare'}</span>
+                    <span className="sm:hidden">{sortOptions.find(o => o.value === sortBy)?.label.split(' ')[0] || 'Sortare'}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 transition-transform duration-200 ${showSortMenu ? 'rotate-180' : ''}`} />
                   </button>
                   
-                  {showSubcategoryMenu && (
+                  {showSortMenu && (
                     <>
                       <div 
-                        className="fixed inset-0 z-[80]" 
-                        onClick={() => setShowSubcategoryMenu(false)}
+                        className="fixed inset-0 z-[90]" 
+                        onClick={() => setShowSortMenu(false)}
                       />
-                      <div className="absolute left-0 sm:right-0 sm:left-auto top-full mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl z-[90] overflow-hidden max-h-72 overflow-y-auto">
+                      <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-100 rounded-xl shadow-xl z-[100] overflow-hidden">
                         <div className="py-1">
-                          {/* All subcategories option */}
-                          <button
-                            onClick={() => { setSelectedSubcategory(null); setShowSubcategoryMenu(false); }}
-                            className={`w-full px-4 py-2.5 text-left text-sm transition-all flex items-center gap-3 ${
-                              !selectedSubcategory 
-                                ? 'bg-gradient-to-r from-[#13C1AC]/10 to-transparent text-[#13C1AC] font-semibold' 
-                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                            }`}
-                          >
-                            <Layers className="w-4 h-4" />
-                            <span>Toate subcategoriile</span>
-                            {!selectedSubcategory && (
-                              <span className="ml-auto w-2 h-2 bg-[#13C1AC] rounded-full"></span>
-                            )}
-                          </button>
-                          <div className="h-px bg-gray-100 my-1"></div>
-                          {SUBCATEGORIES[categoryParam].map((subcat) => {
-                            const SubIcon = subcat.icon;
-                            return (
-                              <button
-                                key={subcat.name}
-                                onClick={() => { setSelectedSubcategory(subcat.name); setShowSubcategoryMenu(false); }}
-                                className={`w-full px-4 py-2.5 text-left text-sm transition-all flex items-center gap-3 ${
-                                  selectedSubcategory === subcat.name 
-                                    ? 'bg-gradient-to-r from-[#13C1AC]/10 to-transparent text-[#13C1AC] font-semibold' 
-                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                }`}
-                              >
-                                <SubIcon className="w-4 h-4" />
-                                <span>{subcat.name}</span>
-                                {selectedSubcategory === subcat.name && (
-                                  <span className="ml-auto w-2 h-2 bg-[#13C1AC] rounded-full"></span>
-                                )}
-                              </button>
-                            );
-                          })}
+                          {sortOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              onClick={() => { setSortBy(option.value); setShowSortMenu(false); }}
+                              className={`w-full px-4 py-3 text-left text-sm transition-all flex items-center justify-between ${
+                                sortBy === option.value 
+                                  ? 'bg-gradient-to-r from-[#13C1AC]/10 to-transparent text-[#13C1AC] font-semibold' 
+                                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                              }`}
+                            >
+                              <span>{option.label}</span>
+                              {sortBy === option.value && (
+                                <span className="w-2 h-2 bg-[#13C1AC] rounded-full"></span>
+                              )}
+                            </button>
+                          ))}
                         </div>
                       </div>
                     </>
                   )}
                 </div>
-              )}
-              
-              {/* View Toggle - Now visible on mobile too */}
-              <div className="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <button 
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 sm:p-2.5 transition-all ${viewMode === 'grid' ? 'bg-[#13C1AC] text-white' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+                
+                {/* Subcategory Dropdown */}
+                {categoryParam && SUBCATEGORIES[categoryParam] && (
+                  <div className="relative z-[90]" ref={subcategoryRef}>
+                    <button 
+                      onClick={() => setShowSubcategoryMenu(!showSubcategoryMenu)}
+                      className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border rounded-xl text-xs sm:text-sm font-medium hover:shadow-sm active:scale-[0.98] transition-all shadow-sm ${
+                        selectedSubcategory 
+                          ? 'border-[#13C1AC] text-[#13C1AC]' 
+                          : 'border-gray-200 text-gray-700 hover:border-[#13C1AC]'
+                      }`}
+                    >
+                      <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <span className="max-w-[60px] sm:max-w-none truncate">{selectedSubcategory || 'Sub.'}</span>
+                      <ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 transition-transform duration-200 ${showSubcategoryMenu ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {showSubcategoryMenu && (
+                      <>
+                        <div 
+                          className="fixed inset-0 z-[80]" 
+                          onClick={() => setShowSubcategoryMenu(false)}
+                        />
+                        <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl z-[90] overflow-hidden max-h-72 overflow-y-auto">
+                          <div className="py-1">
+                            <button
+                              onClick={() => { setSelectedSubcategory(null); setShowSubcategoryMenu(false); }}
+                              className={`w-full px-4 py-2.5 text-left text-sm transition-all flex items-center gap-3 ${
+                                !selectedSubcategory 
+                                  ? 'bg-gradient-to-r from-[#13C1AC]/10 to-transparent text-[#13C1AC] font-semibold' 
+                                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                              }`}
+                            >
+                              <Layers className="w-4 h-4" />
+                              <span>Toate subcategoriile</span>
+                              {!selectedSubcategory && (
+                                <span className="ml-auto w-2 h-2 bg-[#13C1AC] rounded-full"></span>
+                              )}
+                            </button>
+                            <div className="h-px bg-gray-100 my-1"></div>
+                            {SUBCATEGORIES[categoryParam].map((subcat) => {
+                              const SubIcon = subcat.icon;
+                              return (
+                                <button
+                                  key={subcat.name}
+                                  onClick={() => { setSelectedSubcategory(subcat.name); setShowSubcategoryMenu(false); }}
+                                  className={`w-full px-4 py-2.5 text-left text-sm transition-all flex items-center gap-3 ${
+                                    selectedSubcategory === subcat.name 
+                                      ? 'bg-gradient-to-r from-[#13C1AC]/10 to-transparent text-[#13C1AC] font-semibold' 
+                                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                  }`}
+                                >
+                                  <SubIcon className="w-4 h-4" />
+                                  <span>{subcat.name}</span>
+                                  {selectedSubcategory === subcat.name && (
+                                    <span className="ml-auto w-2 h-2 bg-[#13C1AC] rounded-full"></span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                
+                {/* Mobile Filter Button - Inline */}
+                <button
+                  onClick={onOpenFilters}
+                  className="lg:hidden flex items-center gap-1.5 px-3 py-2 sm:py-2.5 bg-[#13C1AC] text-white font-medium rounded-xl text-xs sm:text-sm hover:bg-[#10a593] active:scale-[0.98] transition-all shadow-sm"
                 >
-                  <Grid3X3 className="w-4 h-4" />
+                  <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="hidden sm:inline">Filtre</span>
                 </button>
-                <div className="w-px h-4 sm:h-5 bg-gray-200"></div>
-                <button 
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 sm:p-2.5 transition-all ${viewMode === 'list' ? 'bg-[#13C1AC] text-white' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
-                >
-                  <LayoutList className="w-4 h-4" />
-                </button>
+                
+                {/* View Toggle - At the end */}
+                <div className="flex items-center bg-white border border-gray-200 rounded-lg sm:rounded-xl overflow-hidden shadow-sm">
+                  <button 
+                    onClick={() => setViewMode('grid')}
+                    className={`p-1.5 sm:p-2.5 transition-all ${viewMode === 'grid' ? 'bg-[#13C1AC] text-white' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    <Grid3X3 className="w-4 h-4" />
+                  </button>
+                  <div className="w-px h-4 sm:h-5 bg-gray-200"></div>
+                  <button 
+                    onClick={() => setViewMode('list')}
+                    className={`p-1.5 sm:p-2.5 transition-all ${viewMode === 'list' ? 'bg-[#13C1AC] text-white' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+                  >
+                    <LayoutList className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
+            
+            {/* Category/Location badges - Second row */}
+            {categoryParam && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] sm:text-xs font-medium text-[#13C1AC] bg-[#13C1AC]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Layers className="w-3 h-3" />
+                  {categoryParam}
+                </span>
+                {locationParam && (
+                  <span className="text-[10px] sm:text-xs font-medium text-[#13C1AC] bg-[#13C1AC]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <MapPin className="w-3 h-3" />
+                    {locationParam}
+                  </span>
+                )}
+              </div>
+            )}
+            {!categoryParam && locationParam && (
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] sm:text-xs font-medium text-[#13C1AC] bg-[#13C1AC]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />
+                  {locationParam}
+                </span>
+              </div>
+            )}
+            {query && (
+              <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full truncate max-w-[200px] sm:max-w-none self-start">
+                "{query}"
+              </span>
+            )}
         </div>
 
         {sortedProducts.length > 0 ? (
@@ -519,36 +618,36 @@ function SearchResults() {
                     <Link
                       key={`${product.id}-theme-${currentTheme}`}
                       href={createProductLink(product)}
-                      className="group flex bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 hover:border-[#13C1AC]/30 animate-listFadeIn"
+                      className="group flex bg-white rounded-xl sm:rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-100 hover:border-[#13C1AC]/30 animate-listFadeIn"
                       style={{ animationDelay: `${Math.min(index * 60, 400)}ms` }}
                     >
                       {/* Image - Clean, no overlays */}
-                      <div className="relative w-32 sm:w-44 md:w-52 flex-shrink-0 aspect-square sm:aspect-[4/3]">
+                      <div className="relative w-28 sm:w-44 md:w-52 flex-shrink-0 aspect-square">
                         <Image
                           src={product.image || '/placeholder.jpg'}
                           alt={product.title}
                           fill
-                          sizes="(max-width: 640px) 128px, (max-width: 768px) 176px, 208px"
+                          sizes="(max-width: 640px) 112px, (max-width: 768px) 176px, 208px"
                           className="object-cover group-hover:scale-105 transition-transform duration-500"
                         />
                       </div>
                       
                       {/* Content */}
-                      <div className="flex-1 p-3 sm:p-4 flex flex-col justify-between min-w-0">
+                      <div className="flex-1 p-2 sm:p-4 flex flex-col justify-between min-w-0">
                         <div>
                           {/* Title */}
-                          <h3 className="font-semibold text-gray-900 text-sm sm:text-base line-clamp-2 group-hover:text-[#13C1AC] transition-colors">
+                          <h3 className="font-semibold text-gray-900 text-xs sm:text-base line-clamp-2 group-hover:text-[#13C1AC] transition-colors leading-tight">
                             {product.title}
                           </h3>
                           
                           {/* Location & Time */}
-                          <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {product.location}
+                          <div className="flex items-center gap-2 sm:gap-3 mt-1 sm:mt-1.5 text-[10px] sm:text-xs text-gray-500">
+                            <span className="flex items-center gap-0.5 sm:gap-1 truncate">
+                              <MapPin className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0" />
+                              <span className="truncate">{product.location}</span>
                             </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
+                            <span className="flex items-center gap-0.5 sm:gap-1 flex-shrink-0">
+                              <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                               {timeAgo}
                             </span>
                           </div>
@@ -562,31 +661,31 @@ function SearchResults() {
                         </div>
                         
                         {/* Bottom: Price, Condition & Favorite */}
-                        <div className="flex items-center justify-between mt-2 sm:mt-3">
-                          <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center justify-between mt-1.5 sm:mt-3">
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                             <div className="flex items-baseline">
-                              <span className="text-lg sm:text-xl font-bold text-[#13C1AC]">
+                              <span className="text-sm sm:text-xl font-bold text-[#13C1AC]">
                                 {product.price?.toLocaleString('ro-RO')}
                               </span>
-                              <span className="text-sm sm:text-base font-semibold text-[#13C1AC] ml-1">
+                              <span className="text-[10px] sm:text-base font-semibold text-[#13C1AC] ml-0.5 sm:ml-1">
                                 {product.currency === 'EUR' ? '€' : 'lei'}
                               </span>
                             </div>
                             {product.negotiable && (
-                              <span className="text-[10px] text-gray-500 font-medium bg-gray-100 px-1.5 py-0.5 rounded">
+                              <span className="hidden sm:inline text-[10px] text-gray-500 font-medium bg-gray-100 px-1.5 py-0.5 rounded">
                                 Negociabil
                               </span>
                             )}
                             {/* Condition Badge */}
                             {conditionInfo && (
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${conditionInfo.color}`}>
+                              <span className={`hidden sm:inline px-2 py-0.5 rounded-full text-[10px] font-bold ${conditionInfo.color}`}>
                                 {conditionInfo.label}
                               </span>
                             )}
                           </div>
                           
                           {/* Right side: Favorite & View */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2">
                             <span className="hidden sm:flex items-center gap-1 text-xs font-medium text-[#13C1AC] opacity-0 group-hover:opacity-100 transition-opacity">
                               Vezi detalii
                               <ChevronDown className="w-3 h-3 -rotate-90" />
@@ -594,9 +693,9 @@ function SearchResults() {
                             {/* Favorite Button */}
                             <button 
                               onClick={(e) => { e.preventDefault(); }}
-                              className="p-1.5 bg-gray-100 hover:bg-red-50 rounded-full hover:scale-110 transition-all"
+                              className="p-1 sm:p-1.5 bg-gray-100 hover:bg-red-50 rounded-full hover:scale-110 transition-all"
                             >
-                              <Heart className="w-4 h-4 text-gray-400 hover:text-red-500" />
+                              <Heart className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 hover:text-red-500" />
                             </button>
                           </div>
                         </div>
@@ -619,12 +718,12 @@ function SearchResults() {
               </div>
             )
         ) : (
-            <div className="text-center py-12 sm:py-20 bg-gray-50 rounded-xl sm:rounded-2xl border-2 border-dashed border-gray-200 animate-fadeInUp">
-                <div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                    <Filter className="w-7 h-7 sm:w-8 sm:h-8 text-gray-400" />
+            <div className="text-center py-10 sm:py-20 bg-white rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm animate-fadeInUp mx-1">
+                <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gray-50 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                    <Search className="w-6 h-6 sm:w-8 sm:h-8 text-gray-300" />
                 </div>
-                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">Nu am găsit rezultate</h3>
-                <p className="text-sm text-gray-500 px-4">Încearcă alți termeni de căutare sau filtre mai puțin specifice.</p>
+                <h3 className="text-sm sm:text-lg font-semibold text-gray-900 mb-1">Nu am găsit rezultate</h3>
+                <p className="text-xs sm:text-sm text-gray-500 px-4 max-w-xs mx-auto">Încearcă alți termeni sau filtre mai puțin specifice</p>
             </div>
         )}
     </div>
@@ -636,6 +735,8 @@ function SearchFiltersSidebar({ onClose }: { onClose?: () => void }) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const ubicacionRef = useRef<HTMLDivElement>(null);
+    const locationInputRef = useRef<HTMLInputElement>(null);
+    const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
     
     // Local state for filters to avoid URL thrashing on every keystroke
     const [priceMin, setPriceMin] = useState(searchParams.get('minPrice') || '');
@@ -723,6 +824,25 @@ function SearchFiltersSidebar({ onClose }: { onClose?: () => void }) {
             .slice(0, 15)
         : [];
 
+    // Update dropdown position when showing suggestions
+    const updateDropdownPosition = () => {
+        if (locationInputRef.current) {
+            const rect = locationInputRef.current.getBoundingClientRect();
+            setDropdownPosition({
+                top: rect.bottom + 8,
+                left: rect.left,
+                width: rect.width
+            });
+        }
+    };
+
+    // Update position when suggestions change or on scroll
+    useEffect(() => {
+        if (showUbicacionSugerencias && localidadesFiltradas.length > 0) {
+            updateDropdownPosition();
+        }
+    }, [showUbicacionSugerencias, localidadesFiltradas.length]);
+
     const handleSeleccionarUbicacion = (loc: Localidad) => {
         setLocation(`${loc.ciudad}, ${loc.judet}`);
         setShowUbicacionSugerencias(false);
@@ -766,19 +886,6 @@ function SearchFiltersSidebar({ onClose }: { onClose?: () => void }) {
     // Filter content JSX (not a component to avoid re-mounting)
     const filterContent = (
       <div className="space-y-2">
-        {/* Mobile Header */}
-        {onClose && (
-          <div className="flex items-center justify-between pb-2 border-b border-gray-100 lg:hidden">
-            <h2 className="text-lg font-bold text-gray-900">Filtre</h2>
-            <button 
-              onClick={onClose}
-              className="p-1.5 -mr-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full active:scale-95 transition-all"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        )}
-
         {/* Category Filter */}
         <div className="p-2.5">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -983,30 +1090,44 @@ function SearchFiltersSidebar({ onClose }: { onClose?: () => void }) {
 
 
             {/* Location Filter */}
-            <div ref={ubicacionRef} className="p-2.5">
+            <div ref={ubicacionRef} className="p-2.5 relative">
                 <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 bg-[#13C1AC] rounded-full"></span>
                   Locație
                 </h3>
-                <div className="relative">
-                    <div className={`flex items-center rounded-lg ring-1 ring-inset transition-all bg-white ${
+                <div>
+                    <div 
+                        ref={locationInputRef}
+                        className={`group flex items-center rounded-xl transition-all duration-200 ${
                         location.includes(',')
-                            ? 'ring-[#13C1AC] bg-[#13C1AC]/5'
-                            : 'ring-gray-200 focus-within:ring-2 focus-within:ring-[#13C1AC]'
+                            ? 'bg-gradient-to-r from-[#13C1AC]/10 to-teal-50 ring-2 ring-[#13C1AC]/30 shadow-sm'
+                            : 'bg-gray-50 hover:bg-white ring-1 ring-gray-200 hover:ring-[#13C1AC]/40 focus-within:ring-2 focus-within:ring-[#13C1AC] focus-within:bg-white focus-within:shadow-md'
                     }`}>
-                        <div className="flex items-center pl-3">
-                            <MapPin className={`h-4 w-4 ${location.includes(',') ? 'text-[#13C1AC]' : 'text-gray-400'}`} />
+                        <div className={`flex items-center justify-center w-10 h-10 ml-1 rounded-lg transition-all duration-200 ${
+                            location.includes(',') 
+                                ? 'bg-[#13C1AC] shadow-sm' 
+                                : 'bg-white group-hover:bg-[#13C1AC]/10 group-focus-within:bg-[#13C1AC]'
+                        }`}>
+                            <MapPin className={`h-4 w-4 transition-colors duration-200 ${
+                                location.includes(',') 
+                                    ? 'text-white' 
+                                    : 'text-gray-400 group-hover:text-[#13C1AC] group-focus-within:text-white'
+                            }`} />
                         </div>
                         <input
                             type="text"
-                            placeholder="Oraș sau județ"
+                            placeholder="Caută oraș sau județ..."
                             value={location}
                             onChange={(e) => {
                                 setLocation(e.target.value);
                                 setShowUbicacionSugerencias(true);
+                                updateDropdownPosition();
                             }}
-                            onFocus={() => setShowUbicacionSugerencias(true)}
-                            className={`block w-full border-0 py-2.5 pl-2 pr-8 bg-transparent text-sm focus:ring-0 outline-none font-medium ${
+                            onFocus={() => {
+                                setShowUbicacionSugerencias(true);
+                                updateDropdownPosition();
+                            }}
+                            className={`block w-full border-0 py-3 px-3 bg-transparent text-sm focus:ring-0 outline-none font-medium transition-colors ${
                                 location.includes(',') ? 'text-[#13C1AC]' : 'text-gray-900 placeholder:text-gray-400'
                             }`}
                         />
@@ -1014,42 +1135,68 @@ function SearchFiltersSidebar({ onClose }: { onClose?: () => void }) {
                             <button
                                 type="button"
                                 onClick={() => setLocation('')}
-                                className={`mr-2 p-1 rounded-full transition-colors active:scale-95 ${
-                                    location.includes(',') ? 'hover:bg-[#13C1AC]/20' : 'hover:bg-gray-100'
+                                className={`mr-2 p-1.5 rounded-full transition-all duration-200 active:scale-90 ${
+                                    location.includes(',') 
+                                        ? 'bg-[#13C1AC]/20 hover:bg-[#13C1AC]/30 text-[#13C1AC]' 
+                                        : 'bg-gray-100 hover:bg-gray-200 text-gray-400 hover:text-gray-600'
                                 }`}
                             >
-                                <X className={`w-3.5 h-3.5 ${location.includes(',') ? 'text-[#13C1AC]' : 'text-gray-400'}`} />
+                                <X className="w-3.5 h-3.5" />
                             </button>
                         )}
                     </div>
-                    
-                    {/* Suggestions dropdown */}
-                    {showUbicacionSugerencias && localidadesFiltradas.length > 0 && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+                </div>
+                
+                {/* Location dropdown - fixed position portal */}
+                {showUbicacionSugerencias && localidadesFiltradas.length > 0 && dropdownPosition.width > 0 && (
+                    <div 
+                        className="fixed z-[9999] bg-white border border-gray-100 rounded-xl shadow-2xl max-h-56 overflow-y-auto"
+                        style={{
+                            top: dropdownPosition.top,
+                            left: dropdownPosition.left,
+                            width: dropdownPosition.width
+                        }}
+                    >
+                        <div className="p-1.5">
                             {localidadesFiltradas.map((loc, index) => (
                                 <button
                                     key={`${loc.ciudad}-${loc.judet}-${index}`}
                                     type="button"
                                     onClick={() => handleSeleccionarUbicacion(loc)}
-                                    className="w-full px-3 py-2 text-left hover:bg-[#13C1AC]/10 transition-colors border-b border-gray-100 last:border-b-0 flex items-center gap-2 active:bg-[#13C1AC]/20"
+                                    className="w-full px-3 py-2.5 text-left hover:bg-gradient-to-r hover:from-[#13C1AC]/10 hover:to-transparent rounded-lg transition-all duration-150 flex items-center gap-3 active:scale-[0.98] group/item"
                                 >
-                                    <MapPin className="w-4 h-4 text-[#13C1AC] flex-shrink-0" />
-                                    <div className="text-sm">
-                                        <span className="font-medium text-gray-900">{loc.ciudad}</span>
-                                        <span className="text-gray-500">, {loc.judet}</span>
+                                    <div className="w-8 h-8 rounded-lg bg-gray-100 group-hover/item:bg-[#13C1AC] flex items-center justify-center transition-colors">
+                                        <MapPin className="w-4 h-4 text-gray-400 group-hover/item:text-white transition-colors" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="font-semibold text-gray-900 text-sm">{loc.ciudad}</span>
+                                        <span className="text-xs text-gray-500">{loc.judet}</span>
                                     </div>
                                 </button>
                             ))}
                         </div>
-                    )}
-                    
-                    {/* No results message */}
-                    {showUbicacionSugerencias && location.length >= 2 && localidadesFiltradas.length === 0 && !location.includes(',') && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-2.5 text-center text-gray-500 text-sm">
-                            Nu s-au găsit rezultate
+                    </div>
+                )}
+                
+                {/* No results message - fixed portal */}
+                {showUbicacionSugerencias && location.length >= 2 && localidadesFiltradas.length === 0 && !location.includes(',') && dropdownPosition.width > 0 && (
+                    <div 
+                        className="fixed z-[9999] bg-white border border-gray-100 rounded-xl shadow-2xl p-4"
+                        style={{
+                            top: dropdownPosition.top,
+                            left: dropdownPosition.left,
+                            width: dropdownPosition.width
+                        }}
+                    >
+                        <div className="flex flex-col items-center text-center">
+                            <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mb-2">
+                                <MapPin className="w-5 h-5 text-gray-400" />
+                            </div>
+                            <p className="text-gray-500 text-sm">Nu s-au găsit rezultate</p>
+                            <p className="text-gray-400 text-xs mt-0.5">Încearcă altă căutare</p>
                         </div>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
 
             {/* Show More Button */}
@@ -1163,10 +1310,10 @@ function SearchFiltersSidebar({ onClose }: { onClose?: () => void }) {
 
     // Desktop: render with waves container
     return (
-        <div className="w-full lg:w-64 flex-shrink-0">
-            <div className="rounded-2xl overflow-hidden relative bg-white border border-gray-200 shadow-sm">
+        <div className="w-full flex-shrink-0">
+            <div className="rounded-2xl relative bg-white border border-gray-200 shadow-sm overflow-visible">
               {/* Decorative Waves Background */}
-              <div className="absolute top-0 left-0 right-0 h-28 overflow-hidden pointer-events-none">
+              <div className="absolute top-0 left-0 right-0 h-28 overflow-hidden pointer-events-none rounded-t-2xl">
                 <svg viewBox="0 0 500 150" preserveAspectRatio="none" className="absolute w-full h-full">
                   <path d="M0,100 C150,140 350,60 500,100 L500,0 L0,0 Z" className="fill-[#13C1AC]/20"></path>
                 </svg>
@@ -1175,7 +1322,7 @@ function SearchFiltersSidebar({ onClose }: { onClose?: () => void }) {
                 </svg>
               </div>
               
-              <div className="p-4 relative z-10">
+              <div className="p-4 relative z-10 overflow-visible">
                 {/* Filter Title */}
                 <div className="flex items-center gap-2 pb-3 mb-3 border-b border-gray-100">
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#13C1AC] to-[#0ea895] flex items-center justify-center">
@@ -1198,56 +1345,33 @@ function MobileFilterSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     <div className="fixed inset-0 z-50 lg:hidden">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
         onClick={onClose}
       />
       {/* Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl max-h-[85vh] overflow-y-auto animate-slide-up overflow-x-hidden">
-        {/* Wave Background */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <svg 
-            className="absolute top-0 left-0 w-full h-64 text-[#13C1AC]/5"
-            viewBox="0 0 1440 320" 
-            preserveAspectRatio="none"
-          >
-            <path 
-              fill="currentColor" 
-              d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,144C672,139,768,181,864,197.3C960,213,1056,203,1152,176C1248,149,1344,107,1392,85.3L1440,64L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"
-            />
-          </svg>
-          <svg 
-            className="absolute top-12 left-0 w-full h-48 text-[#13C1AC]/[0.03]"
-            viewBox="0 0 1440 320" 
-            preserveAspectRatio="none"
-          >
-            <path 
-              fill="currentColor" 
-              d="M0,96L48,112C96,128,192,160,288,165.3C384,171,480,149,576,149.3C672,149,768,171,864,165.3C960,160,1056,128,1152,122.7C1248,117,1344,139,1392,149.3L1440,160L1440,0L1392,0C1344,0,1248,0,1152,0C1056,0,960,0,864,0C768,0,672,0,576,0C480,0,384,0,288,0C192,0,96,0,48,0L0,0Z"
-            />
-          </svg>
-          {/* Bottom wave decoration */}
-          <svg 
-            className="absolute bottom-0 left-0 w-full h-32 text-gray-50"
-            viewBox="0 0 1440 320" 
-            preserveAspectRatio="none"
-          >
-            <path 
-              fill="currentColor" 
-              d="M0,288L48,272C96,256,192,224,288,197.3C384,171,480,149,576,165.3C672,181,768,235,864,250.7C960,267,1056,245,1152,224C1248,203,1344,181,1392,170.7L1440,160L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"
-            />
-          </svg>
+      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[24px] max-h-[80vh] overflow-y-auto animate-slide-up overflow-x-hidden shadow-2xl">
+        {/* Handle bar */}
+        <div className="sticky top-0 bg-white pt-3 pb-2 px-4 z-10 border-b border-gray-100">
+          <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-3" />
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <SlidersHorizontal className="w-5 h-5 text-[#13C1AC]" />
+              Filtre
+            </h2>
+            <button 
+              onClick={onClose}
+              className="p-1.5 -mr-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
         
         {/* Content */}
-        <div className="relative">
-          <div className="sticky top-0 bg-gradient-to-b from-white via-white to-transparent pt-3 pb-4 px-4 z-10">
-            <div className="w-12 h-1.5 bg-gradient-to-r from-[#13C1AC]/40 to-[#13C1AC]/20 rounded-full mx-auto mb-2" />
-          </div>
-          <div className="p-4 pb-8 relative">
-            <Suspense fallback={<div className="py-8 text-center text-gray-500">Se încarcă...</div>}>
-              <SearchFiltersSidebar onClose={onClose} />
-            </Suspense>
-          </div>
+        <div className="p-4 pb-8">
+          <Suspense fallback={<div className="py-8 text-center text-gray-500">Se încarcă...</div>}>
+            <SearchFiltersSidebar onClose={onClose} />
+          </Suspense>
         </div>
       </div>
       <style jsx>{`
@@ -1267,29 +1391,27 @@ export default function SearchPage() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   
   return (
-    <div className="min-h-screen bg-gray-50 sm:bg-white">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
-         {/* Mobile Filter Button - Fixed at bottom */}
-         <button
-           onClick={() => setShowMobileFilters(true)}
-           className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 lg:hidden flex items-center gap-2 px-5 py-3 bg-[#13C1AC] text-white font-semibold rounded-full shadow-xl shadow-[#13C1AC]/30 active:scale-95 transition-all"
-         >
-           <SlidersHorizontal className="w-4 h-4" />
-           Filtre
-         </button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Fixed Sidebar - Always visible on desktop */}
+      <div className="hidden lg:block fixed top-20 left-[max(1rem,calc((100vw-80rem)/2+1rem))] w-80 z-30 max-h-[calc(100vh-6rem)] overflow-visible">
+        <div className="max-h-[calc(100vh-6rem)] overflow-y-auto overflow-x-visible pr-2 -mr-2">
+          <Suspense fallback={<div className="w-full h-96 bg-gray-100 rounded-xl animate-pulse" />}>
+            <SearchFiltersSidebar />
+          </Suspense>
+        </div>
+      </div>
+      
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-8 sm:pt-6 lg:pt-8 pb-24 md:pb-8">
+         {/* Mobile Filter Button - Now inline in header, this is hidden */}
          
          <div className="flex flex-col lg:flex-row lg:gap-8">
             
-            {/* Desktop Sidebar */}
-            <aside className="hidden lg:block sticky top-24 h-fit">
-                <Suspense fallback={<div className="w-64 h-96 bg-gray-100 rounded-xl animate-pulse" />}>
-                   <SearchFiltersSidebar />
-                </Suspense>
-            </aside>
+            {/* Spacer for fixed sidebar on desktop */}
+            <div className="hidden lg:block w-80 flex-shrink-0" />
 
             <main className="flex-1 min-w-0 pb-20 lg:pb-0">
                <Suspense fallback={<div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#13C1AC]"></div></div>}>
-                 <SearchResults />
+                 <SearchResults onOpenFilters={() => setShowMobileFilters(true)} />
                </Suspense>
             </main>
          </div>

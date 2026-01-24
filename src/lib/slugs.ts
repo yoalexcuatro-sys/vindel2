@@ -13,7 +13,7 @@ export function slugify(text: string): string {
 }
 
 export function extractIdFromSlug(slug: string): string {
-  // Format is: title-slug--firebaseId (double dash separates slug from ID)
+  // Format is: title-slug--shortId (double dash separates slug from 8-char ID)
   if (!slug) return '';
   const doubleDashIndex = slug.lastIndexOf('--');
   if (doubleDashIndex !== -1) {
@@ -27,6 +27,7 @@ export function extractIdFromSlug(slug: string): string {
 export function createProductLink(product: { id: string; title: string; category?: string }): string {
   const slug = slugify(product.title);
   const categorySlug = product.category ? slugify(product.category) : 'detalii';
-  // Use full ID with double dash separator for proper extraction
-  return `/anunturi/${categorySlug}/${slug}--${product.id}`;
+  // Use first 8 characters of ID for SEO-friendly URLs
+  const shortId = product.id.slice(0, 8);
+  return `/anunturi/${categorySlug}/${slug}--${shortId}`;
 }

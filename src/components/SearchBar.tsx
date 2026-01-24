@@ -82,7 +82,7 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
   const isHero = variant === 'hero';
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`} style={{ zIndex: 9999 }}>
+    <div ref={containerRef} className={`relative w-full ${className}`}>
       <div 
         className={`relative flex items-center transition-all duration-200 ${
          isFocused ? 'ring-2 ring-[#13C1AC]' : ''
@@ -129,7 +129,7 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
 
       {/* dropdown suggestions */}
       {isFocused && (recentSearches.length > 0 || query.length > 0) && (
-        <div className="absolute top-full left-0 right-0 mt-1.5 sm:mt-2 bg-white rounded-lg sm:rounded-xl shadow-xl border border-gray-100 overflow-hidden z-[99999]">
+        <div className={`absolute top-full left-0 right-0 mt-1.5 sm:mt-2 bg-white rounded-lg sm:rounded-xl shadow-xl border border-gray-100 overflow-hidden ${isHero ? 'z-[9999]' : 'z-[99999]'}`}>
            
            {/* Recent Searches Header */}
            {!query && recentSearches.length > 0 && (

@@ -4,16 +4,18 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { 
-  Search, Send, ArrowLeft, MoreVertical, Trash2, MessageCircle,
-  CheckCheck, Circle, Smile
+  Search, Send, ArrowLeft, MessageCircle,
+  CheckCheck, BadgeCheck
 } from 'lucide-react';
 import { 
-  subscribeToConversations, subscribeToMessages, sendMessage, deleteMessage, deleteConversation,
-  markMessagesAsRead, updateLastSeen, updateTypingStatus, markUserOffline, Conversation, Message
+  subscribeToConversations, subscribeToMessages, sendMessage,
+  markMessagesAsRead, updateLastSeen, markUserOffline, Conversation, Message
 } from '@/lib/messages-service';
 import { useAuth } from '@/lib/auth-context';
 import { createProductLink } from '@/lib/slugs';
-import { Timestamp } from 'firebase/firestore';
+import { formatPublicName } from '@/lib/messages';
+import { Timestamp, doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import Avatar from '@/components/Avatar';
 
 function MessagesContent() {
@@ -26,17 +28,125 @@ function MessagesContent() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [verifiedUsers, setVerifiedUsers] = useState<Record<string, boolean>>({});
+  const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const conversationsRef = useRef<Conversation[]>([]);
+  const hasAutoSelected = useRef(false);
+
+  const [viewportHeight, setViewportHeight] = useState('100vh');
+
+  // Set mounted on client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Handle Visual Viewport for iOS keyboard - ONLY on mobile
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport || !isMobile) return;
+
+    const handleResize = () => {
+      setViewportHeight(`${window.visualViewport!.height}px`);
+    };
+
+    window.visualViewport.addEventListener('resize', handleResize);
+    window.visualViewport.addEventListener('scroll', handleResize);
+    
+    // Initial set
+    setViewportHeight(`${window.visualViewport.height}px`);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.visualViewport?.removeEventListener('scroll', handleResize);
+    };
+  }, [isMobile]); // Only run when isMobile changes
+
+  const initialHeight = useRef(0);
+
+  // Detect mobile and save initial height
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+      if (window.innerWidth < 768 && initialHeight.current === 0) {
+        initialHeight.current = window.innerHeight;
+      }
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // iOS keyboard handling - track offset to move input up
+  useEffect(() => {
+    if (!isMobile || typeof window === 'undefined') return;
+    
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const handleViewportChange = () => {
+      // Calculate how much the viewport was pushed up
+      const offset = initialHeight.current - viewport.height - viewport.offsetTop;
+      setKeyboardHeight(Math.max(0, window.innerHeight - viewport.height));
+      
+      // Scroll to bottom when keyboard opens
+      if (viewport.height < initialHeight.current * 0.8 && messagesContainerRef.current) {
+        setTimeout(() => {
+          messagesContainerRef.current?.scrollTo({
+            top: messagesContainerRef.current.scrollHeight,
+            behavior: 'auto'
+          });
+        }, 100);
+      }
+    };
+
+    viewport.addEventListener('resize', handleViewportChange);
+    viewport.addEventListener('scroll', handleViewportChange);
+    
+    return () => {
+      viewport.removeEventListener('resize', handleViewportChange);
+      viewport.removeEventListener('scroll', handleViewportChange);
+    };
+  }, [isMobile]);
 
   // Keep ref updated with conversations
   useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
+
+  // Check if other users are verified
+  useEffect(() => {
+    if (!user || conversations.length === 0) return;
+    
+    const checkVerification = async () => {
+      const newVerified: Record<string, boolean> = {};
+      
+      for (const conv of conversations) {
+        const otherUserId = conv.participants.find(p => p !== user.uid);
+        if (otherUserId && verifiedUsers[otherUserId] === undefined) {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', otherUserId));
+            if (userDoc.exists()) {
+              newVerified[otherUserId] = userDoc.data()?.verified === true;
+            }
+          } catch (err) {
+            console.error('Error checking verification:', err);
+          }
+        }
+      }
+      
+      if (Object.keys(newVerified).length > 0) {
+        setVerifiedUsers(prev => ({ ...prev, ...newVerified }));
+      }
+    };
+    
+    checkVerification();
+  }, [conversations, user, verifiedUsers]);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -45,36 +155,29 @@ function MessagesContent() {
     }
   }, [user, authLoading, router]);
 
-  // Subscribe to conversations and update online status for all
+  // Auto-select conversation from URL param on mount
+  const urlConversationId = searchParams.get('conversation');
+
+  // Subscribe to conversations
   useEffect(() => {
     if (!user) return;
-
-    let isFirstLoad = true;
 
     const unsubscribe = subscribeToConversations(user.uid, (convs) => {
       setConversations(convs);
       setLoading(false);
       
-      // Only update lastSeen once on initial load, not on every update
-      if (isFirstLoad) {
-        isFirstLoad = false;
-        convs.forEach(conv => {
-          updateLastSeen(conv.id, user.uid);
-        });
-      }
-      
-      // Auto-select conversation from URL param
-      const conversationId = searchParams.get('conversation');
-      if (conversationId && !activeConversation) {
-        const conv = convs.find(c => c.id === conversationId);
+      // Auto-select conversation from URL param ONLY once on first load
+      if (!hasAutoSelected.current && urlConversationId) {
+        const conv = convs.find(c => c.id === urlConversationId);
         if (conv) {
           setActiveConversation(conv);
+          hasAutoSelected.current = true;
         }
       }
     });
 
     return () => unsubscribe();
-  }, [user, searchParams, activeConversation]);
+  }, [user, urlConversationId]);
 
   // Subscribe to messages of active conversation
   useEffect(() => {
@@ -82,81 +185,58 @@ function MessagesContent() {
 
     const unsubscribe = subscribeToMessages(activeConversation.id, (msgs) => {
       setMessages(msgs);
-      // Mark as read
       markMessagesAsRead(activeConversation.id, user.uid);
     });
 
     return () => unsubscribe();
   }, [activeConversation, user]);
 
-  // Update last seen periodically when viewing a conversation
+  // Update last seen periodically
   useEffect(() => {
     if (!activeConversation || !user) return;
-
-    // Update immediately
     updateLastSeen(activeConversation.id, user.uid);
-
-    // Update every 30 seconds while viewing
     const interval = setInterval(() => {
       updateLastSeen(activeConversation.id, user.uid);
     }, 30000);
-
     return () => clearInterval(interval);
   }, [activeConversation, user]);
 
-  // Mark user as offline when leaving the page
+  // Mark user as offline when leaving
   useEffect(() => {
     if (!user) return;
-
     const handleBeforeUnload = () => {
-      // Mark offline for all conversations when closing/leaving page
       conversationsRef.current.forEach(conv => {
         markUserOffline(conv.id, user.uid);
       });
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
-
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Mark offline when component unmounts (navigating away)
       conversationsRef.current.forEach(conv => {
         markUserOffline(conv.id, user.uid);
       });
     };
-  }, [user]); // Only depend on user, use ref for conversations
+  }, [user]);
 
-  // Scroll to bottom when messages change
-  const scrollToBottom = (smooth = true) => {
-    if (messagesContainerRef.current) {
-      messagesContainerRef.current.scrollTo({
-        top: messagesContainerRef.current.scrollHeight,
-        behavior: smooth ? 'smooth' : 'instant'
-      });
-    }
-  };
-
+  // Scroll to bottom when messages change - smooth scroll
   useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => scrollToBottom(true), 100);
+    if (messages.length > 0 && messagesContainerRef.current) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        messagesContainerRef.current?.scrollTo({
+          top: messagesContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      });
     }
   }, [messages]);
 
+  // Focus input when conversation opens
   useEffect(() => {
     if (activeConversation) {
-      setTimeout(() => scrollToBottom(false), 200);
       setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [activeConversation]);
-
-  // Close menu on outside click
-  useEffect(() => {
-    const handleClickOutside = () => {
-      if (menuOpen) setMenuOpen(null);
-    };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [menuOpen]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,10 +247,9 @@ function MessagesContent() {
 
     try {
       await sendMessage(activeConversation.id, user.uid, text);
-      setTimeout(() => scrollToBottom(true), 100);
     } catch (error) {
       console.error('Error sending message:', error);
-      setNewMessage(text); // Restore message on error
+      setNewMessage(text);
     }
   };
 
@@ -190,35 +269,17 @@ function MessagesContent() {
     return date.toLocaleDateString('ro-RO', { day: 'numeric', month: 'short' });
   };
 
-  const formatReadTime = (timestamp: Timestamp | undefined) => {
-    if (!timestamp) return '';
-    const date = timestamp.toDate();
-    return date.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' });
-  };
-
-  // Check if other user is online (seen in last 2 minutes)
-  const isOtherUserOnline = (conv: Conversation) => {
-    if (!user) return false;
-    const otherUserId = conv.participants.find(p => p !== user.uid);
-    if (!otherUserId || !conv.lastSeen?.[otherUserId]) return false;
-    const lastSeen = conv.lastSeen[otherUserId].toDate();
-    const now = new Date();
-    const diffMs = now.getTime() - lastSeen.getTime();
-    return diffMs < 2 * 60 * 1000; // 2 minutes
-  };
-
-  // Check if other user is typing
   const isOtherUserTyping = (conv: Conversation) => {
     if (!user) return false;
     const otherUserId = conv.participants.find(p => p !== user.uid);
     return otherUserId ? conv.typing?.[otherUserId] || false : false;
   };
 
-  // Get other participant's name
   const getOtherParticipantName = (conv: Conversation) => {
     if (!user) return '';
     const otherUserId = conv.participants.find(p => p !== user.uid);
-    return otherUserId ? conv.participantNames[otherUserId] || 'Usuario' : '';
+    const fullName = otherUserId ? conv.participantNames[otherUserId] || 'Usuario' : '';
+    return formatPublicName(fullName);
   };
 
   const getOtherParticipantAvatar = (conv: Conversation) => {
@@ -227,7 +288,12 @@ function MessagesContent() {
     return otherUserId ? conv.participantAvatars[otherUserId] || '' : '';
   };
 
-  // Filter conversations
+  const isOtherUserVerified = (conv: Conversation) => {
+    if (!user) return false;
+    const otherUserId = conv.participants.find(p => p !== user.uid);
+    return otherUserId ? verifiedUsers[otherUserId] === true : false;
+  };
+
   const filteredConversations = conversations.filter(conv => {
     if (!searchQuery.trim()) return true;
     const otherName = getOtherParticipantName(conv);
@@ -235,410 +301,407 @@ function MessagesContent() {
            conv.productTitle?.toLowerCase().includes(searchQuery.toLowerCase());
   });
 
-  if (authLoading || loading) {
+  // Loading state
+  if (authLoading || loading || !mounted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="relative w-20 h-20 mx-auto mb-6">
+          <div className="relative w-16 h-16 mx-auto mb-4">
             <div className="absolute inset-0 rounded-full border-4 border-[#13C1AC]/20"></div>
             <div className="absolute inset-0 rounded-full border-4 border-[#13C1AC] border-t-transparent animate-spin"></div>
-            <MessageCircle className="absolute inset-0 m-auto w-8 h-8 text-[#13C1AC]" />
           </div>
-          <p className="text-gray-600 font-medium">Se încarcă mesajele...</p>
+          <p className="text-gray-600">Se încarcă...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
-  return (
-    <div className="h-[calc(100vh-140px)] bg-gray-50">
-      <div className="max-w-7xl mx-auto h-full p-4">
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 h-full overflow-hidden flex">
-          
-          {/* Left panel - Conversation list */}
-          <div className={`w-full md:w-96 border-r border-gray-100 flex flex-col bg-white ${activeConversation ? 'hidden md:flex' : 'flex'}`}>
-            
-            {/* Header */}
-            <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-[#13C1AC] to-emerald-500">
-              <div className="flex items-center justify-between mb-4">
-                <h1 className="text-xl font-bold text-white flex items-center gap-2">
-                  <MessageCircle className="w-6 h-6" />
-                  Mesaje
-                </h1>
-                <span className="bg-white/20 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-                  {conversations.length}
-                </span>
-              </div>
-              
-              {/* Search */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
-                <input
-                  type="text"
-                  placeholder="Caută conversații..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all text-sm"
-                />
-              </div>
+  // Render methods
+  const renderConversationsList = (fullWidth = false) => (
+    <div className={`bg-white ${fullWidth ? 'min-h-screen' : 'h-full'} flex flex-col`}>
+      {/* Header - Different style for mobile vs desktop */}
+      {fullWidth ? (
+        // Mobile header - elegant dark
+        <div className="flex-none px-4 py-3 bg-slate-700">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => router.push('/')} 
+                className="p-1 -ml-2 rounded-full hover:bg-white/10 text-white transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <h1 className="text-base font-medium text-white flex items-center gap-2">
+                <MessageCircle className="w-4 h-4" />
+                Mesaje
+              </h1>
             </div>
+            <span className="bg-white/15 text-white/90 text-[11px] font-medium px-2 py-0.5 rounded-full">
+              {conversations.length}
+            </span>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
+            <input
+              type="text"
+              placeholder="Caută conversații..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-white/10 border border-white/10 rounded-lg text-white text-sm placeholder-white/50 focus:outline-none focus:bg-white/15"
+            />
+          </div>
+        </div>
+      ) : (
+        // Desktop header - simple white with back button
+        <div className="flex-none px-4 py-4 border-b border-gray-200 flex items-center gap-3">
+          <button
+            onClick={() => router.back()}
+            className="p-1.5 -ml-1.5 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
+          <h1 className="text-lg font-semibold text-gray-900">Mensajes</h1>
+        </div>
+      )}
 
-            {/* Conversation list */}
-            <div className="flex-1 overflow-y-auto">
-              {filteredConversations.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-[#13C1AC]/20 to-emerald-100 rounded-full flex items-center justify-center mb-4">
-                    <MessageCircle className="w-10 h-10 text-[#13C1AC]" />
+      {/* List container - flex-1 to take remaining space, with internal scroll */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {filteredConversations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <MessageCircle className="w-10 h-10 text-slate-300 mb-3" />
+            <h3 className="font-medium text-gray-700 text-sm mb-1">
+              {searchQuery ? 'Fără rezultate' : 'Nu ai mesaje'}
+            </h3>
+            <p className="text-gray-400 text-xs">
+              {searchQuery ? 'Încearcă altă căutare' : 'Contactează vânzătorii din anunțuri'}
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {filteredConversations.map((conv) => {
+              const otherName = getOtherParticipantName(conv);
+              const otherAvatar = getOtherParticipantAvatar(conv);
+              const unreadCount = conv.unreadCount[user.uid] || 0;
+              const isTyping = isOtherUserTyping(conv);
+              const isActive = activeConversation?.id === conv.id;
+              
+              return (
+                <button
+                  key={conv.id}
+                  onClick={() => {
+                    setActiveConversation(conv);
+                    window.history.replaceState(null, '', `/messages?conversation=${conv.id}`);
+                  }}
+                  className={`w-full px-4 py-3 flex items-center gap-3 text-left transition-all duration-200 ease-out ${
+                    isActive 
+                      ? 'bg-slate-50 border-l-2 border-l-slate-400' 
+                      : 'hover:bg-gray-50 hover:shadow-sm border-l-2 border-l-transparent hover:border-l-slate-200'
+                  }`}
+                >
+                  {/* Product Image */}
+                  <div className="flex-shrink-0 relative">
+                    {conv.productImage ? (
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 ring-1 ring-black/5">
+                        <Image src={conv.productImage} alt="" width={48} height={48} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <Avatar src={otherAvatar} name={otherName} size="md" />
+                    )}
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-semibold rounded-full flex items-center justify-center">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                    {searchQuery ? 'Fără rezultate' : 'Nu ai mesaje'}
-                  </h3>
-                  <p className="text-gray-500 text-sm">
-                    {searchQuery ? 'Încearcă altă căutare' : 'Contactează vânzătorii din anunțuri'}
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-50">
-                  {filteredConversations.map((conv) => {
-                    const isActive = activeConversation?.id === conv.id;
-                    const otherName = getOtherParticipantName(conv);
-                    const otherAvatar = getOtherParticipantAvatar(conv);
-                    const unreadCount = conv.unreadCount[user.uid] || 0;
-                    const isOnline = isOtherUserOnline(conv);
-                    const isTyping = isOtherUserTyping(conv);
-                    
-                    return (
-                      <div key={conv.id} className="relative group">
-                        <button
-                          onClick={() => {
-                            setActiveConversation(conv);
-                            // Update URL without navigation
-                            window.history.replaceState(null, '', `/messages?conversation=${conv.id}`);
-                          }}
-                          className={`w-full p-4 text-left transition-all duration-200 hover:bg-gray-50 ${
-                            isActive ? 'bg-[#13C1AC]/5 border-l-4 border-[#13C1AC]' : 'border-l-4 border-transparent'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
-                            {/* Avatar */}
-                            <Avatar 
-                              src={otherAvatar} 
-                              name={otherName} 
-                              size="lg"
-                              showOnlineStatus
-                              isOnline={isOnline}
-                            />
 
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between mb-1">
-                                <h3 className={`font-semibold truncate ${isActive ? 'text-[#13C1AC]' : 'text-gray-900'}`}>
-                                  {otherName}
-                                </h3>
-                                <span className="text-xs text-gray-400 flex-shrink-0 ml-2">
-                                  {formatTime(conv.lastMessageAt)}
-                                </span>
-                              </div>
-                              
-                              {conv.productTitle && (
-                                <p className="text-xs text-[#13C1AC] font-medium mb-1 truncate">
-                                  {conv.productTitle}
-                                </p>
-                              )}
-                              
-                              <div className="flex items-center justify-between">
-                                <p className={`text-sm truncate ${unreadCount > 0 ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
-                                  {isTyping ? (
-                                    <span className="text-[#13C1AC] italic">Scrie...</span>
-                                  ) : (
-                                    conv.lastMessage || 'Începe conversația...'
-                                  )}
-                                </p>
-                                {unreadCount > 0 && (
-                                  <span className="ml-2 w-5 h-5 bg-[#13C1AC] text-white text-xs font-bold rounded-full flex items-center justify-center flex-shrink-0">
-                                    {unreadCount > 9 ? '9+' : unreadCount}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-
-                        {/* Options button */}
-                        <button
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            setMenuOpen(menuOpen === conv.id ? null : conv.id);
-                          }}
-                          className={`absolute top-4 right-4 p-2 rounded-full transition-all ${
-                            menuOpen === conv.id ? 'bg-gray-200' : 'opacity-0 group-hover:opacity-100 hover:bg-gray-100'
-                          }`}
-                        >
-                          <MoreVertical className="w-4 h-4 text-gray-500" />
-                        </button>
-
-                        {/* Dropdown menu */}
-                        {menuOpen === conv.id && (
-                          <>
-                            <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(null)} />
-                            <div className="absolute right-4 top-14 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1 z-40">
-                              <button
-                                onClick={(e) => { 
-                                  e.preventDefault();
-                                  e.stopPropagation(); 
-                                  const confirmed = window.confirm('Sigur vrei să ștergi această conversație? Toate mesajele vor fi șterse.');
-                                  if (confirmed) {
-                                    deleteConversation(conv.id, user.uid)
-                                      .then((success) => {
-                                        if (success) {
-                                          // If this was the active conversation, clear it
-                                          if (activeConversation?.id === conv.id) {
-                                            setActiveConversation(null);
-                                            window.history.replaceState(null, '', '/messages');
-                                          }
-                                        } else {
-                                          alert('Nu s-a putut șterge conversația');
-                                        }
-                                      })
-                                      .catch((err) => {
-                                        console.error('Delete conversation error:', err);
-                                        alert('Eroare la ștergere');
-                                      });
-                                  }
-                                  setMenuOpen(null); 
-                                }}
-                                className="w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-3 transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Șterge conversația
-                              </button>
-                            </div>
-                          </>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    {/* Top row: Name + Time */}
+                    <div className="flex items-center justify-between mb-0.5">
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className={`text-sm truncate ${unreadCount > 0 ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'}`}>
+                          {otherName}
+                        </span>
+                        {isOtherUserVerified(conv) && (
+                          <BadgeCheck className="w-3.5 h-3.5 text-slate-500 flex-shrink-0" />
                         )}
                       </div>
-                    );
-                  })}
+                      <span className="text-[11px] text-gray-400 ml-2 flex-shrink-0">
+                        {formatTime(conv.lastMessageAt)}
+                      </span>
+                    </div>
+
+                    {/* Product title */}
+                    <p className="text-xs text-slate-500 font-medium truncate mb-0.5">
+                      {conv.productTitle || 'Conversație'}
+                    </p>
+
+                    {/* Last message */}
+                    <p className={`text-xs truncate ${unreadCount > 0 ? 'font-medium text-gray-700' : 'text-gray-400'}`}>
+                      {isTyping ? (
+                        <span className="text-slate-500 italic flex items-center gap-1">
+                          <span className="flex gap-0.5">
+                            <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                            <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                            <span className="w-1 h-1 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                          </span>
+                          Scrie...
+                        </span>
+                      ) : (
+                        conv.lastMessage || 'Începe conversația...'
+                      )}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+      
+      {/* Bottom bar - Secure connection - always fixed at bottom on desktop */}
+      {!fullWidth && (
+        <div className="flex-shrink-0 bg-gray-50 border-t border-gray-200 py-3 px-4 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-gray-400">
+            <svg className="w-4 h-4 text-[#13C1AC]/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span className="text-xs font-medium">Conexiune securizată</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderChatPanel = () => (
+    <div className="h-full flex flex-col bg-white overflow-hidden">
+      {/* Header */}
+      <div className="h-16 flex-shrink-0 bg-white border-b border-gray-200 px-4 flex items-center">
+        <div className="flex items-center gap-3 w-full">
+          {activeConversation?.productImage ? (
+            <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+              <Image src={activeConversation.productImage} alt="" width={40} height={40} className="w-full h-full object-cover" />
+            </div>
+          ) : (
+            <Avatar src={getOtherParticipantAvatar(activeConversation!)} name={getOtherParticipantName(activeConversation!)} size="sm" />
+          )}
+
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 text-sm truncate">
+              {activeConversation?.productTitle || getOtherParticipantName(activeConversation!)}
+            </p>
+            {activeConversation?.productId && (
+              <button 
+                onClick={() => router.push(createProductLink({ id: activeConversation.productId!, title: activeConversation.productTitle || '' }))} 
+                className="text-xs text-[#13C1AC] font-medium hover:underline"
+              >
+                Vezi anunțul →
+              </button>
+            )}
+          </div>
+
+          <div className="flex-shrink-0">
+            <Avatar src={getOtherParticipantAvatar(activeConversation!)} name={getOtherParticipantName(activeConversation!)} size="sm" />
+          </div>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 bg-gray-50">
+        {messages.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-center">
+            <MessageCircle className="w-16 h-16 text-[#13C1AC]/20 mb-3" />
+            <p className="text-gray-400">Începe conversația</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {messages.map((msg) => {
+              const isMine = msg.senderId === user.uid;
+              return (
+                <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`message-bubble max-w-[70%] px-4 py-2.5 rounded-2xl ${isMine ? 'bg-[#13C1AC] text-white rounded-br-sm' : 'bg-white text-gray-900 rounded-bl-sm shadow-sm'}`}>
+                    <p className="text-[15px] whitespace-pre-wrap break-words">{msg.text}</p>
+                    <div className={`flex items-center gap-1 mt-1 ${isMine ? 'justify-end' : ''}`}>
+                      <span className={`text-[11px] ${isMine ? 'text-white/70' : 'text-gray-400'}`}>{formatTime(msg.createdAt)}</span>
+                      {isMine && <CheckCheck className={`w-3.5 h-3.5 ${msg.read ? 'text-white' : 'text-white/50'}`} />}
+                    </div>
+                  </div>
                 </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+      </div>
+
+      {/* Input */}
+      <div className="h-20 flex-shrink-0 bg-white border-t border-gray-200 px-4 flex items-center">
+        <form onSubmit={handleSendMessage} className="flex items-center gap-3 w-full">
+          <input
+            ref={inputRef}
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder="Scrie un mesaj..."
+            className="flex-1 px-4 py-3 bg-gray-100 rounded-full text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#13C1AC]"
+          />
+          <button
+            type="submit"
+            disabled={!newMessage.trim()}
+            className={`flex-shrink-0 p-3 rounded-full transition-colors ${newMessage.trim() ? 'bg-[#13C1AC] text-white hover:bg-[#10a593]' : 'bg-gray-200 text-gray-400'}`}
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+
+  const renderEmptyChatState = () => (
+    <div className="h-full flex flex-col items-center justify-center bg-white text-center p-8">
+      <div className="w-24 h-24 mb-6">
+        <svg viewBox="0 0 100 100" className="w-full h-full">
+          <rect x="20" y="25" width="60" height="45" rx="4" fill="#E5F7F5" stroke="#13C1AC" strokeWidth="2"/>
+          <path d="M20 35 L50 55 L80 35" fill="none" stroke="#13C1AC" strokeWidth="2" strokeLinecap="round"/>
+          <line x1="20" y1="70" x2="35" y2="55" stroke="#13C1AC" strokeWidth="2" strokeLinecap="round"/>
+          <line x1="80" y1="70" x2="65" y2="55" stroke="#13C1AC" strokeWidth="2" strokeLinecap="round"/>
+        </svg>
+      </div>
+      <h2 className="text-xl font-bold text-gray-900 mb-2">Nu ai mesaje încă</h2>
+      <p className="text-gray-500 max-w-sm">
+        Când cineva îți trimite un mesaj, îl vei vedea aici.
+      </p>
+    </div>
+  );
+
+  // ===================
+  // MOBILE VIEW
+  // ===================
+  if (isMobile) {
+    // Show chat if active conversation
+    if (activeConversation) {
+      return (
+        <div 
+          ref={containerRef}
+          className="fixed inset-0 bg-white z-50 flex flex-col"
+        >
+          {/* Header - always visible at top */}
+          <div className="flex-shrink-0 h-14 bg-white border-b border-gray-200 px-3 flex items-center">
+            <div className="flex items-center gap-3 w-full">
+              <button
+                onClick={() => {
+                  setActiveConversation(null);
+                  setMessages([]);
+                  window.history.replaceState(null, '', '/messages');
+                }}
+                className="p-1.5 -ml-1 rounded-full active:bg-gray-100"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-700" />
+              </button>
+              
+              {activeConversation.productImage ? (
+                <div className="w-10 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                  <Image src={activeConversation.productImage} alt="" width={40} height={40} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <Avatar src={getOtherParticipantAvatar(activeConversation)} name={getOtherParticipantName(activeConversation)} size="sm" />
               )}
+
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-gray-900 text-sm truncate">
+                  {activeConversation.productTitle || getOtherParticipantName(activeConversation)}
+                </p>
+                {activeConversation.productId && (
+                  <button 
+                    onClick={() => router.push(createProductLink({ id: activeConversation.productId!, title: activeConversation.productTitle || '' }))} 
+                    className="text-xs text-[#13C1AC] font-medium"
+                  >
+                    Vezi anunțul →
+                  </button>
+                )}
+              </div>
+
+              <Avatar src={getOtherParticipantAvatar(activeConversation)} name={getOtherParticipantName(activeConversation)} size="sm" />
             </div>
           </div>
 
-          {/* Right panel - Chat */}
-          <div className={`flex-1 flex flex-col bg-gray-50 ${!activeConversation ? 'hidden md:flex' : 'flex'}`}>
-            {activeConversation ? (
-              <>
-                {/* Chat header */}
-                <div className="bg-white border-b border-gray-100 px-4 py-3 shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => {
-                        setActiveConversation(null);
-                        window.history.replaceState(null, '', '/messages');
-                      }}
-                      className="md:hidden p-2 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <ArrowLeft className="w-5 h-5 text-gray-600" />
-                    </button>
-                    
-                    {/* Other user avatar */}
-                    <Avatar 
-                      src={getOtherParticipantAvatar(activeConversation)} 
-                      name={getOtherParticipantName(activeConversation)} 
-                      size="md"
-                      showOnlineStatus
-                      isOnline={isOtherUserOnline(activeConversation)}
-                    />
-
-                    {/* Info */}
-                    <div className="min-w-0 flex-1">
-                      <h2 className="font-semibold text-gray-900 truncate">
-                        {getOtherParticipantName(activeConversation)}
-                      </h2>
-                      {isOtherUserTyping(activeConversation) ? (
-                        <p className="text-xs text-[#13C1AC] font-medium italic">
-                          Scrie un mesaj...
-                        </p>
-                      ) : isOtherUserOnline(activeConversation) ? (
-                        <p className="text-xs text-green-500 font-medium">
-                          Online
-                        </p>
-                      ) : activeConversation.productTitle ? (
-                        <p className="text-xs text-[#13C1AC] font-medium flex items-center gap-1 truncate">
-                          <Circle className="w-2 h-2 fill-current flex-shrink-0" />
-                          {activeConversation.productTitle}
-                        </p>
-                      ) : null}
-                    </div>
-
-                    {activeConversation.productId && (
-                      <button
-                        onClick={() => router.push(createProductLink({ id: activeConversation.productId!, title: activeConversation.productTitle || '' }))}
-                        className="hidden sm:block px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
-                      >
-                        Vezi anunțul
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Messages area */}
-                <div 
-                  ref={messagesContainerRef}
-                  className="flex-1 overflow-y-auto p-4 space-y-4"
-                  style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%2313C1AC' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                  }}
-                >
-                  {messages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <div className="w-24 h-24 bg-gradient-to-br from-[#13C1AC]/20 to-emerald-100 rounded-full flex items-center justify-center mb-4">
-                        <MessageCircle className="w-12 h-12 text-[#13C1AC]" />
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Începe conversația</h3>
-                      <p className="text-gray-500 text-sm max-w-xs">
-                        Trimite un mesaj pentru a discuta despre acest anunț
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      {messages.map((message, index) => {
-                        const isMine = message.senderId === user.uid;
-                        const showAvatar = !isMine && (index === 0 || messages[index - 1]?.senderId === user.uid);
-                        const otherAvatar = getOtherParticipantAvatar(activeConversation);
-                        const otherName = getOtherParticipantName(activeConversation);
-                        
-                        return (
-                          <div
-                            key={message.id}
-                            className={`flex group/message ${isMine ? 'justify-end' : 'justify-start'}`}
-                          >
-                            {!isMine && showAvatar && (
-                              <div className="mr-2 flex-shrink-0 self-end mb-5">
-                                <Avatar src={otherAvatar} name={otherName} size="sm" />
-                              </div>
-                            )}
-                            {!isMine && !showAvatar && <div className="w-10 mr-2" />}
-                            
-                            <div className={`max-w-[70%] ${isMine ? 'items-end' : 'items-start'} flex flex-col`}>
-                              <div className={`flex items-center gap-2 ${isMine ? 'flex-row' : 'flex-row-reverse'}`}>
-                                {/* Delete button - only for own messages */}
-                                {isMine && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-                                      const confirmed = window.confirm('Sigur vrei să ștergi acest mesaj?');
-                                      if (confirmed) {
-                                        deleteMessage(message.id, activeConversation.id, user.uid)
-                                          .then((success) => {
-                                            if (!success) {
-                                              alert('Nu s-a putut șterge mesajul');
-                                            }
-                                          })
-                                          .catch((err) => {
-                                            console.error('Delete error:', err);
-                                            alert('Eroare la ștergere');
-                                          });
-                                      }
-                                    }}
-                                    className="p-1.5 rounded-full bg-gray-100 hover:bg-red-100 text-gray-400 hover:text-red-500 opacity-0 group-hover/message:opacity-100 transition-all duration-200"
-                                    title="Șterge mesajul"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </button>
-                                )}
-                                
-                                <div
-                                  className={`px-4 py-2.5 shadow-sm ${
-                                    isMine
-                                      ? 'bg-gradient-to-br from-[#13C1AC] to-emerald-500 text-white rounded-2xl rounded-br-md'
-                                      : 'bg-white text-gray-900 rounded-2xl rounded-bl-md border border-gray-100'
-                                  }`}
-                                >
-                                  <p className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">
-                                    {message.text}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className={`flex items-center gap-1 mt-1 px-1 ${isMine ? 'justify-end' : 'justify-start'}`}>
-                                <span className="text-[10px] text-gray-400">
-                                  {formatTime(message.createdAt)}
-                                </span>
-                                {isMine && (
-                                  <div className="relative group/check">
-                                    <CheckCheck className={`w-3.5 h-3.5 ${message.read ? 'text-[#13C1AC]' : 'text-gray-400'}`} />
-                                    {message.read && message.readAt && (
-                                      <div className="absolute bottom-full right-0 mb-1 px-2 py-1 bg-gray-900 text-white text-[10px] rounded whitespace-nowrap opacity-0 group-hover/check:opacity-100 transition-opacity pointer-events-none">
-                                        Citit la {formatReadTime(message.readAt)}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </>
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-
-                {/* Message input */}
-                <div className="bg-white border-t border-gray-100 p-4">
-                  <form onSubmit={handleSendMessage} className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-                    >
-                      <Smile className="w-5 h-5" />
-                    </button>
-                    
-                    <div className="flex-1 relative">
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Scrie un mesaj..."
-                        className="w-full px-5 py-3 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-[#13C1AC] focus:bg-white transition-all text-gray-900 placeholder-gray-400"
-                      />
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={!newMessage.trim()}
-                      className={`p-3 rounded-full transition-all transform ${
-                        newMessage.trim()
-                          ? 'bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white shadow-lg hover:shadow-xl hover:scale-105 active:scale-95'
-                          : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      }`}
-                    >
-                      <Send className="w-5 h-5" />
-                    </button>
-                  </form>
-                </div>
-              </>
+          {/* Messages area - scrollable */}
+          <div 
+            ref={messagesContainerRef} 
+            className="flex-1 overflow-y-auto bg-gray-50 px-3 py-2"
+          >
+            {messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center">
+                <MessageCircle className="w-12 h-12 text-[#13C1AC]/20 mb-2" />
+                <p className="text-gray-400 text-sm">Începe conversația</p>
+              </div>
             ) : (
-              /* Empty state */
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-                <div className="w-32 h-32 bg-gradient-to-br from-[#13C1AC]/20 to-emerald-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
-                  <MessageCircle className="w-16 h-16 text-[#13C1AC]" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Mesajele tale</h2>
-                <p className="text-gray-500 max-w-sm mb-6">
-                  Selectează o conversație din listă pentru a discuta cu vânzătorii și cumpărătorii
-                </p>
-                <div className="flex items-center gap-2 text-sm text-gray-400">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span>Mesaje private și securizate</span>
-                </div>
+              <div className="space-y-2">
+                {messages.map((msg) => {
+                  const isMine = msg.senderId === user.uid;
+                  return (
+                    <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`message-bubble max-w-[80%] px-3 py-2 rounded-2xl ${isMine ? 'bg-[#13C1AC] text-white rounded-br-sm' : 'bg-white text-gray-900 rounded-bl-sm shadow-sm'}`}>
+                        <p className="text-[15px] whitespace-pre-wrap break-words">{msg.text}</p>
+                        <div className={`flex items-center gap-1 mt-0.5 ${isMine ? 'justify-end' : ''}`}>
+                          <span className={`text-[10px] ${isMine ? 'text-white/70' : 'text-gray-400'}`}>{formatTime(msg.createdAt)}</span>
+                          {isMine && <CheckCheck className={`w-3 h-3 ${msg.read ? 'text-white' : 'text-white/50'}`} />}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
               </div>
             )}
+          </div>
+
+          {/* Input - at bottom - same height as secure connection bar */}
+          <div className="flex-shrink-0 bg-white border-t border-gray-200 p-3 h-[60px] flex items-center">
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2 w-full">
+              <input
+                ref={inputRef}
+                type="text"
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Scrie un mesaj..."
+                enterKeyHint="send"
+                className="flex-1 px-4 py-2.5 bg-gray-100 rounded-full text-gray-900 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#13C1AC]"
+              />
+              <button
+                type="submit"
+                disabled={!newMessage.trim()}
+                className={`p-2.5 rounded-full transition-colors ${newMessage.trim() ? 'bg-[#13C1AC] text-white' : 'bg-gray-200 text-gray-400'}`}
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // Show conversation list
+    return renderConversationsList(true);
+  }
+
+  // ===================
+  // DESKTOP VIEW - Split panel
+  // ===================
+  return (
+    <div className="min-h-screen bg-gray-100 py-6 px-4 md:px-8">
+      <div className="max-w-6xl mx-auto h-[calc(100vh-48px)] bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="h-full flex">
+          {/* Left panel - Conversations list - fixed width */}
+          <div className="w-[400px] h-full flex-shrink-0 border-r border-gray-200">
+            {renderConversationsList()}
+          </div>
+          
+          {/* Right panel - Chat or empty state - takes remaining space */}
+          <div className="flex-1 h-full overflow-hidden">
+            {activeConversation ? renderChatPanel() : renderEmptyChatState()}
           </div>
         </div>
       </div>
@@ -650,14 +713,7 @@ export default function MessagesPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="relative w-20 h-20 mx-auto mb-6">
-            <div className="absolute inset-0 rounded-full border-4 border-[#13C1AC]/20"></div>
-            <div className="absolute inset-0 rounded-full border-4 border-[#13C1AC] border-t-transparent animate-spin"></div>
-            <MessageCircle className="absolute inset-0 m-auto w-8 h-8 text-[#13C1AC]" />
-          </div>
-          <p className="text-gray-600 font-medium">Se încarcă mesajele...</p>
-        </div>
+        <div className="animate-spin w-8 h-8 border-4 border-[#13C1AC] border-t-transparent rounded-full"></div>
       </div>
     }>
       <MessagesContent />

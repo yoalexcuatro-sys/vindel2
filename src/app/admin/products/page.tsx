@@ -174,7 +174,7 @@ export default function AdminProducts() {
                     </span>
                   </td>
                   <td className="px-6 py-4 font-medium text-gray-900">
-                    {product.price} RON
+                    {product.price?.toLocaleString('ro-RO')} {product.currency === 'EUR' ? '€' : 'Lei'}
                   </td>
                   <td className="px-6 py-4">
                     {(() => {

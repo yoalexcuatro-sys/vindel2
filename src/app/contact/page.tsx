@@ -121,22 +121,38 @@ export default function ContactPage() {
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-            {/* Hero with Wave */}
-            <div className="relative bg-gradient-to-r from-purple-500 to-pink-500 overflow-hidden">
-                <div className="absolute inset-0 opacity-20">
-                    <svg className="absolute w-full h-full">
-                        <defs>
-                            <pattern id="contact-pattern" x="0" y="0" width="30" height="30" patternUnits="userSpaceOnUse">
-                                <circle cx="15" cy="15" r="1" fill="white"/>
-                            </pattern>
-                        </defs>
-                        <rect width="100%" height="100%" fill="url(#contact-pattern)"/>
-                    </svg>
+            {/* Hero with Animated Squares */}
+            <div className="relative bg-gradient-to-br from-[#13C1AC] via-emerald-500 to-teal-600 overflow-hidden">
+                {/* Animated floating squares */}
+                <div className="absolute inset-0 overflow-hidden">
+                    {/* Square 1 */}
+                    <div className="absolute w-20 h-20 border-2 border-white/20 rounded-lg animate-float-slow" 
+                         style={{ top: '10%', left: '5%', animationDelay: '0s' }}></div>
+                    {/* Square 2 */}
+                    <div className="absolute w-16 h-16 border-2 border-white/15 rounded-lg animate-float-slower" 
+                         style={{ top: '60%', left: '15%', animationDelay: '2s' }}></div>
+                    {/* Square 3 */}
+                    <div className="absolute w-24 h-24 border-2 border-white/10 rounded-xl animate-float-slow" 
+                         style={{ top: '20%', right: '10%', animationDelay: '1s' }}></div>
+                    {/* Square 4 */}
+                    <div className="absolute w-12 h-12 bg-white/10 rounded-lg animate-float-slower" 
+                         style={{ top: '70%', right: '20%', animationDelay: '3s' }}></div>
+                    {/* Square 5 */}
+                    <div className="absolute w-14 h-14 border-2 border-white/20 rounded-lg animate-float-slow" 
+                         style={{ top: '40%', left: '40%', animationDelay: '0.5s' }}></div>
+                    {/* Square 6 */}
+                    <div className="absolute w-10 h-10 bg-white/5 rounded-md animate-float-slower" 
+                         style={{ top: '80%', left: '60%', animationDelay: '1.5s' }}></div>
+                    {/* Square 7 */}
+                    <div className="absolute w-8 h-8 border border-white/25 rounded animate-float-slow" 
+                         style={{ top: '15%', left: '70%', animationDelay: '2.5s' }}></div>
+                    {/* Square 8 */}
+                    <div className="absolute w-18 h-18 border-2 border-white/15 rounded-lg animate-float-slower" 
+                         style={{ top: '50%', right: '5%', animationDelay: '4s' }}></div>
                 </div>
-                <div className="absolute -bottom-20 -right-20 w-80 h-80 bg-white/10 rounded-full"></div>
                 
                 <div className="relative max-w-5xl mx-auto px-4 py-16 text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-2xl mb-6">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-2xl mb-6 backdrop-blur-sm">
                         <MessageCircle className="w-8 h-8 text-white" />
                     </div>
                     <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Contactează-ne</h1>
@@ -145,8 +161,8 @@ export default function ContactPage() {
                     </p>
                 </div>
                 
-                <svg className="absolute -bottom-1 w-full" viewBox="0 0 1440 120" preserveAspectRatio="none">
-                    <path fill="#f8fafc" d="M0,32L48,37.3C96,43,192,53,288,69.3C384,85,480,107,576,101.3C672,96,768,64,864,58.7C960,53,1056,75,1152,80C1248,85,1344,75,1392,69.3L1440,64L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"></path>
+                <svg className="absolute -bottom-1 w-full" viewBox="0 0 1440 100" preserveAspectRatio="none">
+                    <path fill="#f8fafc" d="M0,0 L0,60 Q360,100 720,60 T1440,60 L1440,100 L0,100 Z"></path>
                 </svg>
             </div>
 

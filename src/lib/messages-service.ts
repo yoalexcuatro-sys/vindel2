@@ -45,6 +45,29 @@ export interface Conversation {
 const CONVERSATIONS_COLLECTION = 'conversations';
 const MESSAGES_COLLECTION = 'messages';
 
+// Check if a conversation exists for a specific product between two users
+export async function findExistingConversation(
+  userId: string,
+  otherUserId: string,
+  productId: string
+): Promise<string | null> {
+  const q = query(
+    collection(db, CONVERSATIONS_COLLECTION),
+    where('participants', 'array-contains', userId)
+  );
+
+  const querySnapshot = await getDocs(q);
+  
+  for (const doc of querySnapshot.docs) {
+    const conv = doc.data() as Conversation;
+    if (conv.participants.includes(otherUserId) && conv.productId === productId) {
+      return doc.id;
+    }
+  }
+  
+  return null;
+}
+
 // Create or get existing conversation
 export async function getOrCreateConversation(
   userId: string,

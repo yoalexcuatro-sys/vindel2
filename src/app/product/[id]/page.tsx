@@ -1,6 +1,6 @@
 'use client';
 
-import { Heart, Share2, Eye, Flag, MessageCircle, MapPin, ShieldCheck, ChevronLeft, ChevronRight, Tag, Gauge, Ruler, Calendar, Hash, Car, CircleDot, Package, Settings, Zap, Thermometer, Clock, CheckCircle, Info, X, Home, Bed, Bath, Building, Sofa, Waves, ParkingCircle, Trees, Star, Sparkles, AlertTriangle, Truck, Users } from 'lucide-react';
+import { Heart, Share2, Eye, Flag, MessageCircle, MapPin, ShieldCheck, ChevronLeft, ChevronRight, Tag, Gauge, Ruler, Calendar, Hash, Car, CircleDot, Package, Settings, Zap, Thermometer, Clock, CheckCircle, Info, X, Home, Bed, Bath, Building, Building2, Sofa, Waves, ParkingCircle, Trees, Star, Sparkles, AlertTriangle, Truck, Users, Crown, Globe, Mail, Phone, User, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
@@ -8,11 +8,13 @@ import { notFound, useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useCallback, memo } from 'react';
 import { getProduct, getProducts, Product } from '@/lib/products-service';
 import { createOrGetConversation } from '@/lib/messages';
+import { getOrCreateConversation, sendMessage, findExistingConversation } from '@/lib/messages-service';
 import { Timestamp } from 'firebase/firestore';
 import { extractIdFromSlug, createProductLink } from '@/lib/slugs';
 import Avatar from '@/components/Avatar';
 import { createReport, REPORT_REASONS, hasUserReported } from '@/lib/reports-service';
 import { useAuth } from '@/lib/auth-context';
+import { useUserProfile } from '@/lib/swr-hooks';
 
 // Helper para tiempo relativo
 const getRelativeTime = (publishedAt?: string | Timestamp): string => {
@@ -45,6 +47,19 @@ const getRelativeTime = (publishedAt?: string | Timestamp): string => {
 const ProductCard = dynamic(() => import('@/components/ProductCard'), {
   ssr: true
 });
+
+// Helper para formatear precios con separador de miles (12900 -> 12.900)
+const formatPrice = (price: number): string => {
+  return price.toLocaleString('ro-RO');
+};
+
+// Helper para formatear nombre público (Alexandru Bugeag -> Alexandru B.)
+const formatPublicName = (name: string): string => {
+  if (!name) return 'Utilizator';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
+};
 
 // Helper para obtener info de condición
 const getConditionInfo = (condition?: string): { label: string; color: string; icon: any } | null => {
@@ -80,6 +95,164 @@ const getConditionInfo = (condition?: string): { label: string; color: string; i
   return conditions[condition] || null;
 };
 
+// Business Details Component
+interface BusinessDetailsProps {
+  sellerProfile: {
+    businessName?: string;
+    cui?: string;
+    nrRegistruComert?: string;
+    adresaSediu?: string;
+    oras?: string;
+    judet?: string;
+    codPostal?: string;
+    tara?: string;
+    reprezentantLegal?: string;
+    telefonFirma?: string;
+    emailFirma?: string;
+    website?: string;
+    accountType?: string;
+  };
+}
+
+function BusinessDetails({ sellerProfile }: BusinessDetailsProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Check if there's any business data to show
+  const hasBusinessData = sellerProfile.businessName || sellerProfile.cui || 
+    sellerProfile.nrRegistruComert || sellerProfile.adresaSediu || 
+    sellerProfile.telefonFirma || sellerProfile.emailFirma || sellerProfile.website;
+  
+  if (!hasBusinessData) return null;
+  
+  // Build full address
+  const fullAddress = [
+    sellerProfile.adresaSediu,
+    sellerProfile.oras,
+    sellerProfile.judet && `Jud. ${sellerProfile.judet}`,
+    sellerProfile.codPostal,
+    sellerProfile.tara
+  ].filter(Boolean).join(', ');
+  
+  return (
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <div className="bg-purple-100 p-2 rounded-lg">
+            <Building2 className="h-5 w-5 text-purple-600" />
+          </div>
+          <div className="text-left">
+            <h3 className="font-semibold text-gray-900">Date Firmă</h3>
+            <p className="text-xs text-gray-500">Informații despre vânzător</p>
+          </div>
+        </div>
+        {isExpanded ? (
+          <ChevronUp className="h-5 w-5 text-gray-400" />
+        ) : (
+          <ChevronDown className="h-5 w-5 text-gray-400" />
+        )}
+      </button>
+      
+      {isExpanded && (
+        <div className="px-4 pb-4 space-y-3 border-t border-gray-100 pt-3">
+          {sellerProfile.businessName && (
+            <div className="flex items-start gap-3">
+              <Building2 className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-500">Denumire</p>
+                <p className="text-sm font-medium text-gray-900">{sellerProfile.businessName}</p>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.cui && (
+            <div className="flex items-start gap-3">
+              <Hash className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-500">CUI</p>
+                <p className="text-sm font-medium text-gray-900">{sellerProfile.cui}</p>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.nrRegistruComert && (
+            <div className="flex items-start gap-3">
+              <Hash className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-500">Nr. Registru Comerț</p>
+                <p className="text-sm font-medium text-gray-900">{sellerProfile.nrRegistruComert}</p>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.reprezentantLegal && (
+            <div className="flex items-start gap-3">
+              <User className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-500">Reprezentant Legal</p>
+                <p className="text-sm font-medium text-gray-900">{sellerProfile.reprezentantLegal}</p>
+              </div>
+            </div>
+          )}
+          
+          {fullAddress && (
+            <div className="flex items-start gap-3">
+              <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-500">Sediu Social</p>
+                <p className="text-sm font-medium text-gray-900">{fullAddress}</p>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.telefonFirma && (
+            <div className="flex items-start gap-3">
+              <Phone className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-500">Telefon</p>
+                <a href={`tel:${sellerProfile.telefonFirma}`} className="text-sm font-medium text-[#13C1AC] hover:underline">
+                  {sellerProfile.telefonFirma}
+                </a>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.emailFirma && (
+            <div className="flex items-start gap-3">
+              <Mail className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-500">Email</p>
+                <a href={`mailto:${sellerProfile.emailFirma}`} className="text-sm font-medium text-[#13C1AC] hover:underline">
+                  {sellerProfile.emailFirma}
+                </a>
+              </div>
+            </div>
+          )}
+          
+          {sellerProfile.website && (
+            <div className="flex items-start gap-3">
+              <Globe className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-gray-500">Website</p>
+                <a 
+                  href={sellerProfile.website.startsWith('http') ? sellerProfile.website : `https://${sellerProfile.website}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-[#13C1AC] hover:underline"
+                >
+                  {sellerProfile.website}
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProductPage() {
   const params = useParams();
   const router = useRouter();
@@ -90,6 +263,23 @@ export default function ProductPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentTheme, setCurrentTheme] = useState(1);
+  
+  // SWR para perfil del vendedor (teléfono y configuración)
+  const { data: sellerProfile } = useUserProfile(product?.sellerId || product?.seller?.id || null);
+  
+  // Chat modal state
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [chatMessage, setChatMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [checkingConversation, setCheckingConversation] = useState(false);
+  
+  // Quick message options
+  const quickMessages = [
+    'Bună, mă interesează anunțul tău. Este încă disponibil?',
+    'Bună! Care este prețul final? Acceptă negociere?',
+    'Bună! Aș dori să văd produsul. Când ne putem întâlni?',
+    'Bună! Poți trimite mai multe poze cu produsul?'
+  ];
   
   // Report modal state
   const [showReportModal, setShowReportModal] = useState(false);
@@ -270,9 +460,16 @@ export default function ProductPage() {
 
   return (
     <div className="bg-gray-50 min-h-screen pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Breadcrumb */}
-        <nav className="flex mb-6 text-sm text-gray-500">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        {/* Mobile back button + Breadcrumb */}
+        <nav className="flex items-center mb-4 sm:mb-6 text-sm text-gray-500">
+            <button 
+              onClick={() => router.back()}
+              className="sm:hidden mr-3 p-1.5 -ml-1.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
+              aria-label="Înapoi"
+            >
+              <ChevronLeft className="w-6 h-6 text-gray-700" />
+            </button>
             <Link href="/" className="hover:text-[#13C1AC]">Acasă</Link>
             <span className="mx-2">/</span>
             <span className="text-gray-900 font-medium truncate max-w-[200px]">{product.title}</span>
@@ -284,24 +481,22 @@ export default function ProductPage() {
                 
                 {/* Image Gallery - Optimized with navigation */}
                 <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                  {/* Main Image Container */}
+                  {/* Main Image Container - adaptive height */}
                   <div 
-                      className="relative aspect-[4/5] max-h-[480px] bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center cursor-pointer overflow-hidden"
+                      className="relative bg-gray-100 flex items-center justify-center cursor-pointer overflow-hidden min-h-[300px] sm:min-h-[400px]"
                       onClick={() => setLightboxOpen(true)}
                   >
-                      {/* Shimmer skeleton effect */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite] z-[1]" />
-                      
-                      {/* Current image - priority for first, lazy for rest */}
+                      {/* Current image - adapts to content */}
                       <Image 
                         key={currentImageIndex}
                         src={images[currentImageIndex]} 
                         alt={product.title} 
-                        fill
+                        width={800}
+                        height={800}
                         sizes="(max-width: 768px) 100vw, 600px"
-                        className="object-contain animate-[fadeIn_0.3s_ease-out] z-[2]"
+                        className="w-auto h-auto max-w-full max-h-[70vh] object-contain animate-[fadeIn_0.3s_ease-out]"
                         priority={currentImageIndex === 0}
-                        quality={60}
+                        quality={75}
                         placeholder="blur"
                         blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAB//2Q=="
                       />
@@ -386,6 +581,119 @@ export default function ProductPage() {
                   )}
                 </div>
 
+                {/* Price Card - Below images (mobile only) */}
+                <div className="lg:hidden bg-white rounded-xl shadow-sm p-6">
+                    <h1 className="description-text text-xl font-bold text-gray-900 mb-2">
+                        {product.title}
+                    </h1>
+                    <div className="text-3xl font-extrabold text-gray-900 mb-3">{formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'Lei'}</div>
+                    
+                    {/* Condition & Negotiable Badges */}
+                    <div className="flex flex-wrap items-center gap-2 mb-5">
+                        {getConditionInfo(product.condition) ? (() => {
+                          const conditionInfo = getConditionInfo(product.condition);
+                          const Icon = conditionInfo?.icon;
+                          return (
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-md flex items-center gap-1 ${conditionInfo?.color}`}>
+                              {Icon && <Icon className="w-3 h-3" />}
+                              {conditionInfo?.label}
+                            </span>
+                          );
+                        })() : product.condition && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-md flex items-center gap-1 bg-gray-500 text-white">
+                            <CheckCircle className="w-3 h-3" />
+                            {product.condition}
+                          </span>
+                        )}
+                        {!product.condition && product.category && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-md flex items-center gap-1 bg-[#13C1AC] text-white">
+                            <Tag className="w-3 h-3" />
+                            {product.subcategory || product.category}
+                          </span>
+                        )}
+                        {product.negotiable && (
+                          <span className="px-2 py-1 text-xs font-semibold rounded-md flex items-center gap-1 bg-violet-500 text-white">
+                            <MessageCircle className="w-3 h-3" />
+                            Negociabil
+                          </span>
+                        )}
+                        <span className="px-2 py-1 text-xs font-medium rounded-md flex items-center gap-1 bg-gray-100 text-gray-600">
+                          <Clock className="w-3 h-3" />
+                          {getRelativeTime(product.publishedAt)}
+                        </span>
+                    </div>
+                    
+                    <button 
+                        onClick={async () => {
+                            if (!user) {
+                                router.push('/login?redirect=' + encodeURIComponent(window.location.pathname));
+                                return;
+                            }
+                            if (product && user.uid !== product.seller.id) {
+                                setCheckingConversation(true);
+                                try {
+                                    const existingConvId = await findExistingConversation(
+                                        user.uid,
+                                        product.sellerId || product.seller.id,
+                                        product.id
+                                    );
+                                    if (existingConvId) {
+                                        router.push(`/messages?conversation=${existingConvId}`);
+                                    } else {
+                                        setShowChatModal(true);
+                                    }
+                                } catch (error) {
+                                    console.error('Error checking conversation:', error);
+                                    setShowChatModal(true);
+                                } finally {
+                                    setCheckingConversation(false);
+                                }
+                            }
+                        }}
+                        disabled={user?.uid === product?.seller?.id || checkingConversation}
+                        className={`w-full font-bold py-3 px-4 rounded-full transition-colors mb-3 flex items-center justify-center ${
+                            user?.uid === product?.seller?.id
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-[#13C1AC] text-white hover:bg-[#10a593] shadow-lg shadow-teal-500/30'
+                        }`}
+                    >
+                        {checkingConversation ? (
+                            <>
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                                Se verifică...
+                            </>
+                        ) : (
+                            <>
+                                <MessageCircle className="h-5 w-5 mr-2" />
+                                {user?.uid === product?.seller?.id ? 'Tu anuncio' : 'Chat'}
+                            </>
+                        )}
+                    </button>
+                    
+                    {sellerProfile?.phone && sellerProfile?.settings?.showPhone === true && user?.uid !== product?.sellerId ? (
+                      <a 
+                        href={`tel:${sellerProfile.phone}`}
+                        className="w-full bg-[#E5F9F6] text-[#13C1AC] font-bold py-3 px-4 rounded-full hover:bg-[#d0f5f0] transition-colors flex items-center justify-center gap-2"
+                      >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        {sellerProfile.phone}
+                      </a>
+                    ) : user?.uid === product?.sellerId ? (
+                      <button disabled className="w-full bg-gray-100 text-gray-400 font-bold py-3 px-4 rounded-full cursor-not-allowed">
+                        Tu anuncio
+                      </button>
+                    ) : (
+                      <button disabled className="w-full bg-[#E5F9F6] text-[#13C1AC]/50 font-bold py-3 px-4 rounded-full cursor-not-allowed flex items-center justify-center gap-2">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        Telefon ascuns
+                      </button>
+                    )}
+                </div>
+
                 {/* Description Card */}
                 <div className="bg-white rounded-xl shadow-sm p-6 md:p-8">
                      <div className="flex items-center justify-between mb-4">
@@ -434,7 +742,16 @@ export default function ProductPage() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2">
                       {Object.entries(product.customFields)
-                        .filter(([key, value]) => value !== undefined && value !== null && value !== '')
+                        .filter(([key, value]) => {
+                          // Skip if value is empty, null, undefined, or falsy string
+                          if (value === undefined || value === null || value === '') return false;
+                          if (typeof value === 'string' && (value.trim() === '' || value === '0')) return false;
+                          // Skip boolean false values (not selected checkboxes)
+                          if (typeof value === 'boolean' && !value) return false;
+                          // Skip 0 values that don't make sense
+                          if (typeof value === 'number' && value === 0) return false;
+                          return true;
+                        })
                         .sort(([keyA], [keyB]) => {
                           // Ordenar: marca primero, luego model, después el resto
                           const order = ['marca', 'marcaAnvelopa', 'marcaJanta', 'model', 'tip', 'tipMoto', 'tipAnvelopa', 'tipJanta'];
@@ -828,14 +1145,14 @@ export default function ProductPage() {
             {/* Right Column: Price & Seller Info */}
             <div className="space-y-6">
                 
-                {/* Price Card */}
-                <div className="bg-white rounded-xl shadow-sm p-6 md:p-8">
+                {/* Price Card - Hidden on mobile, visible on desktop */}
+                <div className="hidden lg:block bg-white rounded-xl shadow-sm p-6 md:p-8">
                     <div className="flex justify-between items-start mb-4">
                         <h1 className="description-text text-xl md:text-2xl font-bold text-gray-900 flex-1 mr-4">
                             {product.title.length > 45 ? product.title.substring(0, 45) + '...' : product.title}
                         </h1>
                     </div>
-                    <div className="text-4xl font-extrabold text-gray-900 mb-3">{product.price} €</div>
+                    <div className="text-4xl font-extrabold text-gray-900 mb-3">{formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'Lei'}</div>
                     
                     {/* Condition & Negotiable Badges */}
                     <div className="flex flex-wrap items-center gap-2 mb-6">
@@ -880,37 +1197,118 @@ export default function ProductPage() {
                     </div>
                     
                     <button 
-                        onClick={() => {
-                            if (product) {
-                                createOrGetConversation(
-                                    product.id,
-                                    product.title,
-                                    product.images?.[0] || product.image,
-                                    product.price,
-                                    product.seller.id,
-                                    product.seller.name
-                                );
-                                router.push('/messages');
+                        onClick={async () => {
+                            if (!user) {
+                                router.push('/login?redirect=' + encodeURIComponent(window.location.pathname));
+                                return;
+                            }
+                            if (product && user.uid !== product.seller.id) {
+                                setCheckingConversation(true);
+                                try {
+                                    // Check if conversation already exists for this product
+                                    const existingConvId = await findExistingConversation(
+                                        user.uid,
+                                        product.sellerId || product.seller.id,
+                                        product.id
+                                    );
+                                    
+                                    if (existingConvId) {
+                                        // Go directly to existing conversation
+                                        router.push(`/messages?conversation=${existingConvId}`);
+                                    } else {
+                                        // Show modal for first message
+                                        setShowChatModal(true);
+                                    }
+                                } catch (error) {
+                                    console.error('Error checking conversation:', error);
+                                    setShowChatModal(true);
+                                } finally {
+                                    setCheckingConversation(false);
+                                }
                             }
                         }}
-                        className="w-full bg-[#13C1AC] text-white font-bold py-3 px-4 rounded-full hover:bg-[#10a593] transition-colors mb-3 flex items-center justify-center shadow-lg shadow-teal-500/30"
+                        disabled={user?.uid === product?.seller?.id || checkingConversation}
+                        className={`w-full font-bold py-3 px-4 rounded-full transition-colors mb-3 flex items-center justify-center ${
+                            user?.uid === product?.seller?.id
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                : 'bg-[#13C1AC] text-white hover:bg-[#10a593] shadow-lg shadow-teal-500/30'
+                        }`}
                     >
-                        <MessageCircle className="h-5 w-5 mr-2" />
-                        Chat
+                        {checkingConversation ? (
+                            <>
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                                Se verifică...
+                            </>
+                        ) : (
+                            <>
+                                <MessageCircle className="h-5 w-5 mr-2" />
+                                {user?.uid === product?.seller?.id ? 'Tu anuncio' : 'Chat'}
+                            </>
+                        )}
                     </button>
-                    <button className="w-full bg-[#E5F9F6] text-[#13C1AC] font-bold py-3 px-4 rounded-full hover:bg-[#d0f5f0] transition-colors">
-                        Cumpără acum
-                    </button>
+                    
+                    {/* Phone Button - Only show if seller has phone and showPhone is explicitly true */}
+                    {sellerProfile?.phone && sellerProfile?.settings?.showPhone === true && user?.uid !== product?.sellerId ? (
+                      <a 
+                        href={`tel:${sellerProfile.phone}`}
+                        className="w-full bg-[#E5F9F6] text-[#13C1AC] font-bold py-3 px-4 rounded-full hover:bg-[#d0f5f0] transition-colors flex items-center justify-center gap-2"
+                      >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        {sellerProfile.phone}
+                      </a>
+                    ) : user?.uid === product?.sellerId ? (
+                      <button 
+                        disabled
+                        className="w-full bg-gray-100 text-gray-400 font-bold py-3 px-4 rounded-full cursor-not-allowed"
+                      >
+                        Tu anuncio
+                      </button>
+                    ) : (
+                      <button 
+                        disabled
+                        className="w-full bg-[#E5F9F6] text-[#13C1AC]/50 font-bold py-3 px-4 rounded-full cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                        Telefon ascuns
+                      </button>
+                    )}
                 </div>
 
                 {/* Seller Card */}
                 <div className="bg-white rounded-xl shadow-sm p-6">
                     <Link href={`/user/${product.seller.id}`} className="flex items-center mb-4 group cursor-pointer">
-                        <div className="mr-4 group-hover:opacity-80 transition-opacity">
-                            <Avatar src={product.seller.avatar} name={product.seller.name} size="lg" />
+                        <div className="mr-4 group-hover:opacity-90 transition-opacity relative">
+                            <div className={`h-16 w-16 rounded-full overflow-hidden ring-4 ring-[#13C1AC]/30 ${product.seller.avatar ? '' : 'bg-gradient-to-br from-[#13C1AC] to-emerald-500 flex items-center justify-center'}`}>
+                              {product.seller.avatar ? (
+                                <img src={product.seller.avatar} alt={formatPublicName(product.seller.name)} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-2xl font-bold text-white">{(product.seller.name || 'U')[0].toUpperCase()}</span>
+                              )}
+                            </div>
+                            {/* Online indicator */}
+                            <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                            {/* VIP Badge - shown when product is promoted */}
+                            {product.promoted && product.promotionEnd && (
+                              <div className="absolute -top-1 -right-1 bg-gradient-to-r from-[#13C1AC] to-emerald-500 rounded-full p-1 shadow-lg border-2 border-white">
+                                <Crown className="w-3 h-3 text-white" />
+                              </div>
+                            )}
                         </div>
                         <div>
-                            <h3 className="font-bold text-gray-900 text-lg group-hover:text-[#13C1AC] transition-colors">{product.seller.name}</h3>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-gray-900 text-lg group-hover:text-[#13C1AC] transition-colors">{formatPublicName(product.seller.name)}</h3>
+                              {/* VIP Text Badge */}
+                              {product.promoted && product.promotionEnd && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-[#13C1AC] to-emerald-500 text-white text-[10px] font-bold rounded-full">
+                                  <Crown className="w-2.5 h-2.5" />
+                                  Promovat
+                                </span>
+                              )}
+                            </div>
                             <div className="flex items-center text-sm">
                                 <div className="flex text-yellow-400 mr-1">
                                     {[...Array(5)].map((_, i) => (
@@ -919,7 +1317,7 @@ export default function ProductPage() {
                                          </svg>
                                     ))}
                                 </div>
-                                <span className="text-gray-500">({product.seller.reviews || 0} recenzii)</span>
+                                <span className="text-gray-500">({product.seller.reviews || 0})</span>
                             </div>
                         </div>
                     </Link>
@@ -934,6 +1332,11 @@ export default function ProductPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* Business Details - Only for business accounts */}
+                {sellerProfile?.accountType === 'business' && (
+                  <BusinessDetails sellerProfile={sellerProfile} />
+                )}
 
                 {/* Safety Tips */}
                 <div className="bg-white rounded-xl shadow-sm p-6">
@@ -1082,23 +1485,207 @@ export default function ProductPage() {
                     <p className="text-white font-medium truncate text-lg">{product.title}</p>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-gray-400">
-                     <span>{product.seller.name}</span>
+                     <span>{formatPublicName(product.seller.name)}</span>
                      <span className="w-1 h-1 rounded-full bg-gray-600"></span>
-                     <span className="text-emerald-400 font-bold text-base">{product.price} €</span>
+                     <span className="text-emerald-400 font-bold text-base">{formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'Lei'}</span>
                   </div>
                 </div>
               </div>
 
               {/* Botón Chat */}
               <button
-                onClick={() => {
+                onClick={async () => {
                    setLightboxOpen(false);
-                   // Aquí iría la lógica para escrolear al chat o abrirlo
+                   if (!user) {
+                       router.push('/login');
+                       return;
+                   }
+                   if (user.uid === product?.seller?.id) return;
+                   
+                   try {
+                       setCheckingConversation(true);
+                       const existingConvId = await findExistingConversation(
+                           user.uid,
+                           product.sellerId || product.seller.id,
+                           product.id
+                       );
+                       if (existingConvId) {
+                           router.push(`/messages?conversation=${existingConvId}`);
+                       } else {
+                           setShowChatModal(true);
+                       }
+                   } catch (error) {
+                       console.error('Error checking conversation:', error);
+                       setShowChatModal(true);
+                   } finally {
+                       setCheckingConversation(false);
+                   }
                 }}
-                className="px-6 py-2.5 bg-[#13C1AC] hover:bg-[#0fa895] text-white font-semibold rounded-full transition-colors flex-shrink-0 shadow-lg shadow-teal-900/20"
+                disabled={user?.uid === product?.seller?.id || checkingConversation}
+                className={`px-6 py-2.5 font-semibold rounded-full transition-colors flex-shrink-0 shadow-lg shadow-teal-900/20 flex items-center gap-2 ${
+                    user?.uid === product?.seller?.id 
+                        ? 'bg-gray-600 text-gray-400 cursor-not-allowed' 
+                        : 'bg-[#13C1AC] hover:bg-[#0fa895] text-white'
+                }`}
               >
-                Chat
+                {checkingConversation ? (
+                    <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        <span>Se verifică...</span>
+                    </>
+                ) : (
+                    <>
+                        <MessageCircle className="w-4 h-4" />
+                        <span>{user?.uid === product?.seller?.id ? 'Anunțul tău' : 'Chat'}</span>
+                    </>
+                )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Modal */}
+      {showChatModal && product && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowChatModal(false)}>
+          <div 
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fadeInUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#13C1AC] to-emerald-400 px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-lg">
+                    <MessageCircle className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-lg font-bold text-white">Trimite mesaj</h3>
+                </div>
+                <button 
+                  onClick={() => setShowChatModal(false)}
+                  className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </button>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div className="p-6">
+              {/* Product preview */}
+              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl mb-5">
+                {(product.images?.[0] || product.image) && (
+                  <div className="w-14 h-14 rounded-lg overflow-hidden bg-gray-200 flex-shrink-0">
+                    <img src={product.images?.[0] || product.image} alt="" className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{product.title}</p>
+                  <p className="text-sm font-bold text-[#13C1AC]">
+                    {formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'lei'}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Quick messages */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                {quickMessages.map((msg) => (
+                  <button
+                    key={msg}
+                    onClick={() => setChatMessage(msg)}
+                    className={`px-3 py-1.5 text-sm border rounded-full transition-colors ${
+                      chatMessage === msg 
+                        ? 'border-[#13C1AC] bg-[#13C1AC]/10 text-[#13C1AC]' 
+                        : 'border-gray-200 hover:border-[#13C1AC] hover:text-[#13C1AC]'
+                    }`}
+                  >
+                    {msg}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Message input */}
+              <div className="mb-5">
+                <div className="relative">
+                  <textarea
+                    value={chatMessage}
+                    onChange={(e) => setChatMessage(e.target.value)}
+                    placeholder="Scrie mesajul tău aici..."
+                    rows={3}
+                    className="w-full px-4 py-3 border-2 border-[#13C1AC]/30 rounded-xl text-sm focus:outline-none focus:border-[#13C1AC] resize-none"
+                  />
+                  <div className="absolute bottom-3 left-3">
+                    <div className="w-6 h-6 bg-[#13C1AC] rounded-md flex items-center justify-center">
+                      <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowChatModal(false);
+                    setChatMessage('');
+                  }}
+                  className="flex-1 px-4 py-3 border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  Anulează
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!user || !product || !chatMessage.trim()) return;
+                    
+                    setSendingMessage(true);
+                    try {
+                      const conversationId = await getOrCreateConversation(
+                        user.uid,
+                        product.sellerId || product.seller.id,
+                        {
+                          [user.uid]: user.displayName || 'Usuario',
+                          [product.sellerId || product.seller.id]: product.seller.name
+                        },
+                        {
+                          [user.uid]: user.photoURL || '',
+                          [product.sellerId || product.seller.id]: product.seller.avatar || ''
+                        },
+                        {
+                          productId: product.id,
+                          productTitle: product.title,
+                          productImage: product.images?.[0] || product.image || ''
+                        }
+                      );
+                      
+                      // Send the message directly
+                      await sendMessage(conversationId, user.uid, chatMessage.trim());
+                      
+                      // Redirect to conversation
+                      router.push(`/messages?conversation=${conversationId}`);
+                    } catch (error) {
+                      console.error('Error sending message:', error);
+                    } finally {
+                      setSendingMessage(false);
+                    }
+                  }}
+                  disabled={sendingMessage || !chatMessage.trim()}
+                  className="flex-1 px-4 py-3 bg-[#13C1AC] text-white font-bold rounded-xl hover:bg-[#10a593] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {sendingMessage ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>Se trimite...</span>
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle className="w-4 h-4" />
+                      <span>Trimite</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

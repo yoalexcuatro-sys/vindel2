@@ -14,7 +14,7 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Product, PromotionType } from './products-service';
+import { Product, PromotionType, getProduct } from './products-service';
 import { 
   hasValidCachedData,
   invalidateCache,
@@ -114,23 +114,20 @@ async function fetchHomeProductsFromFirebase(): Promise<Product[]> {
     collection(db, 'products'),
     where('sold', '==', false),
     orderBy('publishedAt', 'desc'),
-    limit(100)
+    limit(200)
   );
   const snapshot = await getDocs(q);
   const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
   
   // Filtrar solo aprobados o auto-aprobados y ordenar con promocionados primero
   const approvedProducts = products.filter(isProductApproved);
-  return sortProductsWithPromotedFirst(approvedProducts).slice(0, 50);
+  return sortProductsWithPromotedFirst(approvedProducts).slice(0, 150);
 }
 
-// Fetcher para un producto individual - el caché lo maneja SWR
+// Fetcher para un producto individual - soporta IDs cortos de 8 caracteres
 async function fetchProduct(id: string): Promise<Product | null> {
-  const docRef = doc(db, 'products', id);
-  const snapshot = await getDoc(docRef);
-  if (!snapshot.exists()) return null;
-  
-  return { id: snapshot.id, ...snapshot.data() } as Product;
+  // Usar getProduct que soporta tanto IDs completos como IDs cortos (8 chars)
+  return await getProduct(id);
 }
 
 // Fetcher para productos de un usuario
@@ -145,15 +142,47 @@ async function fetchUserProducts(userId: string): Promise<Product[]> {
 }
 
 // Tipo para perfil de usuario público
-interface UserProfile {
+export interface UserProfile {
   id: string;
   displayName?: string;
   photoURL?: string;
   email?: string;
+  phone?: string;
   location?: string;
-  rating?: number;
+  rating?: number | { average?: number; count?: number };
   reviewsCount?: number;
   createdAt?: any;
+  // Account type
+  accountType?: 'personal' | 'business';
+  // Business fields
+  businessName?: string;
+  cui?: string;
+  nrRegistruComert?: string;
+  adresaSediu?: string;
+  oras?: string;
+  judet?: string;
+  codPostal?: string;
+  tara?: string;
+  reprezentantLegal?: string;
+  telefonFirma?: string;
+  emailFirma?: string;
+  website?: string;
+  // Privacy settings
+  settings?: {
+    profileVisible?: boolean;   // Default: true
+    showPhone?: boolean;        // Default: true
+    showOnline?: boolean;       // Default: true
+  };
+  // Follow stats
+  stats?: {
+    followers?: number;
+    following?: number;
+    selling?: number;
+    sold?: number;
+    sales?: number;
+    purchases?: number;
+    shipments?: number;
+  };
 }
 
 // Fetcher para perfil de usuario
@@ -328,6 +357,15 @@ export async function invalidateProductCache(productId: string) {
 }
 
 /**
+ * Invalidar caché de perfil de usuario
+ * Usar después de actualizar la configuración del perfil
+ */
+export async function invalidateUserProfileCache(userId: string) {
+  invalidateCache(`user-profile-${userId}`);
+  await mutate(`user-profile-${userId}`);
+}
+
+/**
  * Invalidar todos los caches (logout, cambios mayores)
  */
 export function clearCache() {
@@ -358,6 +396,7 @@ interface AdminUser {
   phone?: string;
   location?: string;
   companyName?: string;
+  promotionEnabled?: boolean;
 }
 
 interface AdminStats {
@@ -651,4 +690,48 @@ export async function invalidateFavoritesCache(userId: string) {
   invalidateCache(`favorite-products-${userId}`);
   await mutate(`favorites-${userId}`);
   await mutate(`favorite-products-${userId}`);
+}
+
+// ============================================
+// FOLLOWERS HOOKS
+// ============================================
+
+import { isFollowing, canViewProfile } from './followers-service';
+
+/**
+ * Hook para verificar si el usuario actual sigue a otro usuario
+ */
+export function useIsFollowing(followerId: string | null, followedId: string | null) {
+  return useSWR<boolean>(
+    followerId && followedId ? `following-${followerId}-${followedId}` : null,
+    () => followerId && followedId ? isFollowing(followerId, followedId) : false,
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 30000,
+    }
+  );
+}
+
+/**
+ * Hook para verificar si el usuario actual puede ver un perfil
+ */
+export function useCanViewProfile(viewerId: string | null, profileOwnerId: string | null) {
+  return useSWR<{ canView: boolean; reason: 'public' | 'owner' | 'follower' | 'private' }>(
+    profileOwnerId ? `can-view-profile-${viewerId || 'anon'}-${profileOwnerId}` : null,
+    () => profileOwnerId ? canViewProfile(viewerId, profileOwnerId) : { canView: false, reason: 'private' as const },
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 30000,
+    }
+  );
+}
+
+/**
+ * Invalidar caché de seguimiento
+ */
+export async function invalidateFollowingCache(followerId: string, followedId: string) {
+  invalidateCache(`following-${followerId}-${followedId}`);
+  invalidateCache(`can-view-profile-${followerId}-${followedId}`);
+  await mutate(`following-${followerId}-${followedId}`);
+  await mutate(`can-view-profile-${followerId}-${followedId}`);
 }

@@ -44,6 +44,32 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [canEdit, setCanEdit] = useState(true);
+  const [timeUntilEdit, setTimeUntilEdit] = useState('');
+
+  // Helper: calcular tiempo restante hasta poder editar
+  const calculateTimeUntilEdit = (lastEditedAt: any): { canEdit: boolean; timeLeft: string } => {
+    if (!lastEditedAt) return { canEdit: true, timeLeft: '' };
+    
+    const lastEdit = lastEditedAt.seconds ? new Date(lastEditedAt.seconds * 1000) : new Date(lastEditedAt);
+    const now = new Date();
+    const hoursSinceEdit = (now.getTime() - lastEdit.getTime()) / (1000 * 60 * 60);
+    
+    if (hoursSinceEdit >= 24) {
+      return { canEdit: true, timeLeft: '' };
+    }
+    
+    const hoursLeft = Math.ceil(24 - hoursSinceEdit);
+    const minutesLeft = Math.ceil((24 - hoursSinceEdit) * 60) % 60;
+    
+    if (hoursLeft > 1) {
+      return { canEdit: false, timeLeft: `${hoursLeft} ore` };
+    } else if (hoursLeft === 1) {
+      return { canEdit: false, timeLeft: `1 oră și ${minutesLeft} minute` };
+    } else {
+      return { canEdit: false, timeLeft: `${minutesLeft} minute` };
+    }
+  };
 
   // Cargar producto
   useEffect(() => {
@@ -56,6 +82,11 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
           setError('Anunțul nu a fost găsit');
           return;
         }
+        
+        // Verificar restricción de 24 horas
+        const editCheck = calculateTimeUntilEdit(product.lastEditedAt);
+        setCanEdit(editCheck.canEdit);
+        setTimeUntilEdit(editCheck.timeLeft);
         
         setOriginalProduct(product);
         setTitulo(product.title || '');
@@ -169,6 +200,7 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
         await updateDoc(docRef, {
           ...updateData,
           updatedAt: Timestamp.now(),
+          lastEditedAt: Timestamp.now(),
           pendingUntil: Timestamp.fromDate(pendingUntil),
           rejectionReason: deleteField() // Eliminar el campo completamente
         });
@@ -217,6 +249,32 @@ export default function EditProductPage({ params }: { params: Promise<{ id: stri
             className="mt-4 px-6 py-2 bg-gray-100 text-gray-700 rounded-full hover:bg-gray-200 transition-colors"
           >
             Înapoi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Cannot edit yet (24h restriction)
+  if (!canEdit && timeUntilEdit) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl p-10 text-center border border-gray-200 shadow-xl max-w-md">
+          <div className="w-24 h-24 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-12 h-12 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-3">Nu poți edita încă</h2>
+          <p className="text-gray-500 mb-2">Poți edita un anunț o dată la 24 de ore.</p>
+          <p className="text-amber-600 font-semibold text-lg">
+            Timp rămas: {timeUntilEdit}
+          </p>
+          <button 
+            onClick={() => router.back()}
+            className="mt-6 px-6 py-2.5 bg-[#13C1AC] text-white rounded-full hover:bg-[#0da896] transition-colors font-medium"
+          >
+            Înapoi la anunțuri
           </button>
         </div>
       </div>

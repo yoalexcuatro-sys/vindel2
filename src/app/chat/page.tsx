@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Search, Send, MoreVertical, Phone, Video, ArrowLeft, MessageCircle, Check, CheckCheck } from 'lucide-react';
 import Link from 'next/link';
 import { createProductLink } from '@/lib/slugs';
+import { formatPublicName } from '@/lib/messages';
 
 interface Message {
   id: string;
@@ -143,7 +144,7 @@ export default function ChatPage() {
                     <div className="relative">
                       <img
                         src={conv.participantAvatar}
-                        alt={conv.participantName}
+                        alt={formatPublicName(conv.participantName)}
                         className="w-12 h-12 rounded-full object-cover"
                       />
                       {conv.unreadCount > 0 && (
@@ -154,7 +155,7 @@ export default function ChatPage() {
                     </div>
                     <div className="flex-1 text-left min-w-0">
                       <div className="flex justify-between items-start">
-                        <h3 className="font-semibold text-gray-900 truncate">{conv.participantName}</h3>
+                        <h3 className="font-semibold text-gray-900 truncate">{formatPublicName(conv.participantName)}</h3>
                         <span className="text-xs text-gray-400 shrink-0 ml-2">{conv.lastMessageTime}</span>
                       </div>
                       {conv.productTitle && (
@@ -184,11 +185,11 @@ export default function ChatPage() {
                   </button>
                   <img
                     src={selectedConversation.participantAvatar}
-                    alt={selectedConversation.participantName}
+                    alt={formatPublicName(selectedConversation.participantName)}
                     className="w-10 h-10 rounded-full object-cover"
                   />
                   <div className="flex-1">
-                    <h2 className="font-semibold text-gray-900">{selectedConversation.participantName}</h2>
+                    <h2 className="font-semibold text-gray-900">{formatPublicName(selectedConversation.participantName)}</h2>
                     <p className="text-xs text-gray-500">Activ acum</p>
                   </div>
                   <button className="p-2 hover:bg-gray-100 rounded-full">
@@ -209,7 +210,7 @@ export default function ChatPage() {
                     />
                     <div>
                       <p className="font-medium text-gray-900 text-sm">{selectedConversation.productTitle}</p>
-                      <p className="text-[#13C1AC] font-bold">{selectedConversation.productPrice?.toLocaleString()} Lei</p>
+                      <p className="text-[#13C1AC] font-bold">{selectedConversation.productPrice?.toLocaleString('ro-RO')} Lei</p>
                     </div>
                   </Link>
                 )}

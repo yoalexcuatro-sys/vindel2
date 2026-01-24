@@ -149,6 +149,11 @@ const isNewProduct = (publishedAt?: string | Timestamp): boolean => {
   return diffHours < 24;
 };
 
+// Helper para formatear precios con separador de miles (12900 -> 12.900)
+const formatPrice = (price: number): string => {
+  return price.toLocaleString('ro-RO');
+};
+
 // Cache global del tema para evitar leer localStorage en cada card
 let cachedTheme: number | null = null;
 const getTheme = () => {
@@ -160,7 +165,7 @@ const getTheme = () => {
   return cachedTheme ?? 1;
 };
 
-function ProductCardComponent({ product, priority = false }: { product: Product; priority?: boolean }) {
+function ProductCardComponent({ product, priority = false, showConditionInPrice = false }: { product: Product; priority?: boolean; showConditionInPrice?: boolean }) {
   const router = useRouter();
   const { user } = useAuth();
   const { data: favoriteIds, mutate: mutateFavorites } = useUserFavorites(user?.uid || null);
@@ -265,19 +270,18 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
             </div>
         )}
 
-        {/* Badge de promoción - top right */}
+        {/* Badge de promoción - top right - visible on hover */}
         {getPromotionBadgeInfo(product) && (
-          <div className={`absolute top-2 right-2 px-2 py-1 text-[10px] font-bold rounded-md flex items-center gap-1 pointer-events-none z-20 ${getPromotionBadgeInfo(product)?.color}`}>
+          <div className={`absolute top-2 right-2 p-1.5 rounded-lg flex items-center justify-center pointer-events-none z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${getPromotionBadgeInfo(product)?.color}`}>
             {(() => {
               const Icon = getPromotionBadgeInfo(product)?.icon;
-              return Icon ? <Icon className="w-3 h-3" /> : null;
+              return Icon ? <Icon className="w-4 h-4" /> : null;
             })()}
-            {getPromotionBadgeInfo(product)?.label}
           </div>
         )}
 
-        {/* Badge de condición */}
-        {!product.reserved && getConditionInfo(product.condition) && (
+        {/* Badge de condición - ocultar si showConditionInPrice está activo */}
+        {!showConditionInPrice && !product.reserved && getConditionInfo(product.condition) && (
           <div className={`absolute top-2 left-2 px-2 py-1 text-[10px] font-semibold rounded-md flex items-center gap-1 pointer-events-none z-10 ${getConditionInfo(product.condition)?.color}`}>
             {(() => {
               const Icon = getConditionInfo(product.condition)?.icon;
@@ -309,8 +313,7 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
                     <div className="text-[11px] text-slate-500 mt-1 truncate opacity-75">Electronics › Generic</div>
                  </div>
                  <div className="mt-2">
-                    <span className="block text-base font-bold text-slate-900">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</span>
-                    <span className="text-[10px] text-green-700 bg-green-50 px-2 py-0.5 rounded-full font-medium inline-block mt-1">Verificat</span>
+                    <span className="block text-base font-bold text-slate-900">{formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'Lei'}</span>
                  </div>
               </div>
            </div>
@@ -340,9 +343,9 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
             <div className="px-1 flex-1 flex flex-col">
                  <div className="flex justify-between items-start">
                      <h4 className="font-medium text-gray-900 text-lg leading-tight line-clamp-1 group-hover:text-teal-600">{product.title}</h4>
-                     <p className="font-bold text-gray-900 text-base whitespace-nowrap ml-2">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</p>
+                     <p className="font-bold text-gray-900 text-base whitespace-nowrap ml-2">{formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'Lei'}</p>
                  </div>
-                 <p className="text-sm text-gray-500 mt-1">Stare bună • Verificat</p>
+                 <p className="text-sm text-gray-500 mt-1">Stare bună</p>
             </div>
          </div>
        </Link>
@@ -356,7 +359,7 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
         <Link href={createProductLink(product)} className="block h-full"> 
           <div className="group bg-transparent h-full flex flex-col cursor-pointer">
             <div className="relative mb-2">
-                <div className="aspect-[4/5] rounded-xl overflow-hidden relative ring-1 ring-black/5">
+                <div className="aspect-[4/5] rounded-xl overflow-hidden relative ring-1 ring-black/5 group-hover:ring-2 group-hover:ring-[#13C1AC]/40 transition-all duration-300">
                     {/* Imagen única sin carrusel */}
                     <Image
                       src={mainImage}
@@ -368,14 +371,13 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
                       priority={priority}
                       quality={50}
                     />
-                    {/* Badge de promoción */}
+                    {/* Badge de promoción - visible on hover */}
                     {getPromotionBadgeInfo(product) && (
-                      <div className={`absolute top-2 right-2 px-2 py-1 text-[10px] font-bold rounded-md flex items-center gap-1 pointer-events-none z-20 ${getPromotionBadgeInfo(product)?.color}`}>
+                      <div className={`absolute top-2 right-2 p-1.5 rounded-lg flex items-center justify-center pointer-events-none z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${getPromotionBadgeInfo(product)?.color}`}>
                         {(() => {
                           const Icon = getPromotionBadgeInfo(product)?.icon;
-                          return Icon ? <Icon className="w-3 h-3" /> : null;
+                          return Icon ? <Icon className="w-4 h-4" /> : null;
                         })()}
-                        {getPromotionBadgeInfo(product)?.label}
                       </div>
                     )}
                 </div>
@@ -383,7 +385,14 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
             
             <div className="px-1 flex flex-col">
                 <div className="flex justify-between items-start mb-0.5">
-                   <h4 className="text-base font-bold text-gray-900">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
+                   <div className="flex items-center gap-2">
+                     <h4 className="text-base font-bold text-gray-900">{formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
+                     {showConditionInPrice && getConditionInfo(product.condition) && (
+                       <span className={`px-1.5 py-0.5 text-[9px] font-semibold rounded ${getConditionInfo(product.condition)?.color}`}>
+                         {getConditionInfo(product.condition)?.label}
+                       </span>
+                     )}
+                   </div>
                    <button onClick={handleFavoriteClick} disabled={isFavoriteLoading} className={`p-1 -mr-1 rounded-full hover:bg-gray-100 transition-colors ${isFavorited ? 'text-red-500' : 'text-gray-900'}`}>
                      <Heart className={`w-5 h-5 stroke-[1.5] ${isFavorited ? 'fill-current' : ''}`} />
                    </button>
@@ -447,7 +456,7 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
             <div className="p-4 flex flex-col flex-1">
                 <div className="flex justify-between items-start">
                    <div>
-                     <h4 className="text-base font-bold text-gray-900 mb-1">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
+                     <h4 className="text-base font-bold text-gray-900 mb-1">{formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
                    </div>
                    <button onClick={handleFavoriteClick} disabled={isFavoriteLoading} className={`transition-colors ${isFavorited ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}>
                      <Heart className={`w-6 h-6 stroke-2 ${isFavorited ? 'fill-current' : ''}`} />
@@ -498,36 +507,35 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
                   alt={product.title}
                   fill
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                  className="object-cover"
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
                   quality={75}
                 />
-                {/* Condition badge */}
-                {conditionData && (
-                  <span className={`absolute top-2 left-2 px-2 py-1 text-xs font-semibold rounded-md flex items-center gap-1 shadow-sm ${conditionData.color}`}>
-                    {CondIcon && <CondIcon className="w-3.5 h-3.5" />}
-                    {conditionData.label}
-                  </span>
-                )}
-                {/* Badge de promoción */}
+                {/* Badge de promoción - visible on hover */}
                 {getPromotionBadgeInfo(product) && (
-                  <div className={`absolute top-2 right-2 px-2 py-1 text-[10px] font-bold rounded-md flex items-center gap-1 pointer-events-none z-20 ${getPromotionBadgeInfo(product)?.color}`}>
+                  <div className={`absolute top-2 right-2 p-1.5 rounded-lg flex items-center justify-center pointer-events-none z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${getPromotionBadgeInfo(product)?.color}`}>
                     {(() => {
                       const Icon = getPromotionBadgeInfo(product)?.icon;
-                      return Icon ? <Icon className="w-3 h-3" /> : null;
+                      return Icon ? <Icon className="w-4 h-4" /> : null;
                     })()}
-                    {getPromotionBadgeInfo(product)?.label}
                   </div>
                 )}
              </div>
           </div>
           
           <div className="p-4 flex flex-col flex-1">
-             <h4 className="font-bold text-gray-900 text-base mb-1 line-clamp-1 group-hover:text-teal-600 transition-colors">{product.title}</h4>
+             <h4 className="font-medium text-gray-800 text-sm mb-1 line-clamp-1 group-hover:text-teal-600 transition-colors tracking-tight">{product.title}</h4>
              <p className="text-xs text-slate-500 mb-4">Postat de {product.seller?.name || 'Utilizator'}</p>
              
              <div className="flex items-center justify-between mt-auto">
-                <span className="font-bold text-[#13C1AC] text-base">{product.price} {product.currency === 'EUR' ? '€' : 'Lei'}</span>
-                <span className="bg-[#0f172a] text-white text-[11px] font-medium px-4 py-2 rounded-lg group-hover:bg-slate-800 transition-colors shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-[#13C1AC] text-base">{formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'Lei'}</span>
+                  {showConditionInPrice && conditionData && (
+                    <span className={`px-1.5 py-0.5 text-[9px] font-semibold rounded ${conditionData.color}`}>
+                      {conditionData.label}
+                    </span>
+                  )}
+                </div>
+                <span className="bg-gray-100 text-gray-600 text-[11px] font-medium px-4 py-2 rounded-lg group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
                     Vezi Detalii
                 </span>
              </div>
@@ -544,10 +552,6 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
         <div className="group bg-white rounded-xl overflow-hidden border-2 border-gray-100 hover:border-[#13C1AC] hover:shadow-lg transition-all duration-300 cursor-pointer relative hover:-translate-y-1 h-full flex flex-col">
           <div className="relative h-56 w-full shrink-0">
             <ImageCarousel heightClass="h-full" />
-            {/* Círculo verde hover */}
-            <div className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 group-hover:bg-[#13C1AC] group-hover:text-white text-gray-400">
-              <Heart className="h-5 w-5" />
-            </div>
             {product.reserved && (
               <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/50 text-white text-xs font-semibold rounded-md backdrop-blur-sm">
                 Reservat
@@ -556,7 +560,12 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
           </div>
           <div className="p-4 flex flex-col flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <p className="text-base font-bold text-[#13C1AC]">{product.price.toLocaleString()} <span className="text-xs font-medium text-gray-500">{product.currency === 'EUR' ? '€' : 'Lei'}</span></p>
+              <p className="text-base font-bold text-[#13C1AC]">{formatPrice(product.price)} <span className="text-xs font-medium text-gray-500">{product.currency === 'EUR' ? '€' : 'Lei'}</span></p>
+              {showConditionInPrice && getConditionInfo(product.condition) && (
+                <span className={`px-1.5 py-0.5 text-[9px] font-semibold rounded ${getConditionInfo(product.condition)?.color}`}>
+                  {getConditionInfo(product.condition)?.label}
+                </span>
+              )}
               {product.negotiable && (
                 <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-violet-500 text-white flex items-center gap-1">
                   <MessageCircle className="w-3 h-3" />
@@ -584,93 +593,91 @@ function ProductCardComponent({ product, priority = false }: { product: Product;
     );
   }
 
-  // DEFAULT (THEME 1: Golden Border Style) - Sin carrusel
+  // DEFAULT (THEME 1: Vinted Style) - Similar al Theme 6
   const defaultConditionData = getConditionInfo(product.condition);
-  const DefaultCondIcon = defaultConditionData?.icon;
   
   return (
     <div className="relative h-full">
-        <Link href={createProductLink(product)} className="block h-full">
-            <div className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border-[3px] border-amber-400 relative h-full flex flex-col">
-                <div className="relative">
-                    <div className="aspect-[4/3] relative overflow-hidden">
-                        {/* Imagen única sin carrusel */}
-                        <Image
-                          src={mainImage}
-                          alt={product.title}
-                          fill
-                          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
-                          className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                          style={{ objectPosition: 'center 30%' }}
-                          priority={priority}
-                          quality={50}
-                        />
-                        
-                        {/* Condition badge */}
-                        {defaultConditionData && (
-                            <span className={`absolute top-3 left-3 px-2.5 py-1 text-xs font-semibold rounded-lg flex items-center gap-1 shadow-sm z-20 ${defaultConditionData.color}`}>
-                                {DefaultCondIcon && <DefaultCondIcon className="w-3.5 h-3.5" />}
-                                {defaultConditionData.label}
-                            </span>
-                        )}
-                        
-                        {/* Badge de promoción */}
-                        {getPromotionBadgeInfo(product) && (
-                          <div className={`absolute top-3 right-3 px-2.5 py-1 text-[10px] font-bold rounded-lg flex items-center gap-1 pointer-events-none z-20 ${getPromotionBadgeInfo(product)?.color}`}>
-                            {(() => {
-                              const Icon = getPromotionBadgeInfo(product)?.icon;
-                              return Icon ? <Icon className="w-3.5 h-3.5" /> : null;
-                            })()}
-                            {getPromotionBadgeInfo(product)?.label}
-                          </div>
-                        )}
-                        
-                        {/* Badge Reservat */}
-                        {product.reserved && (
-                            <div className="absolute bottom-3 left-3 px-3 py-1.5 bg-black/70 text-white text-xs font-semibold rounded-lg backdrop-blur-sm z-20">
-                                Reservat
-                            </div>
-                        )}
+      <Link href={createProductLink(product)} className="block h-full"> 
+        <div className="group bg-transparent h-full flex flex-col cursor-pointer">
+          <div className="relative mb-2">
+              <div className="aspect-[4/5] rounded-xl overflow-hidden relative ring-1 ring-black/5 group-hover:ring-2 group-hover:ring-[#13C1AC]/40 transition-all duration-300">
+                  {/* Imagen única sin carrusel */}
+                  <Image
+                    src={mainImage}
+                    alt={product.title}
+                    fill
+                    sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
+                    className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                    style={{ objectPosition: 'center 30%' }}
+                    priority={priority}
+                    quality={50}
+                  />
+                  {/* Badge de promoción - visible on hover */}
+                  {getPromotionBadgeInfo(product) && (
+                    <div className={`absolute top-2 right-2 p-1.5 rounded-lg flex items-center justify-center pointer-events-none z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${getPromotionBadgeInfo(product)?.color}`}>
+                      {(() => {
+                        const Icon = getPromotionBadgeInfo(product)?.icon;
+                        return Icon ? <Icon className="w-4 h-4" /> : null;
+                      })()}
                     </div>
-                </div>
-                
-                <div className="p-4 flex flex-col flex-1">
-                    {/* Precio */}
-                    <h4 className="text-xl font-bold text-[#13C1AC] mb-1">
-                        {product.price.toLocaleString()} <span className="text-sm font-medium text-gray-500">{product.currency === 'EUR' ? '€' : 'Lei'}</span>
-                    </h4>
-                    
-                    {/* Título */}
-                    <h3 className="text-gray-700 text-sm leading-snug line-clamp-2 group-hover:text-[#13C1AC] transition-colors">
-                        {product.title}
-                    </h3>
-                    
-                    {/* Ubicación y tiempo */}
-                    <div className="mt-auto pt-3 flex items-center justify-between text-xs text-gray-400">
-                        <span className="flex items-center gap-1">
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                            {product.location}
-                        </span>
-                        <span className="flex items-center gap-1">
-                            <Clock className="w-3.5 h-3.5" />
-                            {getRelativeTime(product.publishedAt)}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </Link>
-        
-        {/* Botón de favoritos FUERA del Link */}
-        <button 
-          className={`absolute top-3 right-3 z-30 w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all ${isFavorited ? 'bg-red-500 text-white' : 'bg-white/90 text-gray-600 hover:bg-red-500 hover:text-white'} ${isFavoriteLoading ? 'opacity-50' : ''}`}
-          onClick={handleFavoriteClick}
-          disabled={isFavoriteLoading}
-        >
-            <Heart className={`w-4 h-4 ${isFavorited ? 'fill-current' : ''}`} />
-        </button>
+                  )}
+                  {/* Badge Reservat */}
+                  {product.reserved && (
+                      <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-[10px] font-medium rounded-md backdrop-blur-sm z-20">
+                          Reservat
+                      </div>
+                  )}
+              </div>
+          </div>
+          
+          <div className="px-1 flex flex-col">
+              <div className="flex justify-between items-start mb-0.5">
+                 <h4 className="text-base font-bold text-gray-900">{formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
+                 <button onClick={handleFavoriteClick} disabled={isFavoriteLoading} className={`p-1 -mr-1 rounded-full hover:bg-gray-100 transition-colors ${isFavorited ? 'text-red-500' : 'text-gray-400'}`}>
+                   <Heart className={`w-5 h-5 stroke-[1.5] ${isFavorited ? 'fill-current' : ''}`} />
+                 </button>
+              </div>
+              
+              <h3 className="text-slate-500 text-sm leading-tight mb-2 truncate font-normal">
+                {product.title}
+              </h3>
+              
+              {/* Ubicación y tiempo */}
+              <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+                <span className="flex items-center gap-1 truncate">
+                  <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  <span className="truncate">{product.location}</span>
+                </span>
+                <span className="flex items-center gap-1 shrink-0">
+                  <Clock className="w-3 h-3" />
+                  {getRelativeTime(product.publishedAt)}
+                </span>
+              </div>
+              
+              {/* Tipo de entrega */}
+              <div className={`flex items-center gap-1.5 text-xs ${
+                product.deliveryType === 'shipping' || product.deliveryType === 'both' 
+                  ? 'text-purple-500' 
+                  : 'text-slate-400'
+              }`}>
+                   {product.deliveryType === 'shipping' || product.deliveryType === 'both' ? (
+                     <Truck className="w-3.5 h-3.5" />
+                   ) : (
+                     <Users className="w-3.5 h-3.5" />
+                   )}
+                  <span className="truncate">
+                    {product.deliveryType === 'shipping' ? 'Livrare disponibilă' : 
+                     product.deliveryType === 'both' ? 'Ambele opțiuni' : 
+                     'Predare personală'}
+                  </span>
+              </div>
+          </div>
+        </div>
+      </Link>
     </div>
   );
 }

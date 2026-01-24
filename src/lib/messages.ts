@@ -1,5 +1,13 @@
 // Sistema de mensajería basado en localStorage
 
+// Helper para formatear nombre público (Alexandru Bugeag -> Alexandru B.)
+export function formatPublicName(name: string): string {
+  if (!name) return 'Utilizator';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1].charAt(0).toUpperCase()}.`;
+}
+
 export interface Message {
   id: string;
   conversationId: string;

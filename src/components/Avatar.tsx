@@ -9,6 +9,8 @@ interface AvatarProps {
   className?: string;
   showOnlineStatus?: boolean;
   isOnline?: boolean;
+  showBorder?: boolean;
+  borderColor?: 'teal' | 'blue' | 'gray';
 }
 
 const sizeClasses = {
@@ -68,7 +70,9 @@ export default function Avatar({
   size = 'md', 
   className = '',
   showOnlineStatus = false,
-  isOnline = false
+  isOnline = false,
+  showBorder = false,
+  borderColor = 'teal'
 }: AvatarProps) {
   const [imageError, setImageError] = useState(false);
   
@@ -78,10 +82,25 @@ export default function Avatar({
   const initials = getInitials(name);
   const colorClass = getColorFromName(name);
   
+  const borderColors = {
+    teal: 'ring-[#13C1AC]/30',
+    blue: 'ring-blue-400/40',
+    gray: 'ring-gray-200'
+  };
+  
+  const borderSizes = {
+    xs: 'ring-2',
+    sm: 'ring-2',
+    md: 'ring-[3px]',
+    lg: 'ring-[4px]',
+    xl: 'ring-[5px]',
+    '2xl': 'ring-[6px]'
+  };
+  
   return (
     <div className={`relative flex-shrink-0 ${className}`}>
       {showImage ? (
-        <div className={`${sizeClasses[size]} rounded-full overflow-hidden ring-2 ring-white shadow-md`}>
+        <div className={`${sizeClasses[size]} rounded-full overflow-hidden ${showBorder ? `${borderSizes[size]} ${borderColors[borderColor]}` : 'ring-2 ring-white'} shadow-md`}>
           <img 
             src={validSrc} 
             alt={name} 
@@ -92,7 +111,7 @@ export default function Avatar({
           />
         </div>
       ) : (
-        <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br ${colorClass} flex items-center justify-center text-white font-bold shadow-md ring-2 ring-white`}>
+        <div className={`${sizeClasses[size]} rounded-full bg-gradient-to-br ${colorClass} flex items-center justify-center text-white font-bold shadow-md ${showBorder ? `${borderSizes[size]} ${borderColors[borderColor]}` : 'ring-2 ring-white'}`}>
           {initials}
         </div>
       )}

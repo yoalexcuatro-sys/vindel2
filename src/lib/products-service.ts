@@ -21,6 +21,7 @@ import {
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from './firebase';
+import { createNotification } from './notifications-service';
 
 // Tipos de promoción disponibles
 export type PromotionType = 'zilnic' | 'saptamanal' | 'lunar';
@@ -64,6 +65,7 @@ export interface Product {
   };
   publishedAt: Timestamp;
   updatedAt: Timestamp;
+  lastEditedAt?: Timestamp; // Track when user last edited (24h restriction)
 }
 
 // ProductInput omite campos que se generan automáticamente
@@ -136,6 +138,16 @@ export async function createProduct(productData: ProductInput): Promise<string> 
     publishedAt: now,
     updatedAt: now,
   });
+  
+  // Notificar a los seguidores del vendedor (en background, no bloqueante)
+  notifyFollowersOfNewProduct(
+    productData.sellerId,
+    docRef.id,
+    productData.title,
+    productData.images?.[0] || productData.image,
+    productData.seller?.name || 'Un vendedor'
+  ).catch(err => console.error('Error notifying followers:', err));
+  
   return docRef.id;
 }
 
@@ -177,6 +189,7 @@ export async function updateProduct(productId: string, data: Partial<Product>): 
   await updateDoc(docRef, {
     ...data,
     updatedAt: Timestamp.now(),
+    lastEditedAt: Timestamp.now(),
   });
 }
 
@@ -488,5 +501,54 @@ export async function toggleProductReserved(productId: string): Promise<void> {
   const product = await getProduct(productId);
   if (product) {
     await updateProduct(productId, { reserved: !product.reserved });
+  }
+}
+/**
+ * Notificar a todos los seguidores de un vendedor cuando publica un nuevo producto
+ * Esta función se ejecuta en background sin bloquear la creación del producto
+ */
+async function notifyFollowersOfNewProduct(
+  sellerId: string,
+  productId: string,
+  productTitle: string,
+  productImage: string | undefined,
+  sellerName: string
+): Promise<void> {
+  try {
+    // Obtener todos los seguidores del vendedor
+    const followersQuery = query(
+      collection(db, 'followers'),
+      where('followedId', '==', sellerId)
+    );
+    
+    const snapshot = await getDocs(followersQuery);
+    
+    if (snapshot.empty) return;
+    
+    // Crear notificación para cada seguidor (máximo 100 para evitar sobrecarga)
+    const followers = snapshot.docs.slice(0, 100);
+    
+    const notificationPromises = followers.map(followerDoc => {
+      const followerId = followerDoc.data().followerId;
+      
+      return createNotification({
+        userId: followerId,
+        type: 'new_product_followed',
+        title: 'Anunț nou',
+        message: `${sellerName} a publicat un anunț nou: ${productTitle}`,
+        link: `/anunturi/_/${productId}`, // Link temporal, se actualizará con categoría real
+        metadata: {
+          productId,
+          productTitle,
+          productImage,
+          sellerId,
+          sellerName
+        }
+      });
+    });
+    
+    await Promise.allSettled(notificationPromises);
+  } catch (error) {
+    console.error('Error notifying followers of new product:', error);
   }
 }

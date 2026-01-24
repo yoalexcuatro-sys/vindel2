@@ -2,7 +2,7 @@ import { Home, Briefcase, Smartphone, Shirt, PawPrint } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="relative mt-8 text-sm overflow-hidden">
+    <footer className="relative mt-8 text-sm overflow-hidden pb-16 md:pb-0">
         {/* Wave Background */}
         <div className="absolute inset-0 z-0">
             {/* Base gradient */}
@@ -60,7 +60,7 @@ export default function Footer() {
                 
                 {/* Column 1: Brand & Desc */}
                 <div className="lg:col-span-1">
-                    <h3 className="text-2xl font-bold mb-6 text-slate-900 tracking-tight">Vindel</h3>
+                    <h3 className="text-2xl font-bold mb-6 tracking-tight"><span className="text-teal-500">Vindel</span><span className="text-slate-700">.ro</span></h3>
                     <p className="text-slate-500 mb-8 leading-relaxed">
                         Platforma lider de vânzare-cumpărare din țara ta. Conectăm milioane de oameni în mod sigur și simplu.
                     </p>
@@ -139,9 +139,9 @@ export default function Footer() {
             <div className="border-t border-slate-200/50 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center text-slate-500 text-xs">
                 <p>© 2026 Vindel. Toate drepturile rezervate.</p>
                 <div className="flex space-x-4 mt-4 md:mt-0">
-                    <a href="#" className="hover:text-[#13C1AC] transition-colors">Confidențialitate</a>
-                    <a href="#" className="hover:text-[#13C1AC] transition-colors">Termeni</a>
-                    <a href="#" className="hover:text-[#13C1AC] transition-colors">Cookies</a>
+                    <a href="/confidentialitate" className="hover:text-[#13C1AC] transition-colors">Confidențialitate</a>
+                    <a href="/termeni" className="hover:text-[#13C1AC] transition-colors">Termeni</a>
+                    <a href="/cookies" className="hover:text-[#13C1AC] transition-colors">Cookies</a>
                 </div>
             </div>
         </div>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { PlusCircle, MessageCircle, Heart, User, Menu, X, LogOut, Settings, Shield, Bell } from 'lucide-react';
+import { PlusCircle, MessageCircle, Heart, User, Menu, X, LogOut, Settings, Shield, Bell, Home, Search, Plus } from 'lucide-react';
 import { useState, Suspense, useRef, useEffect } from 'react';
 import SearchBar from './SearchBar';
 import { useAuth } from '@/lib/auth-context';
@@ -14,39 +14,64 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(() => {
-    // Cargar de caché para carga instantánea
-    if (typeof window !== 'undefined') {
-      try {
-        const cached = sessionStorage.getItem('unread-count-cache');
-        if (cached) return parseInt(cached, 10);
-      } catch {}
-    }
-    return 0;
-  });
+  const [mounted, setMounted] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [hideNavbar, setHideNavbar] = useState(false);
   const { user, userProfile, logout, loading } = useAuth();
   const userMenuRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
   const isHomePage = pathname === '/';
+  const isAdminPage = pathname?.startsWith('/admin');
+  const isProfilePage = pathname === '/profile';
+  const isSearchPage = pathname === '/search';
+  
+  // Check if current page matches a nav item
+  const isActive = (path: string) => pathname === path;
 
-  // Scroll detection for mobile search bar (only on home page)
+  // Mark as mounted after hydration
   useEffect(() => {
-    if (!isHomePage) {
-      setShowMobileSearch(false);
-      return;
-    }
+    setMounted(true);
+    // Load cached count after mount
+    try {
+      const cached = sessionStorage.getItem('unread-count-cache');
+      if (cached) setUnreadCount(parseInt(cached, 10));
+    } catch {}
+  }, []);
 
+  // Scroll detection for mobile search bar (only on home page) AND desktop navbar hide/show
+  useEffect(() => {
     let lastScrollY = window.scrollY;
-    const threshold = 150; // Show after scrolling 150px
+    const mobileSearchThreshold = 150;
+    const navbarHideThreshold = 100;
 
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
       
-      if (currentScrollY > threshold) {
-        setShowMobileSearch(true);
+      // Mobile search bar logic (only on home page)
+      if (isHomePage) {
+        if (currentScrollY > mobileSearchThreshold) {
+          setShowMobileSearch(true);
+        } else {
+          setShowMobileSearch(false);
+        }
       } else {
         setShowMobileSearch(false);
+      }
+      
+      // Desktop navbar hide/show logic
+      // Hide when scrolling DOWN (currentScrollY > lastScrollY), show when scrolling UP
+      if (currentScrollY > navbarHideThreshold) {
+        if (currentScrollY > lastScrollY) {
+          // Scrolling DOWN - hide navbar on desktop
+          setHideNavbar(true);
+        } else {
+          // Scrolling UP - show navbar on desktop
+          setHideNavbar(false);
+        }
+      } else {
+        // Near top - always show
+        setHideNavbar(false);
       }
       
       lastScrollY = currentScrollY;
@@ -105,21 +130,25 @@ export default function Navbar() {
     setIsUserMenuOpen(false);
   };
 
+  // Fixed en móvil, fixed en desktop con transición para ocultar/mostrar
+  const navbarClasses = `fixed left-0 right-0 top-0 z-50 bg-white border-b border-gray-100 shadow-sm transition-transform duration-300 ${hideNavbar ? 'md:-translate-y-full' : 'md:translate-y-0'}`;
+
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+    <>
+    <nav className={navbarClasses}>
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-14 sm:h-16">
           
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
-            <Link href="/" className="text-2xl font-medium text-[#13C1AC] tracking-tight">
+            <Link href="/" className="text-xl sm:text-2xl font-medium text-[#13C1AC] tracking-tight">
               Vindel<span className="font-light opacity-70">.ro</span>
             </Link>
           </div>
 
           {/* Mobile Search Bar - Appears on scroll */}
           <div 
-            className={`md:hidden flex-1 mx-3 transition-all duration-300 ${
+            className={`md:hidden flex-1 mx-2 sm:mx-3 transition-all duration-300 ${
               showMobileSearch 
                 ? 'opacity-100 translate-y-0' 
                 : 'opacity-0 -translate-y-2 pointer-events-none absolute'
@@ -155,7 +184,7 @@ export default function Navbar() {
               <Link href="/messages" className="group flex flex-col items-center hover:text-[#13C1AC] transition-colors relative">
                  <div className="relative">
                    <MessageCircle className="h-6 w-6 group-hover:scale-110 transition-transform" />
-                   {unreadCount > 0 && (
+                   {mounted && unreadCount > 0 && (
                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                        {unreadCount > 9 ? '9+' : unreadCount}
                      </span>
@@ -163,17 +192,17 @@ export default function Navbar() {
                  </div>
                  <span className="text-xs mt-1 font-medium">Chat</span>
               </Link>
-              <button className="group flex flex-col items-center hover:text-[#13C1AC] transition-colors">
+              <Link href="/profile?tab=favorites" className="group flex flex-col items-center hover:text-[#13C1AC] transition-colors">
                  <Heart className="h-6 w-6 group-hover:scale-110 transition-transform" />
                  <span className="text-xs mt-1 font-medium">Favorite</span>
-              </button>
+              </Link>
               
               {/* Notifications Bell - Only shown when logged in */}
               {user && (
                 <Link href="/profile?tab=notifications" className="group flex flex-col items-center hover:text-[#13C1AC] transition-colors relative">
                   <div className="relative">
                     <Bell className="h-6 w-6 group-hover:scale-110 transition-transform" />
-                    {notificationCount > 0 && (
+                    {mounted && notificationCount > 0 && (
                       <span className="absolute -top-2 -right-2 bg-orange-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
                         {notificationCount > 9 ? '9+' : notificationCount}
                       </span>
@@ -263,12 +292,34 @@ export default function Navbar() {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="flex items-center md:hidden">
+          <div className="flex items-center md:hidden gap-2">
+            {/* Chat icon in top bar for mobile */}
+            {user && (
+              <Link href="/messages" className="relative p-1.5">
+                <MessageCircle className="h-5 w-5 text-gray-500" />
+                {mounted && unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-[#13C1AC] text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </Link>
+            )}
+            {/* Notifications icon in top bar for mobile */}
+            {user && (
+              <Link href="/profile?tab=notifications" className="relative p-1.5">
+                <Bell className="h-5 w-5 text-gray-500" />
+                {mounted && notificationCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 bg-orange-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5">
+                    {notificationCount > 9 ? '9+' : notificationCount}
+                  </span>
+                )}
+              </Link>
+            )}
             <button 
-                className="p-2 rounded-md text-gray-600 hover:text-gray-900 focus:outline-none"
+                className="p-1.5 rounded-md text-gray-600 hover:text-gray-900 focus:outline-none"
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
             >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
 
@@ -277,65 +328,69 @@ export default function Navbar() {
 
       {/* Mobile Menu Overlay */}
       {isMenuOpen && (
-          <div className="md:hidden bg-white border-t border-gray-200 absolute w-full z-50 shadow-lg">
+          <div className="md:hidden bg-white border-t border-gray-100 absolute w-full z-50 shadow-lg">
               <div className="px-4 py-4 space-y-4">
-                  <Link href="/publish" className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-base font-medium rounded-full text-white bg-[#13C1AC] hover:bg-[#0da896] shadow-sm">
+                  <Link 
+                    href="/publish" 
+                    className="w-full flex items-center justify-center px-4 py-3 border border-transparent text-base font-medium rounded-full text-white bg-[#13C1AC] hover:bg-[#0da896] shadow-sm"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
                       <PlusCircle className="h-5 w-5 mr-2" />
                       Publică anunț
                   </Link>
-                  <div className="grid grid-cols-3 gap-4 border-t border-gray-100 pt-4">
-                      <Link href="/messages" className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC] relative">
-                          <div className="relative">
-                            <MessageCircle className="h-6 w-6 mb-1" />
-                            {unreadCount > 0 && (
-                              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5 text-[10px]">
-                                {unreadCount > 9 ? '9+' : unreadCount}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-xs">Chat</span>
+                  {user && (
+                    <div className="border-t border-gray-100 pt-4 space-y-1">
+                      <Link 
+                        href="/profile" 
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-50"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <User className="h-5 w-5" />
+                        <span className="text-sm font-medium">Profilul meu</span>
                       </Link>
-                      <button className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC]">
-                          <Heart className="h-6 w-6 mb-1" />
-                          <span className="text-xs">Favorite</span>
-                      </button>
-                      {user ? (
-                        <Link href="/profile?tab=notifications" className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC] relative">
-                          <div className="relative">
-                            <Bell className="h-6 w-6 mb-1" />
-                            {notificationCount > 0 && (
-                              <span className="absolute -top-1 -right-1 bg-orange-500 text-white text-xs font-bold rounded-full min-w-[16px] h-[16px] flex items-center justify-center px-0.5 text-[10px]">
-                                {notificationCount > 9 ? '9+' : notificationCount}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-xs">Notificări</span>
-                        </Link>
-                      ) : (
-                        <Link href="/login" className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC]">
-                          <User className="h-6 w-6 mb-1" />
-                          <span className="text-xs">Tu</span>
+                      <Link 
+                        href="/profile?tab=settings" 
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-50"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Settings className="h-5 w-5" />
+                        <span className="text-sm font-medium">Setări</span>
+                      </Link>
+                      {userProfile?.role === 'admin' && (
+                        <Link 
+                          href="/admin" 
+                          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[#13C1AC] hover:bg-[#13C1AC]/10"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <Shield className="h-5 w-5" />
+                          <span className="text-sm font-medium">Panel Admin</span>
                         </Link>
                       )}
-                  </div>
-                  {user && (
-                    <div className="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
-                      <Link href="/profile" className="flex flex-col items-center text-gray-500 hover:text-[#13C1AC]">
-                        <User className="h-6 w-6 mb-1" />
-                        <span className="text-xs">Profil</span>
-                      </Link>
                       <button 
-                        onClick={handleLogout}
-                        className="flex flex-col items-center text-red-500 hover:text-red-600"
+                        onClick={() => { handleLogout(); setIsMenuOpen(false); }}
+                        className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50"
                       >
-                        <LogOut className="h-6 w-6 mb-1" />
-                        <span className="text-xs">Ieșire</span>
+                        <LogOut className="h-5 w-5" />
+                        <span className="text-sm font-medium">Deconectare</span>
                       </button>
+                    </div>
+                  )}
+                  {!user && (
+                    <div className="border-t border-gray-100 pt-4">
+                      <Link 
+                        href="/login" 
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-50"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <User className="h-5 w-5" />
+                        <span className="text-sm font-medium">Autentificare</span>
+                      </Link>
                     </div>
                   )}
               </div>
           </div>
       )}
     </nav>
+    </>
   );
 }

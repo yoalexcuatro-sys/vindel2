@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
-  Camera, MapPin, X, ChevronLeft, Check, AlertCircle, Loader2,
+  Camera, MapPin, X, ChevronLeft, Check, AlertCircle, Loader2, AlertTriangle,
   Home, Car, Briefcase, Heart, Wrench, Smartphone, Shirt, PawPrint, 
   Armchair, Dumbbell, Baby, Plane, Gamepad2, Plus, Phone, TreeDeciduous,
   CheckCircle2, Send, Trash2, Star, TrendingUp, Users, Type, DollarSign, Navigation,
@@ -437,13 +437,7 @@ const SUBCATEGORIES: Record<string, SubcategoryItem[]> = {
     { name: 'Soferi - Transporturi', icon: Truck },
     { name: 'Traduceri', icon: Globe }
   ],
-  'matrimoniale': [
-    { name: 'Femei', icon: Heart },
-    { name: 'Bărbați', icon: Heart },
-    { name: 'Prietenii', icon: Users },
-    { name: 'Întâlniri', icon: Heart },
-    { name: 'Relații serioase', icon: Heart }
-  ],
+  'matrimoniale': [],
   'servicii': [
     { name: 'Construcții', icon: Hammer },
     { name: 'Reparații', icon: Wrench },
@@ -1443,6 +1437,8 @@ export default function PublishPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showAgeModal, setShowAgeModal] = useState(false);
+  const [pendingCategory, setPendingCategory] = useState<string | null>(null);
 
   // Redirigir si no está autenticado
   useEffect(() => {
@@ -1503,8 +1499,28 @@ export default function PublishPage() {
   ).slice(0, 10);
 
   const handleSelectCategory = (cat: string) => {
+    if (cat === 'matrimoniale') {
+      setPendingCategory(cat);
+      setShowAgeModal(true);
+      return;
+    }
     setCategoria(cat);
     setStep('subcategoria');
+  };
+
+  const handleAgeConfirm = () => {
+    if (pendingCategory) {
+      setCategoria(pendingCategory);
+      setPendingCategory(null);
+      setShowAgeModal(false);
+      // Para matrimoniale, ir directamente a detalles ya que no hay subcategorías
+      setStep('detalles');
+    }
+  };
+
+  const handleAgeCancel = () => {
+    setPendingCategory(null);
+    setShowAgeModal(false);
   };
 
   const handleSelectSubcategory = (subcat: string) => {
@@ -1620,6 +1636,46 @@ export default function PublishPage() {
   if (step === 'categoria') {
     return (
       <div className="min-h-screen bg-gray-100">
+        {/* Age Verification Modal for Matrimoniale */}
+        {showAgeModal && (
+          <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={handleAgeCancel}>
+            <div 
+              className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-pink-600" />
+                </div>
+                <button 
+                  onClick={handleAgeCancel}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Verificare vârstă</h3>
+              <p className="text-gray-600 mb-6">
+                Pentru a publica anunțuri în secțiunea Matrimoniale, trebuie să confirmați că aveți cel puțin 18 ani.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleAgeCancel}
+                  className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                >
+                  Anulează
+                </button>
+                <button
+                  onClick={handleAgeConfirm}
+                  className="flex-1 px-4 py-3 bg-pink-600 text-white rounded-xl font-medium hover:bg-pink-700 transition-colors"
+                >
+                  Am peste 18 ani
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="sticky top-0 z-50 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm">
           <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
@@ -1736,11 +1792,51 @@ export default function PublishPage() {
   // =============================================================================
   return (
     <div className="min-h-screen bg-gray-100">
+      {/* Age Verification Modal for Matrimoniale */}
+      {showAgeModal && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4" onClick={handleAgeCancel}>
+          <div 
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <div className="w-12 h-12 rounded-full bg-pink-100 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-pink-600" />
+              </div>
+              <button 
+                onClick={handleAgeCancel}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Verificare vârstă</h3>
+            <p className="text-gray-600 mb-6">
+              Pentru a publica anunțuri în secțiunea Matrimoniale, trebuie să confirmați că aveți cel puțin 18 ani.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleAgeCancel}
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              >
+                Anulează
+              </button>
+              <button
+                onClick={handleAgeConfirm}
+                className="flex-1 px-4 py-3 bg-pink-600 text-white rounded-xl font-medium hover:bg-pink-700 transition-colors"
+              >
+                Am peste 18 ani
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/70 backdrop-blur-xl border-b border-white/50 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
           <button 
-            onClick={handleBackToSubcategoria} 
+            onClick={categoria === 'matrimoniale' ? handleBackToCategoria : handleBackToSubcategoria} 
             className="text-gray-500 hover:text-gray-800 transition-colors flex items-center gap-2"
           >
             <ChevronLeft className="w-5 h-5" />
