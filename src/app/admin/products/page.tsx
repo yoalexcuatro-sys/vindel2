@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search, Filter, MoreVertical, Check, X, Trash2, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Search, Filter, MoreVertical, Check, X, Trash2, ExternalLink, Package, Eye, TrendingUp, Clock, CheckCircle, XCircle, Crown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { collection, query, orderBy, limit, getDocs, updateDoc, doc, deleteDoc } from 'firebase/firestore';
@@ -12,6 +12,18 @@ export default function AdminProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const total = products.length;
+    const active = products.filter(p => p.status === 'approved' || !p.status).length;
+    const pending = products.filter(p => p.status === 'pending').length;
+    const rejected = products.filter(p => p.status === 'rejected').length;
+    const promoted = products.filter(p => p.promoted).length;
+    const totalViews = products.reduce((sum, p) => sum + (p.views || 0), 0);
+    
+    return { total, active, pending, rejected, promoted, totalViews };
+  }, [products]);
 
   // Filter products based on search
   const filteredProducts = products.filter(product => {
@@ -122,6 +134,81 @@ export default function AdminProducts() {
                <button className="p-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 text-gray-600 shadow-sm">
                   <Filter className="w-5 h-5" />
                </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Panel */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Package className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              <p className="text-xs text-gray-500">Total anunțuri</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
+              <p className="text-xs text-gray-500">Active</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-yellow-100 rounded-lg">
+              <Clock className="w-5 h-5 text-yellow-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
+              <p className="text-xs text-gray-500">În așteptare</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-100 rounded-lg">
+              <XCircle className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.rejected}</p>
+              <p className="text-xs text-gray-500">Respinse</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-100 rounded-lg">
+              <Crown className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.promoted}</p>
+              <p className="text-xs text-gray-500">Promovate</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Eye className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-gray-900">{stats.totalViews.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">Vizualizări</p>
+            </div>
           </div>
         </div>
       </div>
