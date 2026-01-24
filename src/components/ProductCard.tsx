@@ -565,68 +565,73 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
       return `${day} ${month} ${year}`;
     };
 
+    // Formatear precio con decimales estilo OLX (3572.12 -> "3 572,12")
+    const formatOLXPrice = (price: number): string => {
+      return price.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace('.', ' ');
+    };
+
     return (
       <Link href={createProductLink(product)} className="block h-full">
-        <div className="group bg-white rounded-lg overflow-hidden h-full flex flex-col cursor-pointer">
-          {/* Image */}
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
+        <div className="group bg-white h-full flex flex-col cursor-pointer">
+          {/* Image - esquinas redondeadas arriba */}
+          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-lg border border-gray-200 border-b-0">
             <Image
               src={mainImage}
               alt={product.title}
               fill
               sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
-              className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
+              className="object-cover object-center"
               priority={priority}
-              quality={50}
+              quality={60}
             />
-            {/* Badge de promoción */}
+            {/* Badge de promoción en esquina superior derecha */}
             {getPromotionBadgeInfo(product) && (
-              <div className={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1 ${getPromotionBadgeInfo(product)?.color}`}>
-                {(() => {
-                  const Icon = getPromotionBadgeInfo(product)?.icon;
-                  return Icon ? <Icon className="w-3 h-3" /> : null;
-                })()}
+              <div className={`absolute top-2 right-2 px-2 py-1 rounded text-[10px] font-bold flex items-center gap-1 ${getPromotionBadgeInfo(product)?.color}`}>
                 {getPromotionBadgeInfo(product)?.label}
-              </div>
-            )}
-            {/* Reserved badge */}
-            {product.reserved && (
-              <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/70 text-white text-xs font-medium rounded-md">
-                Rezervat
               </div>
             )}
           </div>
           
           {/* Content */}
-          <div className="pt-3 pb-1 flex flex-col flex-1">
-            {/* Title + Heart */}
+          <div className="pt-3 flex flex-col flex-1">
+            {/* Title + Heart - exactamente como OLX */}
             <div className="flex items-start gap-2 mb-2">
-              <h3 className="flex-1 text-[15px] font-semibold text-slate-800 leading-snug line-clamp-2 group-hover:text-[#13C1AC] transition-colors">
+              <h3 className="flex-1 text-[15px] font-semibold text-slate-700 leading-tight line-clamp-2">
                 {product.title}
               </h3>
               <button 
                 onClick={handleFavoriteClick} 
                 disabled={isFavoriteLoading} 
-                className={`shrink-0 p-0.5 transition-colors ${isFavorited ? 'text-red-500' : 'text-slate-300 hover:text-red-500'}`}
+                className={`shrink-0 mt-0.5 transition-colors ${isFavorited ? 'text-red-500' : 'text-slate-300 hover:text-slate-400'}`}
               >
                 <Heart className={`w-5 h-5 ${isFavorited ? 'fill-current' : ''}`} strokeWidth={1.5} />
               </button>
             </div>
             
-            {/* Price */}
-            <p className="text-xl font-bold text-slate-900 mb-3">
-              {formatPrice(product.price)}{product.price % 1 !== 0 ? '' : ''} <span className="text-base font-bold">lei</span>
+            {/* Price - grande y en negrita con "lei" */}
+            <p className="text-[22px] font-bold text-slate-900 mb-3 tracking-tight">
+              {formatOLXPrice(product.price)} <span className="text-[18px]">lei</span>
             </p>
             
-            {/* Location */}
-            <p className="text-[#13C1AC] text-sm font-medium mb-0.5">
+            {/* Location - color teal */}
+            <p className="text-[#009999] text-sm mb-0.5">
               {product.location}
             </p>
             
             {/* Date */}
-            <p className="text-slate-400 text-sm">
+            <p className="text-slate-400 text-sm mb-2">
               {formatFullDate(product.publishedAt)}
             </p>
+
+            {/* Área/metros cuadrados para inmuebles (si existe) */}
+            {product.category?.toLowerCase().includes('imobil') || product.category?.toLowerCase().includes('apart') || product.category?.toLowerCase().includes('cas') ? (
+              <div className="flex items-center gap-1.5 text-slate-500 text-sm mt-auto pt-1">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                </svg>
+                <span>55 m²</span>
+              </div>
+            ) : null}
           </div>
         </div>
       </Link>
