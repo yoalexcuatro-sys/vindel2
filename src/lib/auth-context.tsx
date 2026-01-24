@@ -10,8 +10,6 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   sendPasswordResetEmail,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
@@ -91,22 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
-
-  // Handle redirect result from Google sign-in
-  useEffect(() => {
-    const handleRedirectResult = async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          console.log('Redirect result received, handling user...');
-          // User profile will be handled by onAuthStateChanged
-        }
-      } catch (error: any) {
-        console.error('Redirect result error:', error);
-      }
-    };
-    handleRedirectResult();
-  }, []);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -272,23 +254,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
+    provider.addScope('email');
+    provider.addScope('profile');
+    // Force account selection every time
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
     
-    // Try popup first, fall back to redirect if it fails
-    try {
-      const result = await signInWithPopup(auth, provider);
-      await handleGoogleUser(result.user);
-    } catch (popupError: any) {
-      console.log('Popup failed, trying redirect...', popupError.code);
-      // If popup is blocked or fails, use redirect
-      if (popupError.code === 'auth/popup-blocked' || 
-          popupError.code === 'auth/popup-closed-by-user' ||
-          popupError.code === 'auth/cancelled-popup-request' ||
-          popupError.code === 'auth/unauthorized-domain') {
-        await signInWithRedirect(auth, provider);
-      } else {
-        throw popupError;
-      }
-    }
+    // Use popup method - this should work with properly configured domains
+    const result = await signInWithPopup(auth, provider);
+    await handleGoogleUser(result.user);
   };
 
   const handleGoogleUser = async (user: User) => {

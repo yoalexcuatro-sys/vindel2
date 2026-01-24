@@ -62,11 +62,16 @@ export default function LoginPage() {
       console.error('Error message:', err.message);
       // Don't show error if user closed the popup
       if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-        // Show more details in development
-        const errorMessage = process.env.NODE_ENV === 'development' 
-          ? `Error: ${err.code} - ${err.message}`
-          : 'Nu s-a putut autentifica cu Google.';
-        setError(errorMessage);
+        // Handle specific errors
+        if (err.code === 'auth/unauthorized-domain') {
+          setError('Domeniul nu este autorizat. Contactează administratorul.');
+        } else if (err.code === 'auth/popup-blocked') {
+          setError('Popup blocat. Permite popups pentru acest site.');
+        } else if (err.code === 'auth/network-request-failed') {
+          setError('Eroare de rețea. Verifică conexiunea la internet.');
+        } else {
+          setError('Nu s-a putut autentifica cu Google. Încearcă din nou.');
+        }
       }
     } finally {
       setIsLoading(false);
