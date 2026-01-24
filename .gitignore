@@ -41,3 +41,5 @@ yarn-error.log*
 next-env.d.ts
 firebase-debug.log
 .env*.local
+serviceAccountKey.json
+src/scripts/old-firebase-credentials.json
