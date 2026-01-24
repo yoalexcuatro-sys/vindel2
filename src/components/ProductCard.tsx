@@ -572,7 +572,7 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
 
     return (
       <Link href={createProductLink(product)} className="block h-full">
-        <div className="group bg-white h-full flex flex-col cursor-pointer rounded-lg shadow-sm border border-gray-100">
+        <div className="group bg-white h-full flex flex-col cursor-pointer rounded-lg shadow-sm border border-gray-100 hover:border-[#13C1AC]/40 transition-all duration-200">
           {/* Image - esquinas redondeadas arriba */}
           <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-lg">
             <Image
