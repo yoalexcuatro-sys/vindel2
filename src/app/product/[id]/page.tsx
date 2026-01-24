@@ -547,7 +547,8 @@ export default function ProductPage() {
                         </div>
                       )}
                       
-                      <div className="absolute bottom-4 left-4 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-md flex items-center z-10">
+                      {/* Views counter - only show on desktop */}
+                      <div className="hidden sm:flex absolute bottom-4 left-4 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-md items-center z-10">
                           <Eye className="h-3 w-3 mr-1" />
                           {product.views || 0}
                       </div>
