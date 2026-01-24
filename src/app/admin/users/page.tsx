@@ -75,17 +75,33 @@ export default function AdminUsers() {
     }
   }, [uidParam, users]);
 
-  // Filter users based on search
-  const filteredUsers = users.filter(user => {
-    if (!searchQuery.trim()) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      user.displayName?.toLowerCase().includes(query) ||
-      user.email?.toLowerCase().includes(query) ||
-      user.phone?.toLowerCase().includes(query) ||
-      user.companyName?.toLowerCase().includes(query)
-    );
-  });
+  // Helper to check if user is new (created within last 3 days)
+  const isNewUser = (createdAt: any): boolean => {
+    if (!createdAt?.seconds) return false;
+    const createdDate = new Date(createdAt.seconds * 1000);
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    return createdDate > threeDaysAgo;
+  };
+
+  // Filter and sort users - newest first
+  const filteredUsers = users
+    .filter(user => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        user.displayName?.toLowerCase().includes(query) ||
+        user.email?.toLowerCase().includes(query) ||
+        user.phone?.toLowerCase().includes(query) ||
+        user.companyName?.toLowerCase().includes(query)
+      );
+    })
+    .sort((a, b) => {
+      // Sort by createdAt descending (newest first)
+      const aTime = a.createdAt?.seconds || 0;
+      const bTime = b.createdAt?.seconds || 0;
+      return bTime - aTime;
+    });
 
   const handleToggleStatus = async (uid: string, currentStatus?: string) => {
       const newStatus = currentStatus === 'banned' ? 'active' : 'banned';
@@ -301,6 +317,11 @@ export default function AdminUsers() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-gray-900 truncate">{user.displayName || 'Anonim'}</h3>
+                    {isNewUser(user.createdAt) && (
+                      <span className="shrink-0 bg-gradient-to-r from-green-400 to-emerald-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold animate-pulse">
+                        NOU
+                      </span>
+                    )}
                     {user.role === 'admin' && (
                       <span className="shrink-0 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
                         ADMIN
@@ -412,6 +433,11 @@ export default function AdminUsers() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-gray-900 truncate">{user.displayName || 'Anonim'}</span>
+                            {isNewUser(user.createdAt) && (
+                              <span className="shrink-0 bg-gradient-to-r from-green-400 to-emerald-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold animate-pulse">
+                                NOU
+                              </span>
+                            )}
                             {user.role === 'admin' && (
                               <span className="shrink-0 bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold">
                                 ADMIN
