@@ -15,8 +15,8 @@ const cleanEnvVar = (value: string | undefined): string => {
 
 const firebaseConfig = {
   apiKey: cleanEnvVar(process.env.NEXT_PUBLIC_FIREBASE_API_KEY),
-  // Use custom domain for authDomain to avoid cross-origin issues
-  authDomain: 'vindel-a7069.firebaseapp.com',
+  // Use custom domain for authDomain for better branding
+  authDomain: 'vindel.ro',
   projectId: cleanEnvVar(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID),
   storageBucket: cleanEnvVar(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET),
   messagingSenderId: cleanEnvVar(process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID),
