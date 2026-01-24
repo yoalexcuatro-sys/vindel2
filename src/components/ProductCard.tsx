@@ -545,6 +545,94 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
     );
   }
 
+  // THEME 8: OLX Style (Clean & Professional)
+  if (theme === 8) {
+    // Helper para formatear fecha completa
+    const formatFullDate = (publishedAt?: string | Timestamp): string => {
+      if (!publishedAt) return '';
+      let date: Date;
+      if (typeof publishedAt === 'string') {
+        date = new Date(publishedAt);
+      } else if (publishedAt && 'seconds' in publishedAt) {
+        date = new Date(publishedAt.seconds * 1000);
+      } else {
+        return '';
+      }
+      const day = date.getDate();
+      const months = ['ianuarie', 'februarie', 'martie', 'aprilie', 'mai', 'iunie', 'iulie', 'august', 'septembrie', 'octombrie', 'noiembrie', 'decembrie'];
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+      return `${day} ${month} ${year}`;
+    };
+
+    return (
+      <Link href={createProductLink(product)} className="block h-full">
+        <div className="group bg-white rounded-lg overflow-hidden h-full flex flex-col cursor-pointer">
+          {/* Image */}
+          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg">
+            <Image
+              src={mainImage}
+              alt={product.title}
+              fill
+              sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
+              className="object-cover object-center group-hover:scale-105 transition-transform duration-300"
+              priority={priority}
+              quality={50}
+            />
+            {/* Badge de promoción */}
+            {getPromotionBadgeInfo(product) && (
+              <div className={`absolute top-2 left-2 px-2 py-1 rounded-md text-xs font-semibold flex items-center gap-1 ${getPromotionBadgeInfo(product)?.color}`}>
+                {(() => {
+                  const Icon = getPromotionBadgeInfo(product)?.icon;
+                  return Icon ? <Icon className="w-3 h-3" /> : null;
+                })()}
+                {getPromotionBadgeInfo(product)?.label}
+              </div>
+            )}
+            {/* Reserved badge */}
+            {product.reserved && (
+              <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/70 text-white text-xs font-medium rounded-md">
+                Rezervat
+              </div>
+            )}
+          </div>
+          
+          {/* Content */}
+          <div className="pt-3 pb-1 flex flex-col flex-1">
+            {/* Title + Heart */}
+            <div className="flex items-start gap-2 mb-2">
+              <h3 className="flex-1 text-[15px] font-semibold text-slate-800 leading-snug line-clamp-2 group-hover:text-[#13C1AC] transition-colors">
+                {product.title}
+              </h3>
+              <button 
+                onClick={handleFavoriteClick} 
+                disabled={isFavoriteLoading} 
+                className={`shrink-0 p-0.5 transition-colors ${isFavorited ? 'text-red-500' : 'text-slate-300 hover:text-red-500'}`}
+              >
+                <Heart className={`w-5 h-5 ${isFavorited ? 'fill-current' : ''}`} strokeWidth={1.5} />
+              </button>
+            </div>
+            
+            {/* Price */}
+            <p className="text-xl font-bold text-slate-900 mb-3">
+              {formatPrice(product.price)}{product.price % 1 !== 0 ? '' : ''} <span className="text-base font-bold">lei</span>
+            </p>
+            
+            {/* Location */}
+            <p className="text-[#13C1AC] text-sm font-medium mb-0.5">
+              {product.location}
+            </p>
+            
+            {/* Date */}
+            <p className="text-slate-400 text-sm">
+              {formatFullDate(product.publishedAt)}
+            </p>
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
   // THEME 9: Original Classic (vindel23 style)
   if (theme === 9) {
     return (
