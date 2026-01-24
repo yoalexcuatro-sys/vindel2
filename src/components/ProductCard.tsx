@@ -572,9 +572,9 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
 
     return (
       <Link href={createProductLink(product)} className="block h-full">
-        <div className="group bg-white h-full flex flex-col cursor-pointer">
+        <div className="group bg-white h-full flex flex-col cursor-pointer rounded-lg shadow-sm border border-gray-100">
           {/* Image - esquinas redondeadas arriba */}
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-lg border border-gray-200 border-b-0">
+          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-lg">
             <Image
               src={mainImage}
               alt={product.title}
@@ -592,8 +592,8 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
             )}
           </div>
           
-          {/* Content */}
-          <div className="pt-3 flex flex-col flex-1">
+          {/* Content - con padding */}
+          <div className="p-3 pt-3 flex flex-col flex-1">
             {/* Title + Heart - exactamente como OLX */}
             <div className="flex items-start gap-2 mb-2">
               <h3 className="flex-1 text-[15px] font-semibold text-slate-700 leading-tight line-clamp-2">
@@ -619,19 +619,9 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
             </p>
             
             {/* Date */}
-            <p className="text-slate-400 text-sm mb-2">
+            <p className="text-slate-400 text-sm">
               {formatFullDate(product.publishedAt)}
             </p>
-
-            {/* Área/metros cuadrados para inmuebles (si existe) */}
-            {product.category?.toLowerCase().includes('imobil') || product.category?.toLowerCase().includes('apart') || product.category?.toLowerCase().includes('cas') ? (
-              <div className="flex items-center gap-1.5 text-slate-500 text-sm mt-auto pt-1">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
-                </svg>
-                <span>55 m²</span>
-              </div>
-            ) : null}
           </div>
         </div>
       </Link>
