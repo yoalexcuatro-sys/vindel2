@@ -101,9 +101,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     console.log('[Sitemap] Fetching products from Firebase...');
     const productsRef = collection(db, 'products');
+    // Obtener productos que estén aprobados O que no tengan status (productos antiguos)
     const q = query(
       productsRef,
-      where('status', '==', 'approved'),
       orderBy('publishedAt', 'desc'),
       limit(5000)
     );
@@ -111,7 +111,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const snapshot = await getDocs(q);
     console.log(`[Sitemap] Found ${snapshot.docs.length} products`);
     
-    productPages = snapshot.docs.map(doc => {
+    // Filtrar solo productos activos (approved o sin status = activo por defecto)
+    const activeProducts = snapshot.docs.filter(doc => {
+      const data = doc.data();
+      return !data.status || data.status === 'approved' || data.status === 'active';
+    });
+    
+    console.log(`[Sitemap] Active products: ${activeProducts.length}`);
+    
+    productPages = activeProducts.map(doc => {
       const data = doc.data();
       const slug = slugify(data.title || 'produs');
       const categorySlug = data.category ? slugify(data.category) : 'detalii';

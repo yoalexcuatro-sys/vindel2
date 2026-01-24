@@ -15,6 +15,9 @@ export default function robots(): MetadataRoute.Robots {
           '/publish/',
           '/login/',
           '/register/',
+          '/forgot-password/',
+          '/reset-password/',
+          '/verify-email/',
         ],
       },
       {
@@ -29,9 +32,12 @@ export default function robots(): MetadataRoute.Robots {
           '/publish/',
           '/login/',
           '/register/',
+          '/forgot-password/',
+          '/reset-password/',
+          '/verify-email/',
         ],
       },
     ],
-    sitemap: 'https://vindel.ro/api/sitemap',
+    sitemap: 'https://vindel.ro/sitemap.xml',
   };
 }
