@@ -122,16 +122,17 @@ export default function Footer() {
                 {/* Column 5: Mobile App */}
                 <div>
                     <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-6">Aplicație mobilă</h3>
-                    <p className="text-slate-500 mb-6 text-sm">Ia-ți anunțurile cu tine</p>
+                    <p className="text-slate-500 mb-4 text-sm">Ia-ți anunțurile cu tine</p>
+                    <p className="text-[#13C1AC] font-medium text-sm mb-4">🚀 În curând disponibil!</p>
                     <div className="flex flex-row gap-3">
-                        <button className="flex-1 bg-slate-900 border border-slate-900 text-white rounded-lg py-2 px-3 flex items-center justify-center hover:bg-slate-800 transition-all shadow-sm">
+                        <div className="flex-1 bg-slate-200 border border-slate-200 text-slate-400 rounded-lg py-2 px-3 flex items-center justify-center cursor-not-allowed opacity-60">
                             <svg className="h-6 w-6 mr-2 fill-current" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.74 1.18 0 2.21-.84 3.44-.74 2.18.17 3.39 1.16 3.96 1.95-3.3 1.97-2.6 7.28 1.48 9.07-.37 1.05-1.16 2.44-2.22 3.45zM12.03 5.39c-.27 2.15-2.14 3.82-3.8 3.58-.62-2.31 1.76-4.59 3.8-3.58z"/></svg> 
                             <span className="font-semibold text-sm">iOS</span>
-                        </button>
-                        <button className="flex-1 bg-slate-900 border border-slate-900 text-white rounded-lg py-2 px-3 flex items-center justify-center hover:bg-slate-800 transition-all shadow-sm">
+                        </div>
+                        <div className="flex-1 bg-slate-200 border border-slate-200 text-slate-400 rounded-lg py-2 px-3 flex items-center justify-center cursor-not-allowed opacity-60">
                             <svg className="h-6 w-6 mr-2 fill-current" viewBox="0 0 24 24"><path d="M3,20.5V3.5C3,2.91,3.34,2.39,3.84,2.15L13.69,12L3.84,21.85C3.34,21.6,3,21.09,3,20.5M16.81,15.12L6.05,21.34L14.54,12.85M16.81,8.88L14.54,11.15L6.05,2.66M18.59,14.08L19.45,13.58C20.1,13.21 20.1,12.59 19.45,12.22L18.59,11.72L17.75,12.16V13.65"/></svg>
                             <span className="font-semibold text-sm">Android</span>
-                        </button>
+                        </div>
                     </div>
                 </div>
             </div>
