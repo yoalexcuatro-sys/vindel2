@@ -3267,6 +3267,33 @@ function ProfilePageContent() {
                              <span className="text-[10px] text-gray-400 ml-1">(#9)</span>
                            </div>
                         </div>
+
+                        {/* DESIGN 10: OLX Style */}
+                        <div 
+                           onClick={() => setSelectedCardTheme(10)}
+                           className={`group bg-white rounded-lg overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-300 ring-2 ${selectedCardTheme === 10 ? 'ring-[#13C1AC]' : 'ring-transparent'} relative`}
+                        >
+                           {selectedCardTheme === 10 && (
+                            <div className="absolute top-2 right-2 z-20">
+                              <div className="bg-[#13C1AC] text-white p-1 rounded-full shadow-md">
+                                <CheckCircle2 className="w-3 h-3" />
+                              </div>
+                            </div>
+                           )}
+                           <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden rounded-lg">
+                                <img src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=500&q=80" alt="" className="w-full h-full object-cover" />
+                           </div>
+                           <div className="pt-2.5 pb-1.5 px-0.5">
+                             <p className="text-sm font-semibold text-slate-800 truncate mb-1.5">Canapea modernă 3 locuri</p>
+                             <p className="text-base font-bold text-slate-900 mb-2">3.500 lei</p>
+                             <p className="text-[#13C1AC] text-xs font-medium">București</p>
+                             <p className="text-slate-400 text-[10px]">22 ianuarie 2026</p>
+                           </div>
+                           <div className="py-2 text-center border-t border-gray-100">
+                             <span className="text-xs font-semibold text-[#13C1AC]">OLX Style</span>
+                             <span className="text-[10px] text-gray-400 ml-1">(#10)</span>
+                           </div>
+                        </div>
                     </div>
                   </div>
 
