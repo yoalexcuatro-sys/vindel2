@@ -62,16 +62,10 @@ export default function LoginPage() {
       console.error('Error message:', err.message);
       // Don't show error if user closed the popup
       if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-        // Handle specific errors
-        if (err.code === 'auth/unauthorized-domain') {
-          setError('Domeniul nu este autorizat. Contactează administratorul.');
-        } else if (err.code === 'auth/popup-blocked') {
-          setError('Popup blocat. Permite popups pentru acest site.');
-        } else if (err.code === 'auth/network-request-failed') {
-          setError('Eroare de rețea. Verifică conexiunea la internet.');
-        } else {
-          setError('Nu s-a putut autentifica cu Google. Încearcă din nou.');
-        }
+        // Show detailed error for debugging
+        const errorDetails = `${err.code || 'unknown'}: ${err.message || 'No message'}`;
+        console.error('Full error details:', errorDetails);
+        setError(`Error: ${errorDetails}`);
       }
     } finally {
       setIsLoading(false);
