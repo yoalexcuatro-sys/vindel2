@@ -608,9 +608,9 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
               </button>
             </div>
             
-            {/* Price - grande y en negrita */}
-            <p className="text-[22px] font-bold text-slate-900 mb-3 tracking-tight">
-              {formatOLXPrice(product.price)} <span className="text-[18px]">{product.currency === 'EUR' ? '€' : 'lei'}</span>
+            {/* Price - en negrita */}
+            <p className="text-lg font-bold text-slate-900 mb-3 tracking-tight">
+              {formatOLXPrice(product.price)} <span className="text-base">{product.currency === 'EUR' ? '€' : 'lei'}</span>
             </p>
             
             {/* Location - color teal */}
