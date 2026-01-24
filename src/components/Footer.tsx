@@ -62,7 +62,7 @@ export default function Footer() {
                 <div className="lg:col-span-1">
                     <h3 className="text-2xl font-bold mb-6 tracking-tight"><span className="text-teal-500">Vindel</span><span className="text-slate-700">.ro</span></h3>
                     <p className="text-slate-500 mb-8 leading-relaxed">
-                        Platforma lider de vânzare-cumpărare din țara ta. Conectăm milioane de oameni în mod sigur și simplu.
+                        O platformă nouă de anunțuri din România, creată pentru a conecta oamenii într-un mod simplu și sigur. Creștem împreună cu tine.
                     </p>
                     <div className="flex space-x-3">
                         {/* Social Icons */}
