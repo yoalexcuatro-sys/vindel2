@@ -282,7 +282,7 @@ export default function ProductGrid() {
                 <button 
                   className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 text-[10px] sm:text-xs font-medium transition-colors"
                   onClick={() => {
-                    const themes = [1, 6, 8, 9];
+                    const themes = [1, 6, 8, 9, 10];
                     const currentIndex = themes.indexOf(currentTheme);
                     const nextIndex = (currentIndex + 1) % themes.length;
                     const newTheme = themes[nextIndex];

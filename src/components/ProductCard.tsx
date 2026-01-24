@@ -545,8 +545,8 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
     );
   }
 
-  // THEME 8: OLX Style (Clean & Professional)
-  if (theme === 8) {
+  // THEME 10: OLX Style (Clean & Professional)
+  if (theme === 10) {
     // Helper para formatear fecha completa
     const formatFullDate = (publishedAt?: string | Timestamp): string => {
       if (!publishedAt) return '';
