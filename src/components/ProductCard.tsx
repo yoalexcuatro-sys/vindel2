@@ -596,7 +596,7 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
           <div className="p-3 pt-3 flex flex-col flex-1">
             {/* Title + Heart - exactamente como OLX */}
             <div className="flex items-start gap-2 mb-2">
-              <h3 className="flex-1 text-[15px] font-semibold text-slate-700 leading-tight line-clamp-2">
+              <h3 className="flex-1 text-[15px] font-medium text-slate-800 leading-snug line-clamp-2" style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
                 {product.title}
               </h3>
               <button 
