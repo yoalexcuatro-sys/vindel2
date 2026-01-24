@@ -261,21 +261,6 @@ export default function ProductGrid() {
                   </div>
                 ))}
               </div>
-              
-              {/* Load More Premium Button */}
-              {premiumProducts.length > visiblePremiumCount && (
-                <div className="mt-3 sm:mt-4 text-center">
-                  <button 
-                    onClick={() => setVisiblePremiumCount(prev => prev + 10)}
-                    className="inline-flex items-center gap-1.5 sm:gap-2 px-4 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-full hover:from-amber-600 hover:to-orange-600 transition-all active:scale-95 text-xs sm:text-sm shadow-lg shadow-amber-500/20"
-                  >
-                    <span>Mai multe ({premiumProducts.length - visiblePremiumCount})</span>
-                    <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
