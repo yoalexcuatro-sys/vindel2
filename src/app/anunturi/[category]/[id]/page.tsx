@@ -552,12 +552,6 @@ export default function ProductPage() {
                       </>
                     )}
                     
-                    {/* Views count */}
-                    <div className="absolute bottom-3 left-3 bg-black/70 text-white px-2 py-1 rounded-md text-xs font-medium flex items-center gap-1">
-                      <Eye className="w-3 h-3" />
-                      {product.views || 0}
-                    </div>
-
                     {/* Action buttons */}
                     <div className="absolute top-2 sm:top-3 right-2 sm:right-3 flex gap-1.5 sm:gap-2">
                       <button 
@@ -578,8 +572,8 @@ export default function ProductPage() {
                       </button>
                     </div>
                     
-                    {/* Views counter */}
-                    <div className="absolute bottom-2 sm:bottom-3 left-2 sm:left-3 bg-black/70 text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium flex items-center gap-1">
+                    {/* Views counter - hidden on mobile */}
+                    <div className="hidden sm:flex absolute bottom-2 sm:bottom-3 left-2 sm:left-3 bg-black/70 text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium items-center gap-1">
                       <Eye className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                       {product.views || 0}
                     </div>
