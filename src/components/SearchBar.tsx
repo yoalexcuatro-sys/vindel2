@@ -5,6 +5,43 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, X, Clock, TrendingUp } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+interface SearchSuggestion {
+  term: string;
+  category: string;
+  subcategory?: string;
+}
+
+// Sugerencias populares con categorías
+const popularSuggestions: SearchSuggestion[] = [
+  { term: 'iphone', category: 'Electronice si electrocasnice', subcategory: 'iPhone' },
+  { term: 'iphone 13', category: 'Electronice si electrocasnice', subcategory: 'iPhone' },
+  { term: 'iphone 14', category: 'Electronice si electrocasnice', subcategory: 'iPhone' },
+  { term: 'iphone 15', category: 'Electronice si electrocasnice', subcategory: 'iPhone' },
+  { term: 'iphone 16', category: 'Electronice si electrocasnice', subcategory: 'iPhone' },
+  { term: 'iphone 11', category: 'Electronice si electrocasnice', subcategory: 'iPhone' },
+  { term: 'iphone 12', category: 'Electronice si electrocasnice', subcategory: 'iPhone' },
+  { term: 'iphone 14 pro', category: 'Electronice si electrocasnice', subcategory: 'iPhone' },
+  { term: 'samsung', category: 'Electronice si electrocasnice', subcategory: 'Telefoane' },
+  { term: 'samsung galaxy', category: 'Electronice si electrocasnice', subcategory: 'Telefoane' },
+  { term: 'laptop', category: 'Electronice si electrocasnice', subcategory: 'Laptopuri' },
+  { term: 'macbook', category: 'Electronice si electrocasnice', subcategory: 'Laptopuri' },
+  { term: 'playstation', category: 'Electronice si electrocasnice', subcategory: 'Console' },
+  { term: 'ps5', category: 'Electronice si electrocasnice', subcategory: 'Console' },
+  { term: 'xbox', category: 'Electronice si electrocasnice', subcategory: 'Console' },
+  { term: 'nintendo switch', category: 'Electronice si electrocasnice', subcategory: 'Console' },
+  { term: 'bicicleta', category: 'Sport, timp liber, arta', subcategory: 'Biciclete' },
+  { term: 'trotineta', category: 'Sport, timp liber, arta', subcategory: 'Trotinete' },
+  { term: 'canapea', category: 'Casa si gradina', subcategory: 'Mobila' },
+  { term: 'sofa', category: 'Casa si gradina', subcategory: 'Mobila' },
+  { term: 'masina', category: 'Auto, moto, nautica', subcategory: 'Autoturisme' },
+  { term: 'audi', category: 'Auto, moto, nautica', subcategory: 'Autoturisme' },
+  { term: 'bmw', category: 'Auto, moto, nautica', subcategory: 'Autoturisme' },
+  { term: 'volkswagen', category: 'Auto, moto, nautica', subcategory: 'Autoturisme' },
+  { term: 'apartament', category: 'Imobiliare', subcategory: 'Apartamente' },
+  { term: 'garsoniera', category: 'Imobiliare', subcategory: 'Garsoniere' },
+  { term: 'casa', category: 'Imobiliare', subcategory: 'Case' },
+];
+
 interface SearchBarProps {
   className?: string;
   variant?: 'navbar' | 'hero';
@@ -162,25 +199,42 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
            {/* Generic Suggestions (if typing) */}
            {query && (
              <>
-                <button 
+                {/* Header */}
+                <div className="px-3 sm:px-4 py-2 sm:py-3 bg-gray-50">
+                  <span className="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wider">Căutări sugerate</span>
+                </div>
+
+                {/* Filtered suggestions based on query */}
+                {popularSuggestions
+                  .filter(s => s.term.toLowerCase().includes(query.toLowerCase()))
+                  .slice(0, 8)
+                  .map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => { setQuery(suggestion.term); handleSearch(suggestion.term); }}
+                      className="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-gray-50 flex flex-col group transition-colors border-b border-gray-50 last:border-b-0"
+                    >
+                      <span className="text-sm sm:text-base text-gray-900">
+                        <span className="font-bold">{suggestion.term.substring(0, query.length)}</span>
+                        <span className="font-normal">{suggestion.term.substring(query.length)}</span>
+                      </span>
+                      <span className="text-xs text-gray-400 mt-0.5">
+                        {suggestion.category} / ... / {suggestion.subcategory}
+                      </span>
+                    </button>
+                  ))
+                }
+                
+                {/* If no suggestions match, show search option */}
+                {popularSuggestions.filter(s => s.term.toLowerCase().includes(query.toLowerCase())).length === 0 && (
+                  <button 
                     onClick={() => handleSearch(query)}
                     className="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-gray-50 flex items-center text-[#13C1AC] font-medium"
-                >
+                  >
                     <Search className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-2.5 sm:mr-3" />
                     <span className="text-sm sm:text-base">Caută &quot;{query}&quot;</span>
-                </button>
-                
-                {/* Sugerencias populares */}
-                {['iphone', 'bicicleta', 'sofa', 'laptop', 'masina'].filter(t => t.includes(query.toLowerCase()) && t !== query.toLowerCase()).slice(0, 2).map(term => (
-                     <button
-                        key={term}
-                        onClick={() => { setQuery(term); handleSearch(term); }}
-                        className="w-full text-left px-3 sm:px-4 py-2.5 sm:py-3 hover:bg-gray-50 flex items-center group"
-                    >
-                        <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400 mr-2.5 sm:mr-3" />
-                        <span className="text-sm sm:text-base text-gray-700">{term}</span>
-                    </button>
-                ))}
+                  </button>
+                )}
              </>
            )}
         </div>
