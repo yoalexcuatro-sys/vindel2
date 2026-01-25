@@ -319,10 +319,15 @@ export default function ProductPage() {
     }
   };
 
-  // Handle Facebook share
+  // Handle Facebook share - always use production URL
   const handleShareFacebook = () => {
-    const url = encodeURIComponent(window.location.href);
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400');
+    // Replace localhost with production URL for Facebook
+    let shareUrl = window.location.href;
+    if (shareUrl.includes('localhost')) {
+      shareUrl = shareUrl.replace(/http:\/\/localhost:\d+/, 'https://vindel.ro');
+    }
+    const url = encodeURIComponent(shareUrl);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400,noopener,noreferrer');
   };
   
   // Handle report submit
@@ -498,16 +503,15 @@ export default function ProductPage() {
   return (
     <div className="bg-gray-50 min-h-screen pb-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        {/* Mobile back button + Breadcrumb */}
+        {/* Breadcrumb */}
         <nav className="flex items-center mb-4 sm:mb-6 text-sm text-gray-500">
             <button 
               onClick={() => router.back()}
-              className="sm:hidden mr-3 p-1.5 -ml-1.5 rounded-full hover:bg-gray-100 active:bg-gray-200 transition-colors"
-              aria-label="Înapoi"
+              className="flex items-center gap-1 hover:text-[#13C1AC] transition-colors"
             >
-              <ChevronLeft className="w-6 h-6 text-gray-700" />
+              <ChevronLeft className="w-4 h-4" />
+              <span>Înapoi</span>
             </button>
-            <Link href="/" className="hover:text-[#13C1AC]">Acasă</Link>
             <span className="mx-2">/</span>
             <span className="text-gray-900 font-medium truncate max-w-[200px]">{product.title}</span>
         </nav>
