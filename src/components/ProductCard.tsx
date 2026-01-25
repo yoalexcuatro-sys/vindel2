@@ -608,9 +608,9 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
               </button>
             </div>
             
-            {/* Price - más pequeño */}
+            {/* Price */}
             <p className="text-base font-bold text-slate-900 mb-3 tracking-tight">
-              {formatOLXPrice(product.price)} <span className="text-sm">{product.currency === 'EUR' ? '€' : 'lei'}</span>
+              {formatOLXPrice(product.price)} <span className="text-sm font-medium">{product.currency === 'EUR' ? '€' : 'Lei'}</span>
             </p>
             
             {/* Location - color teal */}

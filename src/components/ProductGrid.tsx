@@ -239,10 +239,11 @@ export default function ProductGrid() {
               {/* Header VIP & Premium */}
               <div className="flex justify-between items-center mb-3 sm:mb-5 px-1">
                 <div>
-                  <h2 className="text-base sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-yellow-500 to-amber-600 bg-clip-text text-transparent">
+                  <h2 className="text-sm sm:text-base md:text-lg font-bold bg-gradient-to-r from-yellow-500 to-amber-600 bg-clip-text text-transparent">
                     Anunțuri promovate
                   </h2>
-                  <p className="text-[10px] sm:text-sm text-gray-500">Oferte VIP și Premium selectate</p>
+                  <div className="h-0.5 w-20 sm:w-28 bg-gradient-to-r from-yellow-500 to-amber-600 rounded-full mt-1"></div>
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-1">Oferte selectate</p>
                 </div>
                 <Link 
                   href="/anunturi/premium" 
