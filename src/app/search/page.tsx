@@ -256,13 +256,15 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
   const filteredProducts = products.filter((product) => {
     // Text Search - improved to search for ALL words individually
     // "bara audi" will find "Bara fata audi a5" because both "bara" AND "audi" are present
+    // Also handles location search like "slatina olt" -> matches "Slatina, Olt"
     const matchesText = (() => {
       if (!query) return true;
       
       const searchWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 0);
       const titleLower = product.title.toLowerCase();
       const descLower = product.description?.toLowerCase() || '';
-      const locationLower = product.location?.toLowerCase() || '';
+      // Normalize location - remove comma for better matching
+      const locationLower = (product.location?.toLowerCase() || '').replace(/,/g, ' ').replace(/\s+/g, ' ');
       const combinedText = `${titleLower} ${descLower} ${locationLower}`;
       
       // ALL search words must be present somewhere in title, description, or location
@@ -279,8 +281,8 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
     const matchesMinPrice = minPriceParam && matchesCurrency ? product.price >= Number(minPriceParam) : true;
     const matchesMaxPrice = maxPriceParam && matchesCurrency ? product.price <= Number(maxPriceParam) : true;
 
-    // Location - improved matching with strict word boundaries
-    // "Slatina, Olt" should NOT match "Oltenița, Călărași"
+    // Location - strict city matching
+    // "Slatina, Olt" should only match "Slatina, Olt", not "Balș, Olt"
     const matchesLocation = (() => {
       if (!locationParam) return true;
       
@@ -294,27 +296,14 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
       const searchParts = searchLoc.split(',').map(p => p.trim()).filter(p => p.length > 0);
       const productParts = productLoc.split(',').map(p => p.trim()).filter(p => p.length > 0);
       
-      // Check for exact city match (first part)
+      // If searching with city + county (e.g., "Slatina, Olt")
+      // Only match if the city matches exactly
       if (searchParts.length > 0 && productParts.length > 0) {
         const searchCity = searchParts[0];
         const productCity = productParts[0];
-        // City must match exactly (not partial)
+        
+        // City must match exactly
         if (productCity === searchCity) return true;
-      }
-      
-      // Check for exact county match (second part) - only if counties exist and match exactly
-      if (searchParts.length > 1 && productParts.length > 1) {
-        const searchCounty = searchParts[1];
-        const productCounty = productParts[1];
-        // County must match exactly
-        if (productCounty === searchCounty) return true;
-      }
-      
-      // If only searching by county (second part), match products from that county
-      if (searchParts.length > 1 && productParts.length > 1) {
-        const searchCounty = searchParts[1];
-        const productCounty = productParts[1];
-        if (productCounty === searchCounty) return true;
       }
       
       return false;
@@ -657,10 +646,12 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
                             </span>
                           </div>
                           
-                          {/* Description preview - only on larger screens */}
+                          {/* Description preview - truncated to 300 chars */}
                           {product.description && (
-                            <p className="hidden sm:block mt-2 text-xs text-gray-500 line-clamp-2">
-                              {product.description}
+                            <p className="mt-1.5 sm:mt-2 text-[11px] sm:text-xs text-gray-500 line-clamp-2 sm:line-clamp-3">
+                              {product.description.length > 300 
+                                ? `${product.description.substring(0, 300)}...` 
+                                : product.description}
                             </p>
                           )}
                         </div>

@@ -16,7 +16,8 @@ import {
   Scale,
   BadgeCheck,
   Loader2,
-  HeadphonesIcon
+  HeadphonesIcon,
+  Home
 } from 'lucide-react';
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -90,7 +91,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { icon: Megaphone, label: 'Marketing', href: '/admin/promotions', badge: null },
     { icon: Users, label: 'Utilizatori', href: '/admin/users', badge: null },
     { icon: Globe, label: 'SEO & Config', href: '/admin/seo', badge: null },
-    { icon: Scale, label: 'Legal & GDPR', href: '/admin/legal', badge: null },
+    { icon: Home, label: 'Vindel.ro', href: '/', badge: null },
   ];
 
   return (
