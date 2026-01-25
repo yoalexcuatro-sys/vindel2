@@ -66,7 +66,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const images = product.images as string[] || [];
   const category = product.category as string;
   
-  const priceText = price ? `${price.toLocaleString('ro-RO')} €` : 'Preț negociabil';
+  const priceText = price ? `${price.toLocaleString('ro-RO')} ${(product.currency as string) === 'EUR' ? '€' : 'Lei'}` : 'Preț negociabil';
   const metaDescription = description 
     ? `${description.slice(0, 150)}... ${priceText} - ${location || 'România'}`
     : `${title} - ${priceText} în ${location || 'România'}. Cumpără acum pe Vindel.ro!`;
@@ -74,6 +74,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const categorySlug = category ? slugify(category) : 'detalii';
   const titleSlug = slugify(title);
   const canonicalUrl = `https://vindel.ro/anunturi/${categorySlug}/${titleSlug}--${shortId}`;
+  
+  // Imagen principal para compartir
+  const mainImage = images.length > 0 ? images[0] : 'https://vindel.ro/og-image.png';
 
   return {
     title: `${title} - ${priceText}`,
@@ -83,20 +86,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${title} - ${priceText}`,
       description: metaDescription,
       url: canonicalUrl,
-      siteName: 'Vindel',
+      siteName: 'Vindel.ro',
       locale: 'ro_RO',
-      type: 'website',
-      images: images.length > 0 ? images.map((img, index) => ({
-        url: img,
-        width: 800,
-        height: 600,
-        alt: index === 0 ? title : `${title} - imagine ${index + 1}`,
-      })) : [
+      type: 'article',
+      images: [
         {
-          url: '/og-image.png',
+          url: mainImage,
           width: 1200,
           height: 630,
           alt: title,
+          type: 'image/jpeg',
         },
       ],
     },
@@ -104,7 +103,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: 'summary_large_image',
       title: `${title} - ${priceText}`,
       description: metaDescription,
-      images: images.length > 0 ? [images[0]] : ['/og-image.png'],
+      images: [mainImage],
+      site: '@vindelro',
+    },
+    other: {
+      'fb:app_id': '123456789', // Opcional: puedes agregar tu Facebook App ID
     },
     alternates: {
       canonical: canonicalUrl,

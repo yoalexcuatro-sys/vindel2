@@ -257,6 +257,7 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
     // Text Search - improved to search for ALL words individually
     // "bara audi" will find "Bara fata audi a5" because both "bara" AND "audi" are present
     // Also handles location search like "slatina olt" -> matches "Slatina, Olt"
+    // Also searches in category and subcategory
     const matchesText = (() => {
       if (!query) return true;
       
@@ -265,9 +266,11 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
       const descLower = product.description?.toLowerCase() || '';
       // Normalize location - remove comma for better matching
       const locationLower = (product.location?.toLowerCase() || '').replace(/,/g, ' ').replace(/\s+/g, ' ');
-      const combinedText = `${titleLower} ${descLower} ${locationLower}`;
+      const categoryLower = product.category?.toLowerCase() || '';
+      const subcategoryLower = product.subcategory?.toLowerCase() || '';
+      const combinedText = `${titleLower} ${descLower} ${locationLower} ${categoryLower} ${subcategoryLower}`;
       
-      // ALL search words must be present somewhere in title, description, or location
+      // ALL search words must be present somewhere in title, description, location, category or subcategory
       return searchWords.every(word => combinedText.includes(word));
     })();
     
@@ -332,8 +335,10 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
         : true;
 
     // Subcategory filter
+    // Subcategory filter - case-insensitive partial match
     const matchesSubcategory = selectedSubcategory
-        ? product.subcategory === selectedSubcategory
+        ? (product.subcategory?.toLowerCase() || '').includes(selectedSubcategory.toLowerCase()) ||
+          selectedSubcategory.toLowerCase().includes(product.subcategory?.toLowerCase() || '')
         : true;
 
     // Negotiable

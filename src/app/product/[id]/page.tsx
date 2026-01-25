@@ -287,6 +287,43 @@ export default function ProductPage() {
   const [reportDescription, setReportDescription] = useState('');
   const [reportLoading, setReportLoading] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
+  const [shareSuccess, setShareSuccess] = useState(false);
+  
+  // Handle share
+  const handleShare = async () => {
+    const shareData = {
+      title: product?.title || 'Anunț Vindel.ro',
+      text: `${product?.title} - ${product?.price?.toLocaleString('ro-RO')} ${product?.currency === 'EUR' ? '€' : 'Lei'}`,
+      url: window.location.href,
+    };
+    
+    try {
+      // Try native share (mobile)
+      if (navigator.share && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(window.location.href);
+        setShareSuccess(true);
+        setTimeout(() => setShareSuccess(false), 2000);
+      }
+    } catch (err) {
+      // If share fails, try clipboard
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        setShareSuccess(true);
+        setTimeout(() => setShareSuccess(false), 2000);
+      } catch {
+        console.error('Could not share or copy');
+      }
+    }
+  };
+
+  // Handle Facebook share
+  const handleShareFacebook = () => {
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400');
+  };
   
   // Handle report submit
   const handleReportSubmit = async () => {
@@ -533,10 +570,20 @@ export default function ProductPage() {
                             <Heart className="h-5 w-5" />
                         </button>
                         <button 
-                            onClick={(e) => e.stopPropagation()}
-                            className="p-2 bg-white/90 hover:bg-white rounded-full text-gray-600 shadow-md transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleShare(); }}
+                            className={`p-2 rounded-full shadow-md transition-colors ${shareSuccess ? 'bg-green-500 text-white' : 'bg-white/90 hover:bg-white text-gray-600'}`}
+                            title="Copiază link"
                         >
-                            <Share2 className="h-5 w-5" />
+                            {shareSuccess ? <CheckCircle className="h-5 w-5" /> : <Share2 className="h-5 w-5" />}
+                        </button>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); handleShareFacebook(); }}
+                            className="p-2 rounded-full shadow-md transition-colors bg-[#1877F2] hover:bg-[#166FE5] text-white"
+                            title="Distribuie pe Facebook"
+                        >
+                            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                            </svg>
                         </button>
                       </div>
                       

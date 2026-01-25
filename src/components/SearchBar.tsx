@@ -382,9 +382,10 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
                 {allSuggestions
                   .filter(s => {
                     const searchLower = query.toLowerCase();
-                    // Busca en término y subcategoría
-                    return s.term.toLowerCase().includes(searchLower) || 
-                           (s.subcategory && s.subcategory.toLowerCase().includes(searchLower));
+                    // Match solo si el término/subcategoría EMPIEZA con la búsqueda
+                    // "electronice" no debe hacer match con "Electrocasnice"
+                    return s.term.toLowerCase().startsWith(searchLower) || 
+                           (s.subcategory && s.subcategory.toLowerCase().startsWith(searchLower));
                   })
                   .slice(0, 8)
                   .map((suggestion, index) => (
@@ -428,8 +429,8 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
                 {/* If no suggestions match, show search option */}
                 {allSuggestions.filter(s => {
                   const searchLower = query.toLowerCase();
-                  return s.term.toLowerCase().includes(searchLower) || 
-                         (s.subcategory && s.subcategory.toLowerCase().includes(searchLower));
+                  return s.term.toLowerCase().startsWith(searchLower) || 
+                         (s.subcategory && s.subcategory.toLowerCase().startsWith(searchLower));
                 }).length === 0 && (
                   <button 
                     onClick={() => handleSearch(query)}
