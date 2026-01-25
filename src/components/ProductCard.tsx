@@ -565,9 +565,9 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
       return `${day} ${month} ${year}`;
     };
 
-    // Formatear precio con decimales estilo OLX (3572.12 -> "3 572,12")
+    // Formatear precio sin decimales (3572 -> "3 572")
     const formatOLXPrice = (price: number): string => {
-      return price.toLocaleString('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace('.', ' ');
+      return Math.round(price).toLocaleString('ro-RO').replace('.', ' ');
     };
 
     return (
@@ -608,9 +608,9 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
               </button>
             </div>
             
-            {/* Price - en negrita */}
-            <p className="text-lg font-bold text-slate-900 mb-3 tracking-tight">
-              {formatOLXPrice(product.price)} <span className="text-base">{product.currency === 'EUR' ? '€' : 'lei'}</span>
+            {/* Price - más pequeño */}
+            <p className="text-base font-bold text-slate-900 mb-3 tracking-tight">
+              {formatOLXPrice(product.price)} <span className="text-sm">{product.currency === 'EUR' ? '€' : 'lei'}</span>
             </p>
             
             {/* Location - color teal */}
