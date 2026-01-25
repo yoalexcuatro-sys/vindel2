@@ -235,6 +235,7 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
 
   const query = searchParams.get('q') || '';
   const categoryParam = searchParams.get('category') || '';
+  const subcategoryParam = searchParams.get('subcategory') || ''; // Subcategoría desde URL
   const minPriceParam = searchParams.get('minPrice');
   const maxPriceParam = searchParams.get('maxPrice');
   const currencyParam = searchParams.get('currency') || ''; // EUR or RON - empty means no currency filter
@@ -242,10 +243,14 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
   const conditionParam = searchParams.get('condition'); // "new", "used", etc.
   const negotiableParam = searchParams.get('negotiable') === 'true';
 
-  // Reset subcategory when category changes
+  // Sincronizar subcategoría desde URL o reset cuando cambia categoría
   useEffect(() => {
-    setSelectedSubcategory(null);
-  }, [categoryParam]);
+    if (subcategoryParam) {
+      setSelectedSubcategory(subcategoryParam);
+    } else {
+      setSelectedSubcategory(null);
+    }
+  }, [categoryParam, subcategoryParam]);
 
   // Filtering Logic
   const filteredProducts = products.filter((product) => {
