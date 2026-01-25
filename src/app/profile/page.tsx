@@ -80,9 +80,9 @@ function ProfilePageContent() {
     // Cargar tema guardado inmediatamente al inicializar
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('user_card_theme');
-      return saved ? parseInt(saved) : 1;
+      return saved ? parseInt(saved) : 10;
     }
-    return 1;
+    return 10;
   });
   const [themeInitialized, setThemeInitialized] = useState(false);
   const [rejectionModal, setRejectionModal] = useState<{ show: boolean; reason: string; productTitle: string }>({ show: false, reason: '', productTitle: '' });

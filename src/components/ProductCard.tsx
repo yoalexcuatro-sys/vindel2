@@ -159,10 +159,10 @@ let cachedTheme: number | null = null;
 const getTheme = () => {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem('user_card_theme');
-    cachedTheme = saved ? parseInt(saved) : 1;
+    cachedTheme = saved ? parseInt(saved) : 10;
     return cachedTheme;
   }
-  return cachedTheme ?? 1;
+  return cachedTheme ?? 10;
 };
 
 function ProductCardComponent({ product, priority = false, showConditionInPrice = false }: { product: Product; priority?: boolean; showConditionInPrice?: boolean }) {
@@ -175,9 +175,9 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
   const [theme, setTheme] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('user_card_theme');
-      return saved ? parseInt(saved) : 1;
+      return saved ? parseInt(saved) : 10;
     }
-    return 1;
+    return 10;
   });
   
   // Check if product is favorited
@@ -716,7 +716,7 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
           
           <div className="px-1 flex flex-col">
               <div className="flex justify-between items-start mb-0.5">
-                 <h4 className="text-base font-bold text-gray-900">{formatPrice(product.price)} {product.currency === 'EUR' ? '€' : 'Lei'}</h4>
+                 <h4 className="text-base font-bold text-gray-900">{formatPrice(product.price)} <span className="font-medium">{product.currency === 'EUR' ? '€' : 'Lei'}</span></h4>
                  <button onClick={handleFavoriteClick} disabled={isFavoriteLoading} className={`p-1 -mr-1 rounded-full hover:bg-gray-100 transition-colors ${isFavorited ? 'text-red-500' : 'text-gray-400'}`}>
                    <Heart className={`w-5 h-5 stroke-[1.5] ${isFavorited ? 'fill-current' : ''}`} />
                  </button>
