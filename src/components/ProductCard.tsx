@@ -565,9 +565,9 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
       return `${day} ${month} ${year}`;
     };
 
-    // Formatear precio sin decimales (3572 -> "3 572")
+    // Formatear precio sin decimales con punto como separador de miles (8000 -> "8.000")
     const formatOLXPrice = (price: number): string => {
-      return Math.round(price).toLocaleString('ro-RO').replace('.', ' ');
+      return Math.round(price).toLocaleString('de-DE');
     };
 
     return (
