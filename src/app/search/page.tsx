@@ -279,42 +279,42 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
     const matchesMinPrice = minPriceParam && matchesCurrency ? product.price >= Number(minPriceParam) : true;
     const matchesMaxPrice = maxPriceParam && matchesCurrency ? product.price <= Number(maxPriceParam) : true;
 
-    // Location - improved matching
-    // Splits location param into parts (city, county) and matches if ANY part is found
+    // Location - improved matching with strict word boundaries
+    // "Slatina, Olt" should NOT match "Oltenița, Călărași"
     const matchesLocation = (() => {
       if (!locationParam) return true;
       
       const productLoc = product.location?.toLowerCase() || '';
       const searchLoc = locationParam.toLowerCase();
       
-      // Direct match first
-      if (productLoc.includes(searchLoc)) return true;
+      // Direct exact match first
+      if (productLoc === searchLoc) return true;
       
-      // Split by comma and check each part separately
-      // For example: "Slatina, Olt" -> check if product contains "Slatina" OR "Olt"
+      // Split by comma to get city and county
       const searchParts = searchLoc.split(',').map(p => p.trim()).filter(p => p.length > 0);
-      
-      // Check if the main city (first part) is in the product location
-      if (searchParts.length > 0) {
-        const mainCity = searchParts[0];
-        if (productLoc.includes(mainCity)) return true;
-      }
-      
-      // Also check if product location contains the county (second part)
-      if (searchParts.length > 1) {
-        const county = searchParts[1];
-        // If searching by county, also match products that have the county
-        if (productLoc.includes(county)) return true;
-      }
-      
-      // Check reverse - product parts against search
       const productParts = productLoc.split(',').map(p => p.trim()).filter(p => p.length > 0);
-      for (const productPart of productParts) {
-        for (const searchPart of searchParts) {
-          if (productPart.includes(searchPart) || searchPart.includes(productPart)) {
-            return true;
-          }
-        }
+      
+      // Check for exact city match (first part)
+      if (searchParts.length > 0 && productParts.length > 0) {
+        const searchCity = searchParts[0];
+        const productCity = productParts[0];
+        // City must match exactly (not partial)
+        if (productCity === searchCity) return true;
+      }
+      
+      // Check for exact county match (second part) - only if counties exist and match exactly
+      if (searchParts.length > 1 && productParts.length > 1) {
+        const searchCounty = searchParts[1];
+        const productCounty = productParts[1];
+        // County must match exactly
+        if (productCounty === searchCounty) return true;
+      }
+      
+      // If only searching by county (second part), match products from that county
+      if (searchParts.length > 1 && productParts.length > 1) {
+        const searchCounty = searchParts[1];
+        const productCounty = productParts[1];
+        if (productCounty === searchCounty) return true;
       }
       
       return false;
