@@ -1440,7 +1440,7 @@ export default function ProductPage() {
       {/* Lightbox Modal */}
       {lightboxOpen && (
         <div 
-          className="fixed inset-0 z-[100] bg-black/95 flex flex-col"
+          className="fixed inset-0 z-[99999] bg-black flex flex-col"
           onClick={() => setLightboxOpen(false)}
         >
           {/* Botón cerrar */}
@@ -1478,10 +1478,11 @@ export default function ProductPage() {
             <div className="relative max-w-5xl w-full h-full max-h-[75vh] flex items-center justify-center">
               {images.length > 0 ? (
                 <img
-                  key={currentImageIndex}
+                  key={`lightbox-${currentImageIndex}`}
                   src={images[currentImageIndex]}
                   alt={product.title}
                   className="max-w-full max-h-full object-contain"
+                  loading="eager"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = fallbackImage;
@@ -1520,7 +1521,7 @@ export default function ProductPage() {
               <div className="flex justify-center gap-2 mb-4 overflow-x-auto pb-2">
                 {images.map((img, idx) => (
                   <button
-                    key={idx}
+                    key={`thumb-${idx}`}
                     onClick={() => setCurrentImageIndex(idx)}
                     className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden flex-shrink-0 border-2 ${
                       currentImageIndex === idx 
@@ -1531,7 +1532,8 @@ export default function ProductPage() {
                     <img 
                       src={img} 
                       alt={`Miniatura ${idx + 1}`} 
-                      className="w-full h-full object-cover" 
+                      className="w-full h-full object-cover"
+                      loading="eager"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = fallbackImage;

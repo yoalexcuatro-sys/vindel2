@@ -83,7 +83,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: 'your-google-verification-code', // Añadir código real de Google Search Console
+    google: 'm1ln0xkhJOe3doekSBvrc9HXzNiCU5uqE8vMynxAXCM',
   },
   alternates: {
     canonical: 'https://vindu.ro',

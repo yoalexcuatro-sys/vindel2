@@ -274,7 +274,6 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
   const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
   const [lastScrollY, setLastScrollY] = useState(0);
   const [locationSearch, setLocationSearch] = useState(searchParams.get('location') || '');
-  const [showLocationMenu, setShowLocationMenu] = useState(false);
   
   // Price and currency filters
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
@@ -540,9 +539,9 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
         <div className="flex gap-6">
           {/* Left Sidebar - Filters */}
           <aside className="hidden lg:block w-80 flex-shrink-0">
-            <div className="sticky top-24 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="sticky top-24 bg-white rounded-2xl border border-gray-200 shadow-sm">
               {/* Sidebar Header */}
-              <div className="bg-gradient-to-r from-[#13C1AC]/15 via-[#13C1AC]/10 to-[#13C1AC]/5 px-5 py-4 border-b border-[#13C1AC]/20">
+              <div className="bg-gradient-to-r from-[#13C1AC]/15 via-[#13C1AC]/10 to-[#13C1AC]/5 px-5 py-4 border-b border-[#13C1AC]/20 rounded-t-2xl">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#13C1AC] to-[#0ea895] flex items-center justify-center shadow-sm">
                     <Filter className="w-4 h-4 text-white" />
@@ -814,7 +813,7 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
                     
                     {/* Location Dropdown */}
                     {showLocationMenu && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto z-50">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto z-[9999]">
                         {/* Quick Select Popular Cities */}
                         {!locationSearch && (
                           <div className="p-2 border-b border-gray-100">
@@ -1135,12 +1134,12 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
             ) : (
               // Grid View
               <div className="grid gap-1 sm:gap-1.5 md:gap-2 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                {sortedProducts.map((product) => (
+                {sortedProducts.map((product, index) => (
                     <div 
                       key={`${product.id}-theme-${currentTheme}`} 
                       className="animate-card"
                     >
-                      <ProductCard product={product} />
+                      <ProductCard product={product} priority={index < 10} />
                     </div>
                 ))}
               </div>

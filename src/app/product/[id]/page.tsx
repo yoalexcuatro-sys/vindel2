@@ -1440,7 +1440,7 @@ export default function ProductPage() {
       {/* Lightbox Modal */}
       {lightboxOpen && (
         <div 
-          className="fixed inset-0 z-[100] bg-black/95 flex flex-col"
+          className="fixed inset-0 z-[99999] bg-black flex flex-col"
           onClick={() => setLightboxOpen(false)}
         >
           {/* Botón cerrar */}
@@ -1476,15 +1476,16 @@ export default function ProductPage() {
 
             {/* Single current image - optimized loading */}
             <div className="relative max-w-5xl w-full h-full max-h-[75vh] flex items-center justify-center">
-              <Image
-                key={currentImageIndex}
+              <img
+                key={`lightbox-${currentImageIndex}`}
                 src={images[currentImageIndex]}
                 alt={product.title}
-                fill
-                sizes="(max-width: 768px) 100vw, 1200px"
-                className="object-contain"
-                priority
-                quality={75}
+                className="max-w-full max-h-full object-contain"
+                loading="eager"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://placehold.co/600x400/f3f4f6/9ca3af?text=Sin+imagen';
+                }}
               />
             </div>
 
@@ -1512,7 +1513,7 @@ export default function ProductPage() {
               <div className="flex justify-center gap-2 mb-4 overflow-x-auto pb-2">
                 {images.map((img, idx) => (
                   <button
-                    key={idx}
+                    key={`thumb-${idx}`}
                     onClick={() => setCurrentImageIndex(idx)}
                     className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden flex-shrink-0 border-2 ${
                       currentImageIndex === idx 
@@ -1520,7 +1521,16 @@ export default function ProductPage() {
                         : 'border-white/20 opacity-50 hover:opacity-100'
                     }`}
                   >
-                    <Image src={img} alt={`Miniatura ${idx + 1}`} fill sizes="56px" className="object-cover" quality={50} />
+                    <img 
+                      src={img} 
+                      alt={`Miniatura ${idx + 1}`} 
+                      className="w-full h-full object-cover"
+                      loading="eager"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = 'https://placehold.co/56x56/f3f4f6/9ca3af?text=X';
+                      }}
+                    />
                   </button>
                 ))}
               </div>
