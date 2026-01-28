@@ -19,7 +19,13 @@ const nextConfig: NextConfig = {
     imageSizes: [64, 96, 128, 256, 384],
     minimumCacheTTL: 60 * 60 * 24 * 30, // Cache 30 días
     remotePatterns: [
-      // Cloudflare R2 - tu bucket público
+      // Cloudflare R2 - tu bucket público específico
+      {
+        protocol: 'https',
+        hostname: 'pub-c6978520431643c8b004271c2904d927.r2.dev',
+        pathname: '/**',
+      },
+      // Cloudflare R2 - patrones generales
       {
         protocol: 'https',
         hostname: '*.r2.dev',

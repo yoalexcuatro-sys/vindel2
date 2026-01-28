@@ -410,8 +410,15 @@ export default function ProductPage() {
     }
   }, [user, productId, favoriteIds, mutateFavorites, router]);
 
-  // Calcular imágenes (necesario antes del useEffect)
-  const images = product ? (product.images && product.images.length > 0 ? product.images : [product.image]) : [];
+  // Calcular imágenes (necesario antes del useEffect) - filtrar URLs vacías o inválidas
+  const images = product ? (
+    product.images && product.images.length > 0 
+      ? product.images.filter((img: string) => img && img.trim() !== '' && img.startsWith('http'))
+      : (product.image && product.image.startsWith('http') ? [product.image] : [])
+  ) : [];
+  
+  // Fallback image si no hay imágenes válidas
+  const fallbackImage = 'https://placehold.co/600x400/f3f4f6/9ca3af?text=Sin+imagen';
 
   // Precargar todas las imágenes en segundo plano
   useEffect(() => {
@@ -566,17 +573,21 @@ export default function ProductPage() {
                   {/* Main Image */}
                   <div 
                     className="relative aspect-[4/3] sm:aspect-[16/10] bg-gray-100 cursor-pointer"
-                    onClick={() => setLightboxOpen(true)}
+                    onClick={() => images.length > 0 && setLightboxOpen(true)}
                   >
                     {/* First image always visible and eager loaded */}
                     <img 
-                      src={images[0]} 
+                      src={images.length > 0 ? images[0] : fallbackImage} 
                       alt={product.title}
                       className="absolute inset-0 w-full h-full object-cover"
                       style={{ display: currentImageIndex === 0 ? 'block' : 'none' }}
                       loading="eager"
                       decoding="sync"
                       fetchPriority="high"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = fallbackImage;
+                      }}
                     />
                     {/* Other images loaded in background */}
                     {images.slice(1).map((src, idx) => (
@@ -588,6 +599,10 @@ export default function ProductPage() {
                         style={{ display: idx + 1 === currentImageIndex ? 'block' : 'none' }}
                         loading="eager"
                         decoding="async"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = fallbackImage;
+                        }}
                       />
                     ))}
                     
@@ -681,7 +696,15 @@ export default function ProductPage() {
                               : 'border-transparent opacity-60 hover:opacity-100'
                           }`}
                         >
-                          <img src={img} alt={`Imagine ${idx + 1}`} className="w-full h-full object-cover" />
+                          <img 
+                            src={img} 
+                            alt={`Imagine ${idx + 1}`} 
+                            className="w-full h-full object-cover" 
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = fallbackImage;
+                            }}
+                          />
                         </button>
                       ))}
                     </div>
@@ -1453,16 +1476,24 @@ export default function ProductPage() {
 
             {/* Imagen actual */}
             <div className="relative max-w-5xl w-full h-full max-h-[75vh] flex items-center justify-center">
-              <Image
-                key={currentImageIndex}
-                src={images[currentImageIndex]}
-                alt={product.title}
-                fill
-                sizes="(max-width: 768px) 100vw, 1200px"
-                className="object-contain"
-                priority
-                quality={75}
-              />
+              {images.length > 0 ? (
+                <img
+                  key={currentImageIndex}
+                  src={images[currentImageIndex]}
+                  alt={product.title}
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = fallbackImage;
+                  }}
+                />
+              ) : (
+                <img
+                  src={fallbackImage}
+                  alt={product.title}
+                  className="max-w-full max-h-full object-contain"
+                />
+              )}
             </div>
 
             {/* Flecha derecha */}
@@ -1497,7 +1528,15 @@ export default function ProductPage() {
                         : 'border-white/20 opacity-50 hover:opacity-100'
                     }`}
                   >
-                    <Image src={img} alt={`Miniatura ${idx + 1}`} fill sizes="56px" className="object-cover" quality={50} />
+                    <img 
+                      src={img} 
+                      alt={`Miniatura ${idx + 1}`} 
+                      className="w-full h-full object-cover" 
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = fallbackImage;
+                      }}
+                    />
                   </button>
                 ))}
               </div>

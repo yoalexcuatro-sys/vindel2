@@ -245,23 +245,27 @@ function ProductCardComponent({ product, priority = false, showConditionInPrice 
     };
   }, []);
 
-  // Use images array if exists, otherwise single image
-  const mainImage = product.images && product.images.length > 0 
+  // Use images array if exists, otherwise single image - filter invalid URLs
+  const rawImage = product.images && product.images.length > 0 
     ? product.images[0] 
-    : product.image || '/placeholder.jpg';
+    : product.image;
+  const mainImage = rawImage && rawImage.startsWith('http') 
+    ? rawImage 
+    : 'https://placehold.co/400x300/f3f4f6/9ca3af?text=Sin+imagen';
+  
+  const [imgError, setImgError] = useState(false);
+  const fallbackImage = 'https://placehold.co/400x300/f3f4f6/9ca3af?text=Sin+imagen';
 
   const ImageCarousel = ({ heightClass = "h-56" }: { heightClass?: string }) => (
     <div className={`relative ${heightClass} w-full overflow-hidden bg-gray-100`}>
         {/* Imagen única optimizada */}
-        <Image
-          src={mainImage}
+        <img
+          src={imgError ? fallbackImage : mainImage}
           alt={product.title}
-          fill
-          sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 18vw"
-          className="object-cover object-center"
+          className="absolute inset-0 w-full h-full object-cover object-center"
           style={{ objectPosition: 'center 30%' }}
-          priority={priority}
-          quality={50}
+          loading={priority ? 'eager' : 'lazy'}
+          onError={() => setImgError(true)}
         />
 
         {product.reserved && (
