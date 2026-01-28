@@ -273,12 +273,24 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
   const [currentTheme, setCurrentTheme] = useState(1);
   const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
   const [lastScrollY, setLastScrollY] = useState(0);
-  const [locationSearch, setLocationSearch] = useState('');
+  const [locationSearch, setLocationSearch] = useState(searchParams.get('location') || '');
+  const [showLocationMenu, setShowLocationMenu] = useState(false);
   
   // Price and currency filters
   const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
   const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
   const [currency, setCurrency] = useState(searchParams.get('currency') || 'RON');
+
+  // Close location menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (locationRef.current && !locationRef.current.contains(event.target as Node)) {
+        setShowLocationMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Detect scroll direction
   useEffect(() => {
@@ -766,31 +778,128 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
                 {/* Divider */}
                 <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
 
-                {/* Location Section */}
-                <div>
+                {/* Location Section with Autocomplete */}
+                <div className="relative" ref={locationRef}>
                   <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2.5 block">
                     Locație
                   </label>
-                  <div className="flex items-center bg-white rounded-xl px-3.5 py-3 border border-gray-200 focus-within:border-[#13C1AC] focus-within:ring-2 focus-within:ring-[#13C1AC]/10 transition-all duration-200 group">
-                    <MapPin className="w-4 h-4 text-gray-400 group-focus-within:text-[#13C1AC] transition-colors" />
-                    <input
-                      type="text"
-                      placeholder="Caută oraș sau județ..."
-                      defaultValue={locationParam || ''}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const value = (e.target as HTMLInputElement).value;
-                          const params = new URLSearchParams(searchParams.toString());
-                          if (value.trim()) {
-                            params.set('location', value.trim());
-                          } else {
+                  <div className="relative">
+                    <div className="flex items-center bg-white rounded-xl px-3.5 py-3 border border-gray-200 focus-within:border-[#13C1AC] focus-within:ring-2 focus-within:ring-[#13C1AC]/10 transition-all duration-200 group">
+                      <MapPin className="w-4 h-4 text-gray-400 group-focus-within:text-[#13C1AC] transition-colors" />
+                      <input
+                        type="text"
+                        placeholder="Caută oraș sau județ..."
+                        value={locationSearch}
+                        onChange={(e) => {
+                          setLocationSearch(e.target.value);
+                          setShowLocationMenu(true);
+                        }}
+                        onFocus={() => setShowLocationMenu(true)}
+                        className="flex-1 bg-transparent border-none outline-none text-sm font-medium ml-2.5 placeholder-gray-400"
+                      />
+                      {locationSearch && (
+                        <button
+                          onClick={() => {
+                            setLocationSearch('');
+                            const params = new URLSearchParams(searchParams.toString());
                             params.delete('location');
-                          }
-                          router.push(`/search?${params.toString()}`);
-                        }
-                      }}
-                      className="flex-1 bg-transparent border-none outline-none text-sm font-medium ml-2.5 placeholder-gray-400"
-                    />
+                            router.push(`/search?${params.toString()}`);
+                          }}
+                          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5 text-gray-400" />
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* Location Dropdown */}
+                    {showLocationMenu && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-64 overflow-y-auto z-50">
+                        {/* Quick Select Popular Cities */}
+                        {!locationSearch && (
+                          <div className="p-2 border-b border-gray-100">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase px-2 mb-1">Orașe populare</p>
+                            <div className="flex flex-wrap gap-1">
+                              {['București', 'Cluj-Napoca', 'Timișoara', 'Iași', 'Constanța', 'Brașov'].map(city => (
+                                <button
+                                  key={city}
+                                  onClick={() => {
+                                    setLocationSearch(city);
+                                    setShowLocationMenu(false);
+                                    const params = new URLSearchParams(searchParams.toString());
+                                    params.set('location', city);
+                                    router.push(`/search?${params.toString()}`);
+                                  }}
+                                  className="px-2 py-1 text-xs bg-gray-50 hover:bg-[#13C1AC]/10 hover:text-[#13C1AC] rounded-lg transition-colors"
+                                >
+                                  {city}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Search Results */}
+                        {locationSearch && (
+                          <div className="py-1">
+                            {localidades
+                              .filter(loc => 
+                                loc.ciudad.toLowerCase().includes(locationSearch.toLowerCase()) ||
+                                loc.judet.toLowerCase().includes(locationSearch.toLowerCase())
+                              )
+                              .slice(0, 15)
+                              .map((loc, idx) => (
+                                <button
+                                  key={`${loc.ciudad}-${loc.judet}-${idx}`}
+                                  onClick={() => {
+                                    const locationValue = `${loc.ciudad}, ${loc.judet}`;
+                                    setLocationSearch(locationValue);
+                                    setShowLocationMenu(false);
+                                    const params = new URLSearchParams(searchParams.toString());
+                                    params.set('location', locationValue);
+                                    router.push(`/search?${params.toString()}`);
+                                  }}
+                                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                  <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                                  <span className="font-medium">{loc.ciudad}</span>
+                                  <span className="text-gray-400 text-xs">{loc.judet}</span>
+                                </button>
+                              ))
+                            }
+                            {localidades.filter(loc => 
+                              loc.ciudad.toLowerCase().includes(locationSearch.toLowerCase()) ||
+                              loc.judet.toLowerCase().includes(locationSearch.toLowerCase())
+                            ).length === 0 && (
+                              <p className="px-3 py-2 text-sm text-gray-500">Nu s-au găsit rezultate</p>
+                            )}
+                          </div>
+                        )}
+                        
+                        {/* All Counties */}
+                        {!locationSearch && (
+                          <div className="py-1">
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase px-3 py-2">Toate județele</p>
+                            {Array.from(new Set(localidades.map(l => l.judet))).sort().map(judet => (
+                              <button
+                                key={judet}
+                                onClick={() => {
+                                  setLocationSearch(judet);
+                                  setShowLocationMenu(false);
+                                  const params = new URLSearchParams(searchParams.toString());
+                                  params.set('location', judet);
+                                  router.push(`/search?${params.toString()}`);
+                                }}
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                                <span>{judet}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -814,6 +923,7 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
                       setMinPrice('');
                       setMaxPrice('');
                       setCurrency('RON');
+                      setLocationSearch('');
                       const params = new URLSearchParams();
                       if (query) params.set('q', query);
                       router.push(`/search?${params.toString()}`);
