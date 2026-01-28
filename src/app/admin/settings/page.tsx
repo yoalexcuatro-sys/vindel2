@@ -18,11 +18,11 @@ interface SiteSettings {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SiteSettings>({
-    siteName: 'Vindel.ro',
+    siteName: 'Vindu.ro',
     contactEmail: '',
     contactPhone: '',
     address: '',
-    metaTitle: 'Vindel - Anunțuri Gratuite',
+    metaTitle: 'Vindu - Anunțuri Gratuite',
     metaDescription: 'Platforma ta preferată de anunțuri din România.',
     maintenanceMode: false,
     promotionEnabled: false

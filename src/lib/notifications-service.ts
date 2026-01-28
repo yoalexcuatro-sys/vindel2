@@ -228,12 +228,12 @@ export async function notifyProductReported(data: {
   // if (data.sellerEmail) {
   //   await sendEmail({
   //     to: data.sellerEmail,
-  //     subject: 'Anunțul tău a fost raportat - Vindel',
+  //     subject: 'Anunțul tău a fost raportat - Vindu',
   //     template: 'report-received',
   //     data: {
   //       productTitle: data.productTitle,
   //       reason: reasonLabel,
-  //       actionUrl: 'https://vindel.ro/profile?tab=notifications'
+  //       actionUrl: 'https://vindu.ro/profile?tab=notifications'
   //     }
   //   });
   // }

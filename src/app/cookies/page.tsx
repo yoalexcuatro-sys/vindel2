@@ -232,7 +232,7 @@ export default function CookiesPage() {
               Pentru întrebări despre utilizarea cookie-urilor, ne puteți contacta la:
             </p>
             <div className="bg-slate-50 rounded-lg p-4 mt-4">
-              <p className="text-slate-700"><strong>Email:</strong> privacy@vindel.ro</p>
+              <p className="text-slate-700"><strong>Email:</strong> privacy@vindu.ro</p>
             </div>
           </section>
 

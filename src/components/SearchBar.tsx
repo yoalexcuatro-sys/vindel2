@@ -2,8 +2,9 @@
 'use client';
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Search, X, Clock, Layers } from 'lucide-react';
+import { Search, X, Clock, Layers, MapPin } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { localidades, Localidad } from '@/data/localidades';
 
 interface SearchSuggestion {
   term: string;
@@ -192,13 +193,17 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get('q') || '');
+  const [location, setLocation] = useState(searchParams.get('location') || '');
   const [isFocused, setIsFocused] = useState(false);
+  const [isLocationFocused, setIsLocationFocused] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const locationRef = useRef<HTMLDivElement>(null);
 
   // Sync query state with URL params
   useEffect(() => {
     setQuery(searchParams.get('q') || '');
+    setLocation(searchParams.get('location') || '');
   }, [searchParams]);
 
   // Load recent searches from localStorage on mount
@@ -215,10 +220,27 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsFocused(false);
       }
+      if (locationRef.current && !locationRef.current.contains(event.target as Node)) {
+        setIsLocationFocused(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Location suggestions
+  const locationSuggestions = location.length >= 2 
+    ? localidades.filter(loc => 
+        loc.ciudad.toLowerCase().includes(location.toLowerCase()) ||
+        loc.judet.toLowerCase().includes(location.toLowerCase())
+      ).slice(0, 6)
+    : [];
+
+  // Handle location selection
+  const handleSelectLocation = (loc: Localidad) => {
+    setLocation(`${loc.ciudad}, ${loc.judet}`);
+    setIsLocationFocused(false);
+  };
 
   const handleSearch = (term: string) => {
     if (!term.trim()) return;
@@ -241,9 +263,12 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
 
     setIsFocused(false);
     
-    // When searching, only use the search query - don't preserve category filters
-    // User is searching for something specific, so search across all categories
-    router.push(`/search?q=${encodeURIComponent(term)}`);
+    // Build search URL with query and location
+    const params = new URLSearchParams();
+    if (term.trim()) params.set('q', term.trim());
+    if (location.trim()) params.set('location', location.trim());
+    
+    router.push(`/search?${params.toString()}`);
   };
 
   // Handler para selección de sugerencia (término o subcategoría)
@@ -322,7 +347,7 @@ export default function SearchBar({ className = '', variant = 'navbar' }: Search
         {query && (
           <button 
             onClick={clearSearch}
-            className={`mr-2 sm:mr-3 p-1 rounded-full hover:bg-gray-200 text-gray-400 ${isHero ? 'sm:mr-4' : ''}`}
+            className={`p-1 rounded-full hover:bg-gray-200 text-gray-400 ${isHero ? 'mr-1' : 'mr-2 sm:mr-3'}`}
           >
             <X className={`${isHero ? 'h-4 w-4 sm:h-5 sm:w-5' : 'h-3 w-3'}`} />
           </button>

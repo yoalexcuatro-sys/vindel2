@@ -75,7 +75,7 @@ function VerifyEmailContent() {
         {/* Logo */}
         <div className="text-center mb-6 animate-[fadeInDown_0.8s_ease-out]">
           <Link href="/" className="inline-block text-3xl font-bold text-white drop-shadow-lg">
-            Vindel<span className="font-light opacity-80">.ro</span>
+            Vindu<span className="font-light opacity-80">.ro</span>
           </Link>
         </div>
 
@@ -107,7 +107,7 @@ function VerifyEmailContent() {
               <h2 className="text-xl font-bold text-gray-800 mb-2">Email verificat! 🎉</h2>
               <p className="text-gray-500 mb-6">
                 Adresa ta de email a fost confirmată cu succes. 
-                Acum ai acces la toate funcționalitățile Vindel.
+                Acum ai acces la toate funcționalitățile Vindu.
               </p>
               
               {/* Benefits */}

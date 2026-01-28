@@ -292,7 +292,7 @@ export default function ProductPage() {
   // Handle share
   const handleShare = async () => {
     const shareData = {
-      title: product?.title || 'Anunț Vindel.ro',
+      title: product?.title || 'Anunț Vindu.ro',
       text: `${product?.title} - ${product?.price?.toLocaleString('ro-RO')} ${product?.currency === 'EUR' ? '€' : 'Lei'}`,
       url: window.location.href,
     };
@@ -324,7 +324,7 @@ export default function ProductPage() {
     // Replace localhost with production URL for Facebook
     let shareUrl = window.location.href;
     if (shareUrl.includes('localhost')) {
-      shareUrl = shareUrl.replace(/http:\/\/localhost:\d+/, 'https://vindel.ro');
+      shareUrl = shareUrl.replace(/http:\/\/localhost:\d+/, 'https://vindu.ro');
     }
     const url = encodeURIComponent(shareUrl);
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400,noopener,noreferrer');
@@ -441,7 +441,7 @@ export default function ProductPage() {
             setProduct(foundProduct);
             
             // Dynamic Title for SEO & UX
-            document.title = `${foundProduct.title} | Vindel`;
+            document.title = `${foundProduct.title} | Vindu`;
 
             // Obtener otros productos del mismo vendedor (en paralelo, no bloquea)
             getProducts({ sellerId: foundProduct.sellerId }, 6).then(sellerResult => {

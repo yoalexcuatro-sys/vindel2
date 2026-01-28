@@ -188,7 +188,7 @@ export default function SupportTicketPage() {
                                         </div>
                                     )}
                                     <span className="text-xs font-medium text-slate-600">
-                                        {message.isAdmin ? 'Suport Vindel' : message.senderName}
+                                        {message.isAdmin ? 'Suport Vindu' : message.senderName}
                                     </span>
                                     <span className="text-xs text-slate-400">
                                         {message.createdAt.toLocaleString('ro-RO', { 

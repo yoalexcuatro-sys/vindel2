@@ -31,8 +31,8 @@ export interface Conversation {
   unreadCount: number;
 }
 
-const CONVERSATIONS_KEY = 'vindel_conversations';
-const MESSAGES_KEY = 'vindel_messages';
+const CONVERSATIONS_KEY = 'vindu_conversations';
+const MESSAGES_KEY = 'vindu_messages';
 
 export function getConversations(): Conversation[] {
   if (typeof window === 'undefined') return [];

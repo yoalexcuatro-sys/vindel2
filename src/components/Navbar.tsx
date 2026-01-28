@@ -141,8 +141,13 @@ export default function Navbar() {
           
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center">
-            <Link href="/" className="text-xl sm:text-2xl font-medium text-[#13C1AC] tracking-tight">
-              Vindel<span className="font-light opacity-70">.ro</span>
+            <Link href="/" className="flex items-center group">
+              <span className="text-[22px] sm:text-[26px] tracking-tight font-[family-name:var(--font-poppins)]">
+                <span className="relative inline-block text-[#13C1AC]">
+                  <span className="relative z-10 px-2"><span className="font-semibold">Vin</span><span className="font-light">du</span></span>
+                  <span className="absolute inset-0 bg-[#13C1AC]/10 rounded-full group-hover:bg-[#13C1AC]/20 transition-colors"></span>
+                </span><span className="text-gray-400 font-light text-[18px] sm:text-[20px]">.ro</span>
+              </span>
             </Link>
           </div>
 

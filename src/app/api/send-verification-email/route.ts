@@ -67,9 +67,9 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Vindel <noreply@vindel.ro>',
+        from: 'Vindu <noreply@vindu.ro>',
         to: email,
-        subject: 'Verifică-ți adresa de email - Vindel',
+        subject: 'Verifică-ți adresa de email - Vindu',
         html: getEmailTemplate(customVerificationLink, userName),
       }),
     });
@@ -113,7 +113,7 @@ function getEmailTemplate(verificationLink: string, name: string) {
           <tr>
             <td style="padding: 40px 40px 30px; background: linear-gradient(135deg, #13C1AC 0%, #0a8f7f 100%); border-radius: 24px 24px 0 0; text-align: center;">
               <h1 style="margin: 0; font-size: 32px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">
-                Vindel
+                Vindu
               </h1>
               <p style="margin: 8px 0 0; font-size: 14px; color: rgba(255,255,255,0.9);">
                 Marketplace-ul tău de încredere
@@ -189,7 +189,7 @@ function getEmailTemplate(verificationLink: string, name: string) {
                   <td style="padding: 20px;">
                     <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #854d0e;">
                       <strong>⚠️ Notă:</strong><br>
-                      Dacă nu ai creat un cont pe Vindel, poți ignora acest email. 
+                      Dacă nu ai creat un cont pe Vindu, poți ignora acest email. 
                       Link-ul expiră în 24 de ore.
                     </p>
                   </td>
@@ -211,13 +211,13 @@ function getEmailTemplate(verificationLink: string, name: string) {
             <td style="padding: 32px 40px; background-color: #f9fafb; border-radius: 0 0 24px 24px; text-align: center;">
               <p style="margin: 0 0 8px; font-size: 14px; color: #6b7280;">
                 Cu drag,<br>
-                <strong style="color: #13C1AC;">Echipa Vindel</strong>
+                <strong style="color: #13C1AC;">Echipa Vindu</strong>
               </p>
               <p style="margin: 16px 0 0; font-size: 12px; color: #9ca3af;">
-                © 2026 Vindel.ro - Toate drepturile rezervate
+                © 2026 Vindu.ro - Toate drepturile rezervate
               </p>
               <p style="margin: 8px 0 0; font-size: 12px; color: #9ca3af;">
-                <a href="https://vindel.ro" style="color: #9ca3af; text-decoration: none;">vindel.ro</a>
+                <a href="https://vindu.ro" style="color: #9ca3af; text-decoration: none;">vindu.ro</a>
               </p>
             </td>
           </tr>

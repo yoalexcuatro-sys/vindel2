@@ -93,9 +93,9 @@ const getPromotionBadgeInfo = (product: Product): { label: string; color: string
   if (!isProductPromoted(product)) return null;
   
   const badges: Record<PromotionType, { label: string; color: string; icon: any }> = {
-    'zilnic': { label: 'Promovat', color: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-orange-500/30', icon: Zap },
-    'saptamanal': { label: 'Promovat', color: 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30', icon: Award },
-    'lunar': { label: 'Promovat', color: 'bg-gradient-to-r from-yellow-400 to-amber-500 text-white shadow-lg shadow-amber-500/30', icon: Crown },
+    'zilnic': { label: 'Promovat', color: 'bg-[#13C1AC] text-white shadow-lg shadow-[#13C1AC]/40 animate-pulse-slow', icon: Zap },
+    'saptamanal': { label: 'Promovat', color: 'bg-[#13C1AC] text-white shadow-lg shadow-[#13C1AC]/40 animate-pulse-slow', icon: Award },
+    'lunar': { label: 'Promovat', color: 'bg-[#13C1AC] text-white shadow-lg shadow-[#13C1AC]/40 animate-pulse-slow', icon: Crown },
   };
   
   return product.promotionType ? badges[product.promotionType] : null;

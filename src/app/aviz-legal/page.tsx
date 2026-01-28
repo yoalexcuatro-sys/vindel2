@@ -12,7 +12,7 @@ export default function AvizLegalPage() {
             <Scale className="h-8 w-8" />
             <h1 className="text-3xl md:text-4xl font-bold">Aviz Legal</h1>
           </div>
-          <p className="text-teal-100 text-lg">Informații legale despre Vindel</p>
+          <p className="text-teal-100 text-lg">Informații legale despre Vindu</p>
         </div>
       </div>
 
@@ -30,7 +30,7 @@ export default function AvizLegalPage() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-slate-500 mb-1">Denumire</p>
-                  <p className="font-semibold text-slate-900">Vindel S.R.L.</p>
+                  <p className="font-semibold text-slate-900">Vindu S.R.L.</p>
                 </div>
                 <div>
                   <p className="text-sm text-slate-500 mb-1">CUI</p>
@@ -68,9 +68,9 @@ export default function AvizLegalPage() {
                 <div>
                   <p className="font-semibold text-slate-900">Email</p>
                   <p className="text-slate-600 text-sm">
-                    General: contact@vindel.ro<br />
-                    Suport: suport@vindel.ro<br />
-                    Legal: legal@vindel.ro
+                    General: contact@vindu.ro<br />
+                    Suport: suport@vindu.ro<br />
+                    Legal: legal@vindu.ro
                   </p>
                 </div>
               </div>
@@ -87,7 +87,7 @@ export default function AvizLegalPage() {
                 <Globe className="h-5 w-5 text-[#13C1AC] mt-0.5" />
                 <div>
                   <p className="font-semibold text-slate-900">Website</p>
-                  <p className="text-slate-600 text-sm">www.vindel.ro</p>
+                  <p className="text-slate-600 text-sm">www.vindu.ro</p>
                 </div>
               </div>
             </div>
@@ -99,7 +99,7 @@ export default function AvizLegalPage() {
               Obiectul de Activitate
             </h2>
             <p className="text-slate-600 leading-relaxed">
-              Vindel S.R.L. operează o platformă online de tip marketplace care facilitează 
+              Vindu S.R.L. operează o platformă online de tip marketplace care facilitează 
               tranzacțiile comerciale între utilizatori (vânzători și cumpărători). Compania 
               acționează exclusiv ca intermediar și nu este parte în tranzacțiile efectuate 
               între utilizatori.
@@ -113,17 +113,17 @@ export default function AvizLegalPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Proprietate Intelectuală</h2>
             <p className="text-slate-600 leading-relaxed">
-              Toate drepturile de proprietate intelectuală asupra platformei Vindel, inclusiv 
+              Toate drepturile de proprietate intelectuală asupra platformei Vindu, inclusiv 
               dar fără a se limita la:
             </p>
             <ul className="list-disc list-inside text-slate-600 space-y-2 mt-4">
-              <li>Marca „Vindel" și logo-ul asociat</li>
+              <li>Marca „Vindu" și logo-ul asociat</li>
               <li>Design-ul și interfața platformei</li>
               <li>Codul sursă și software-ul</li>
-              <li>Conținutul editorial creat de Vindel</li>
+              <li>Conținutul editorial creat de Vindu</li>
             </ul>
             <p className="text-slate-600 leading-relaxed mt-4">
-              aparțin exclusiv Vindel S.R.L. și sunt protejate de legislația română și 
+              aparțin exclusiv Vindu S.R.L. și sunt protejate de legislația română și 
               internațională privind drepturile de autor și proprietatea intelectuală.
             </p>
           </section>
@@ -131,7 +131,7 @@ export default function AvizLegalPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Limitarea Răspunderii</h2>
             <p className="text-slate-600 leading-relaxed">
-              Vindel depune eforturi rezonabile pentru a asigura acuratețea informațiilor 
+              Vindu depune eforturi rezonabile pentru a asigura acuratețea informațiilor 
               de pe platformă, însă nu garantează:
             </p>
             <ul className="list-disc list-inside text-slate-600 space-y-2 mt-4">
@@ -148,11 +148,11 @@ export default function AvizLegalPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">Legislație Aplicabilă</h2>
             <p className="text-slate-600 leading-relaxed">
-              Relația dintre Vindel și utilizatorii săi este guvernată de legislația română. 
+              Relația dintre Vindu și utilizatorii săi este guvernată de legislația română. 
               Orice litigiu va fi soluționat de instanțele competente din București, România.
             </p>
             <p className="text-slate-600 leading-relaxed mt-4">
-              Vindel respectă prevederile:
+              Vindu respectă prevederile:
             </p>
             <ul className="list-disc list-inside text-slate-600 space-y-2 mt-2">
               <li>Regulamentul (UE) 2016/679 (GDPR)</li>

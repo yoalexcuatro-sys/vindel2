@@ -83,7 +83,7 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-lg sm:text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-[11px] sm:text-sm mt-0.5 truncate">Privire de ansamblu Vindel.ro</p>
+          <p className="text-gray-500 text-[11px] sm:text-sm mt-0.5 truncate">Privire de ansamblu Vindu.ro</p>
         </div>
         <div className="shrink-0 flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-sm px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-gray-50 to-gray-100 rounded-full sm:rounded-lg border border-gray-200 shadow-sm">
           <div className={`w-2 h-2 rounded-full ${dbStatus === 'online' ? 'bg-green-500 shadow-sm shadow-green-500/50' : dbStatus === 'checking' ? 'bg-yellow-500 animate-pulse shadow-sm shadow-yellow-500/50' : 'bg-red-500 shadow-sm shadow-red-500/50'}`}></div>

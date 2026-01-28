@@ -69,24 +69,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const priceText = price ? `${price.toLocaleString('ro-RO')} ${(product.currency as string) === 'EUR' ? '€' : 'Lei'}` : 'Preț negociabil';
   const metaDescription = description 
     ? `${description.slice(0, 150)}... ${priceText} - ${location || 'România'}`
-    : `${title} - ${priceText} în ${location || 'România'}. Cumpără acum pe Vindel.ro!`;
+    : `${title} - ${priceText} în ${location || 'România'}. Cumpără acum pe Vindu.ro!`;
 
   const categorySlug = category ? slugify(category) : 'detalii';
   const titleSlug = slugify(title);
-  const canonicalUrl = `https://vindel.ro/anunturi/${categorySlug}/${titleSlug}--${shortId}`;
+  const canonicalUrl = `https://vindu.ro/anunturi/${categorySlug}/${titleSlug}--${shortId}`;
   
   // Imagen principal para compartir
-  const mainImage = images.length > 0 ? images[0] : 'https://vindel.ro/og-image.png';
+  const mainImage = images.length > 0 ? images[0] : 'https://vindu.ro/og-image.png';
 
   return {
     title: `${title} - ${priceText}`,
     description: metaDescription,
-    keywords: [title, category, location, 'anunț', 'second hand', 'vindel'].filter(Boolean),
+    keywords: [title, category, location, 'anunț', 'second hand', 'vindu'].filter(Boolean),
     openGraph: {
       title: `${title} - ${priceText}`,
       description: metaDescription,
       url: canonicalUrl,
-      siteName: 'Vindel.ro',
+      siteName: 'Vindu.ro',
       locale: 'ro_RO',
       type: 'article',
       images: [
@@ -104,7 +104,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${title} - ${priceText}`,
       description: metaDescription,
       images: [mainImage],
-      site: '@vindelro',
+      site: '@vindu_ro',
     },
     other: {
       'fb:app_id': '123456789', // Opcional: puedes agregar tu Facebook App ID
@@ -156,7 +156,7 @@ async function generateJsonLd(shortId: string) {
       itemCondition: conditionMap[condition] || 'https://schema.org/UsedCondition',
       seller: {
         '@type': 'Person',
-        name: 'Vindel User',
+        name: 'Vindu User',
       },
       areaServed: {
         '@type': 'Place',

@@ -175,7 +175,7 @@ export default function ProductGrid() {
       </div>
       
       {/* Grid Skeleton */}
-      <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
+      <div className="grid gap-1 sm:gap-1.5 md:gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
         {[...Array(10)].map((_, i) => (
           <div key={i} className="bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-3 border border-gray-100 shadow-sm">
             <div className="aspect-[4/3] bg-gradient-to-br from-gray-200 via-gray-100 to-gray-200 rounded-lg sm:rounded-xl mb-1.5 sm:mb-3 animate-pulse"></div>
@@ -255,7 +255,7 @@ export default function ProductGrid() {
               </div>
               
               {/* Premium Grid - Same as regular products */}
-              <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
+              <div className="grid gap-1 sm:gap-1.5 md:gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {premiumProducts.slice(0, visiblePremiumCount).map((product, index) => (
                   <div key={`premium-${product.id}`}>
                     <ProductCard product={product} priority={index < 4} />
@@ -306,7 +306,7 @@ export default function ProductGrid() {
           </div>
           
           {/* Product Grid - Responsive columns */}
-          <div className="grid gap-2 sm:gap-3 md:gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5">
+          <div className="grid gap-1 sm:gap-1.5 md:gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {visibleProducts.map((product, index) => (
               <div 
                 key={`${product.id}-theme-${currentTheme}`}

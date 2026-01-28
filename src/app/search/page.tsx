@@ -29,6 +29,22 @@ const CATEGORY_SLUG_MAP: Record<string, string[]> = {
   'agro': ['Agro', 'agro'],
 };
 
+// Main categories list with icons and slugs
+const MAIN_CATEGORIES = [
+  { slug: 'electronice', name: 'Electronice', icon: Smartphone },
+  { slug: 'auto-moto', name: 'Auto moto', icon: Car },
+  { slug: 'imobiliare', name: 'Imobiliare', icon: Building2 },
+  { slug: 'moda', name: 'Modă', icon: Shirt },
+  { slug: 'casa-gradina', name: 'Casă și grădină', icon: Home },
+  { slug: 'locuri-de-munca', name: 'Locuri de muncă', icon: Briefcase },
+  { slug: 'servicii', name: 'Servicii', icon: Wrench },
+  { slug: 'animale', name: 'Animale', icon: PawPrint },
+  { slug: 'mama-copil', name: 'Mama și copilul', icon: Baby },
+  { slug: 'sport', name: 'Sport & Timp liber', icon: Dumbbell },
+  { slug: 'gaming', name: 'Gaming', icon: Gamepad2 },
+  { slug: 'agro', name: 'Agro', icon: Leaf },
+];
+
 // Subcategories by category with icons
 interface SubcategoryItem {
   name: string;
@@ -183,18 +199,102 @@ const getConditionLabel = (condition?: string): { label: string; color: string }
   return conditions[condition] || null;
 };
 
+// Romanian locations - Counties and major cities
+const LOCATIONS = [
+  { name: 'Toată România', value: '' },
+  { name: 'București', value: 'București' },
+  { name: 'Cluj-Napoca', value: 'Cluj-Napoca' },
+  { name: 'Timișoara', value: 'Timișoara' },
+  { name: 'Iași', value: 'Iași' },
+  { name: 'Constanța', value: 'Constanța' },
+  { name: 'Craiova', value: 'Craiova' },
+  { name: 'Brașov', value: 'Brașov' },
+  { name: 'Galați', value: 'Galați' },
+  { name: 'Ploiești', value: 'Ploiești' },
+  { name: 'Oradea', value: 'Oradea' },
+  { name: 'Brăila', value: 'Brăila' },
+  { name: 'Arad', value: 'Arad' },
+  { name: 'Pitești', value: 'Pitești' },
+  { name: 'Sibiu', value: 'Sibiu' },
+  { name: 'Bacău', value: 'Bacău' },
+  { name: 'Târgu Mureș', value: 'Târgu Mureș' },
+  { name: 'Baia Mare', value: 'Baia Mare' },
+  { name: 'Buzău', value: 'Buzău' },
+  { name: 'Botoșani', value: 'Botoșani' },
+  { name: 'Satu Mare', value: 'Satu Mare' },
+  { name: 'Râmnicu Vâlcea', value: 'Râmnicu Vâlcea' },
+  { name: 'Drobeta-Turnu Severin', value: 'Drobeta-Turnu Severin' },
+  { name: 'Suceava', value: 'Suceava' },
+  { name: 'Piatra Neamț', value: 'Piatra Neamț' },
+  { name: 'Târgu Jiu', value: 'Târgu Jiu' },
+  { name: 'Tulcea', value: 'Tulcea' },
+  { name: 'Focșani', value: 'Focșani' },
+  { name: 'Bistrița', value: 'Bistrița' },
+  { name: 'Reșița', value: 'Reșița' },
+  { name: 'Slatina', value: 'Slatina' },
+  { name: 'Călărași', value: 'Călărași' },
+  { name: 'Alba Iulia', value: 'Alba Iulia' },
+  { name: 'Giurgiu', value: 'Giurgiu' },
+  { name: 'Deva', value: 'Deva' },
+  { name: 'Hunedoara', value: 'Hunedoara' },
+  { name: 'Zalău', value: 'Zalău' },
+  { name: 'Sfântu Gheorghe', value: 'Sfântu Gheorghe' },
+  { name: 'Vaslui', value: 'Vaslui' },
+  { name: 'Roman', value: 'Roman' },
+  { name: 'Turda', value: 'Turda' },
+  { name: 'Mediaș', value: 'Mediaș' },
+  { name: 'Slobozia', value: 'Slobozia' },
+  { name: 'Alexandria', value: 'Alexandria' },
+  { name: 'Voluntari', value: 'Voluntari' },
+  { name: 'Lugoj', value: 'Lugoj' },
+  { name: 'Medgidia', value: 'Medgidia' },
+  { name: 'Onești', value: 'Onești' },
+  { name: 'Miercurea Ciuc', value: 'Miercurea Ciuc' },
+];
+
 // Separate component to wrap in Suspense because of useSearchParams
 function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState('relevant');
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [showSubcategoryMenu, setShowSubcategoryMenu] = useState(false);
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showLocationMenu, setShowLocationMenu] = useState(false);
+  const categoryRef = useRef<HTMLDivElement>(null);
   const subcategoryRef = useRef<HTMLDivElement>(null);
+  const locationRef = useRef<HTMLDivElement>(null);
+  const sortRef = useRef<HTMLDivElement>(null);
   const [currentTheme, setCurrentTheme] = useState(1);
+  const [scrollDirection, setScrollDirection] = useState<'up' | 'down'>('up');
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [locationSearch, setLocationSearch] = useState('');
+  
+  // Price and currency filters
+  const [minPrice, setMinPrice] = useState(searchParams.get('minPrice') || '');
+  const [maxPrice, setMaxPrice] = useState(searchParams.get('maxPrice') || '');
+  const [currency, setCurrency] = useState(searchParams.get('currency') || 'RON');
+
+  // Detect scroll direction
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setScrollDirection('down');
+      } else {
+        setScrollDirection('up');
+      }
+      setLastScrollY(currentScrollY);
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   // Listen for theme changes
   useEffect(() => {
@@ -334,11 +434,9 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
           })
         : true;
 
-    // Subcategory filter
-    // Subcategory filter - case-insensitive partial match
+    // Subcategory filter - EXACT match (case-insensitive)
     const matchesSubcategory = selectedSubcategory
-        ? (product.subcategory?.toLowerCase() || '').includes(selectedSubcategory.toLowerCase()) ||
-          selectedSubcategory.toLowerCase().includes(product.subcategory?.toLowerCase() || '')
+        ? (product.subcategory?.toLowerCase() || '') === selectedSubcategory.toLowerCase()
         : true;
 
     // Negotiable
@@ -426,186 +524,405 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
           }
         `}</style>
         
-        {/* Header - Mobile optimized */}
-        <div className="flex flex-col gap-2 sm:gap-3 pb-3 sm:pb-4 border-b border-gray-100 animate-fadeInUp relative z-20">
-            {/* Results count + Controls Row - Same line on mobile */}
-            <div className="flex items-center justify-between gap-2 relative z-30 w-full">
-              {/* Left side: Results count */}
-              <h1 className="text-base sm:text-xl font-bold text-gray-900 flex-shrink-0">
+        {/* Main Content with Sidebar Layout */}
+        <div className="flex gap-6">
+          {/* Left Sidebar - Filters */}
+          <aside className="hidden lg:block w-80 flex-shrink-0">
+            <div className="sticky top-24 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+              {/* Sidebar Header */}
+              <div className="bg-gradient-to-r from-[#13C1AC]/15 via-[#13C1AC]/10 to-[#13C1AC]/5 px-5 py-4 border-b border-[#13C1AC]/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#13C1AC] to-[#0ea895] flex items-center justify-center shadow-sm">
+                    <Filter className="w-4 h-4 text-white" />
+                  </div>
+                  <span className="text-base font-semibold text-gray-800">Filtre</span>
+                </div>
+              </div>
+              
+              <div className="p-4 space-y-5">
+                {/* Category Section */}
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2.5 block">
+                    Categorie
+                  </label>
+                  <div className="relative" ref={categoryRef}>
+                    <button 
+                      onClick={() => { setShowCategoryMenu(!showCategoryMenu); setShowSubcategoryMenu(false); }}
+                      className={`w-full flex items-center justify-between px-3.5 py-3 border rounded-xl text-sm transition-all duration-200 ${
+                        categoryParam 
+                          ? 'bg-gradient-to-r from-[#13C1AC]/5 to-transparent border-[#13C1AC]/30 shadow-sm' 
+                          : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        {categoryParam ? (
+                          (() => {
+                            const cat = MAIN_CATEGORIES.find(c => c.slug === categoryParam);
+                            const CatIcon = cat?.icon || Layers;
+                            return (
+                              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#13C1AC]/20 to-[#13C1AC]/10 flex items-center justify-center">
+                                <CatIcon className="w-4 h-4 text-[#13C1AC]" />
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          <div className="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center">
+                            <Layers className="w-4 h-4 text-gray-400" />
+                          </div>
+                        )}
+                        <span className={`font-medium ${categoryParam ? 'text-gray-800' : 'text-gray-500'}`}>
+                          {MAIN_CATEGORIES.find(c => c.slug === categoryParam)?.name || 'Toate categoriile'}
+                        </span>
+                      </div>
+                      <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showCategoryMenu ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {showCategoryMenu && (
+                      <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-lg shadow-gray-200/50 z-[100] max-h-72 overflow-y-auto py-1.5">
+                        <button
+                          onClick={() => { 
+                            setSelectedSubcategory(null); 
+                            setShowCategoryMenu(false);
+                            const params = new URLSearchParams(searchParams.toString());
+                            params.delete('category');
+                            params.delete('subcategory');
+                            router.push(`/search?${params.toString()}`);
+                          }}
+                          className={`w-full px-3 py-2.5 text-left text-sm transition-all flex items-center gap-3 mx-1.5 rounded-lg ${
+                            !categoryParam ? 'bg-[#13C1AC]/10 text-[#13C1AC] font-medium' : 'text-gray-600 hover:bg-gray-50'
+                          }`}
+                          style={{ width: 'calc(100% - 12px)' }}
+                        >
+                          <Layers className="w-4 h-4" />
+                          <span>Toate categoriile</span>
+                        </button>
+                        {MAIN_CATEGORIES.map((cat) => {
+                          const CatIcon = cat.icon;
+                          const isSelected = categoryParam === cat.slug;
+                          return (
+                            <button
+                              key={cat.slug}
+                              onClick={() => { 
+                                setSelectedSubcategory(null);
+                                setShowCategoryMenu(false);
+                                const params = new URLSearchParams(searchParams.toString());
+                                params.set('category', cat.slug);
+                                params.delete('subcategory');
+                                router.push(`/search?${params.toString()}`);
+                              }}
+                              className={`w-full px-3 py-2.5 text-left text-sm transition-all flex items-center gap-3 mx-1.5 rounded-lg ${
+                                isSelected ? 'bg-[#13C1AC]/10 text-[#13C1AC] font-medium' : 'text-gray-600 hover:bg-gray-50'
+                              }`}
+                              style={{ width: 'calc(100% - 12px)' }}
+                            >
+                              <CatIcon className="w-4 h-4" />
+                              <span>{cat.name}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Subcategory in sidebar */}
+                  {categoryParam && SUBCATEGORIES[categoryParam] && SUBCATEGORIES[categoryParam].length > 0 && (
+                    <div className="mt-2.5 relative" ref={subcategoryRef}>
+                      <button 
+                        onClick={() => { setShowSubcategoryMenu(!showSubcategoryMenu); setShowCategoryMenu(false); }}
+                        className={`w-full flex items-center justify-between px-3.5 py-3 border rounded-xl text-sm transition-all duration-200 ${
+                          selectedSubcategory 
+                            ? 'bg-gradient-to-r from-[#13C1AC]/5 to-transparent border-[#13C1AC]/30 shadow-sm' 
+                            : 'bg-white border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {selectedSubcategory ? (
+                            (() => {
+                              const subcat = SUBCATEGORIES[categoryParam].find(s => s.name === selectedSubcategory);
+                              const SubIcon = subcat?.icon || Tag;
+                              return (
+                                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#13C1AC]/20 to-[#13C1AC]/10 flex items-center justify-center">
+                                  <SubIcon className="w-4 h-4 text-[#13C1AC]" />
+                                </div>
+                              );
+                            })()
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center">
+                              <Tag className="w-4 h-4 text-gray-400" />
+                            </div>
+                          )}
+                          <span className={`font-medium ${selectedSubcategory ? 'text-gray-800' : 'text-gray-500'}`}>
+                            {selectedSubcategory || 'Subcategorie'}
+                          </span>
+                        </div>
+                        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showSubcategoryMenu ? 'rotate-180' : ''}`} />
+                      </button>
+                      
+                      {showSubcategoryMenu && (
+                        <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-100 rounded-xl shadow-lg shadow-gray-200/50 z-[100] max-h-72 overflow-y-auto py-1.5">
+                          <button
+                            onClick={() => { 
+                              setSelectedSubcategory(null); 
+                              setShowSubcategoryMenu(false);
+                              const params = new URLSearchParams(searchParams.toString());
+                              params.delete('subcategory');
+                              router.push(`/search?${params.toString()}`);
+                            }}
+                            className={`w-full px-3 py-2.5 text-left text-sm transition-all flex items-center gap-3 mx-1.5 rounded-lg ${
+                              !selectedSubcategory ? 'bg-[#13C1AC]/10 text-[#13C1AC] font-medium' : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                            style={{ width: 'calc(100% - 12px)' }}
+                          >
+                            <Layers className="w-4 h-4" />
+                            <span>Toate</span>
+                          </button>
+                          {SUBCATEGORIES[categoryParam].map((subcat) => {
+                            const SubIcon = subcat.icon;
+                            const isSelected = selectedSubcategory === subcat.name;
+                            return (
+                              <button
+                                key={subcat.name}
+                                onClick={() => { 
+                                  setSelectedSubcategory(subcat.name); 
+                                  setShowSubcategoryMenu(false);
+                                  const params = new URLSearchParams(searchParams.toString());
+                                  params.set('subcategory', subcat.name);
+                                  router.push(`/search?${params.toString()}`);
+                                }}
+                                className={`w-full px-3 py-2.5 text-left text-sm transition-all flex items-center gap-3 mx-1.5 rounded-lg ${
+                                  isSelected ? 'bg-[#13C1AC]/10 text-[#13C1AC] font-medium' : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                                style={{ width: 'calc(100% - 12px)' }}
+                              >
+                                <SubIcon className="w-4 h-4" />
+                                <span>{subcat.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
+
+                {/* Price Section */}
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2.5 block">
+                    Preț
+                  </label>
+                  
+                  {/* Currency Toggle */}
+                  <div className="flex mb-3 bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setCurrency('RON')}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all duration-200 ${
+                        currency === 'RON' 
+                          ? 'bg-white text-[#13C1AC] shadow-sm' 
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      LEI
+                    </button>
+                    <button
+                      onClick={() => setCurrency('EUR')}
+                      className={`flex-1 py-2 text-xs font-semibold rounded-md transition-all duration-200 ${
+                        currency === 'EUR' 
+                          ? 'bg-white text-[#13C1AC] shadow-sm' 
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      EURO
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Min"
+                        value={minPrice}
+                        onChange={(e) => setMinPrice(e.target.value.replace(/[^0-9]/g, ''))}
+                        className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium placeholder-gray-400 focus:outline-none focus:border-[#13C1AC] focus:ring-2 focus:ring-[#13C1AC]/10 transition-all duration-200"
+                      />
+                    </div>
+                    <span className="text-gray-300">—</span>
+                    <div className="flex-1 relative">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="Max"
+                        value={maxPrice}
+                        onChange={(e) => setMaxPrice(e.target.value.replace(/[^0-9]/g, ''))}
+                        className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium placeholder-gray-400 focus:outline-none focus:border-[#13C1AC] focus:ring-2 focus:ring-[#13C1AC]/10 transition-all duration-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
+
+                {/* Location Section */}
+                <div>
+                  <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2.5 block">
+                    Locație
+                  </label>
+                  <div className="flex items-center bg-white rounded-xl px-3.5 py-3 border border-gray-200 focus-within:border-[#13C1AC] focus-within:ring-2 focus-within:ring-[#13C1AC]/10 transition-all duration-200 group">
+                    <MapPin className="w-4 h-4 text-gray-400 group-focus-within:text-[#13C1AC] transition-colors" />
+                    <input
+                      type="text"
+                      placeholder="Caută oraș sau județ..."
+                      defaultValue={locationParam || ''}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const value = (e.target as HTMLInputElement).value;
+                          const params = new URLSearchParams(searchParams.toString());
+                          if (value.trim()) {
+                            params.set('location', value.trim());
+                          } else {
+                            params.delete('location');
+                          }
+                          router.push(`/search?${params.toString()}`);
+                        }
+                      }}
+                      className="flex-1 bg-transparent border-none outline-none text-sm font-medium ml-2.5 placeholder-gray-400"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="pt-3 space-y-2.5">
+                  <button
+                    onClick={() => {
+                      const params = new URLSearchParams(searchParams.toString());
+                      if (minPrice) params.set('minPrice', minPrice); else params.delete('minPrice');
+                      if (maxPrice) params.set('maxPrice', maxPrice); else params.delete('maxPrice');
+                      if (currency && currency !== 'RON') params.set('currency', currency); else params.delete('currency');
+                      router.push(`/search?${params.toString()}`);
+                    }}
+                    className="w-full py-3 bg-gradient-to-r from-[#13C1AC] to-[#0ea895] text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-[#13C1AC]/25 transition-all duration-200 active:scale-[0.98]"
+                  >
+                    Aplică filtre
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedSubcategory(null);
+                      setMinPrice('');
+                      setMaxPrice('');
+                      setCurrency('RON');
+                      const params = new URLSearchParams();
+                      if (query) params.set('q', query);
+                      router.push(`/search?${params.toString()}`);
+                    }}
+                    className="w-full py-3 bg-gray-50 text-gray-600 rounded-xl font-medium hover:bg-gray-100 transition-all duration-200"
+                  >
+                    Șterge filtrele
+                  </button>
+                </div>
+              </div>
+            </div>
+          </aside>
+
+          {/* Right Content - Results */}
+          <div className="flex-1 min-w-0">
+            {/* Results Header */}
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">
                   <span className="text-[#13C1AC]">{sortedProducts.length}</span>
                   <span className="text-gray-600 font-medium"> rezultate</span>
-              </h1>
-              
-              {/* Right side: Controls */}
-              <div className="flex items-center gap-2">
+                </h1>
+                {/* Active filters badges */}
+                {(categoryParam || subcategoryParam || locationParam) && (
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    {categoryParam && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#13C1AC]/10 text-[#13C1AC] rounded-full text-xs font-medium">
+                        <Layers className="w-3 h-3" />
+                        {categoryParam}
+                      </span>
+                    )}
+                    {subcategoryParam && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#13C1AC]/10 text-[#13C1AC] rounded-full text-xs font-medium">
+                        <Tag className="w-3 h-3" />
+                        {subcategoryParam}
+                      </span>
+                    )}
+                    {locationParam && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#13C1AC]/10 text-[#13C1AC] rounded-full text-xs font-medium">
+                        <MapPin className="w-3 h-3" />
+                        {locationParam}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Sort & View Controls */}
+              <div className="flex items-center gap-3">
                 {/* Sort Dropdown */}
-                <div className="relative z-[100]">
-                  <button 
+                <div className="relative" ref={sortRef}>
+                  <button
                     onClick={() => setShowSortMenu(!showSortMenu)}
-                    className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-gray-200 rounded-xl text-xs sm:text-sm font-medium text-gray-700 hover:border-[#13C1AC] hover:shadow-sm active:scale-[0.98] transition-all shadow-sm"
+                    className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm hover:bg-gray-50 transition-colors"
                   >
-                    <ArrowUpDown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#13C1AC]" />
-                    <span className="hidden sm:inline">{sortOptions.find(o => o.value === sortBy)?.label || 'Sortare'}</span>
-                    <span className="sm:hidden">{sortOptions.find(o => o.value === sortBy)?.label.split(' ')[0] || 'Sortare'}</span>
-                    <ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 transition-transform duration-200 ${showSortMenu ? 'rotate-180' : ''}`} />
+                    <span className="text-gray-700">
+                      {sortBy === 'newest' ? 'Cele mai noi' : sortBy === 'price-asc' ? 'Preț crescător' : 'Preț descrescător'}
+                    </span>
+                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showSortMenu ? 'rotate-180' : ''}`} />
                   </button>
                   
                   {showSortMenu && (
                     <>
-                      <div 
-                        className="fixed inset-0 z-[90]" 
-                        onClick={() => setShowSortMenu(false)}
-                      />
-                      <div className="absolute right-0 top-full mt-2 w-52 bg-white border border-gray-100 rounded-xl shadow-xl z-[100] overflow-hidden">
-                        <div className="py-1">
-                          {sortOptions.map((option) => (
-                            <button
-                              key={option.value}
-                              onClick={() => { setSortBy(option.value); setShowSortMenu(false); }}
-                              className={`w-full px-4 py-3 text-left text-sm transition-all flex items-center justify-between ${
-                                sortBy === option.value 
-                                  ? 'bg-gradient-to-r from-[#13C1AC]/10 to-transparent text-[#13C1AC] font-semibold' 
-                                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                              }`}
-                            >
-                              <span>{option.label}</span>
-                              {sortBy === option.value && (
-                                <span className="w-2 h-2 bg-[#13C1AC] rounded-full"></span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
+                      <div className="fixed inset-0 z-[9998]" onClick={() => setShowSortMenu(false)} />
+                      <div className="absolute right-0 top-full mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-[9999] w-44 overflow-hidden">
+                        <button
+                          onClick={() => { setSortBy('newest'); setShowSortMenu(false); }}
+                          className={`w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 transition-colors ${sortBy === 'newest' ? 'bg-[#13C1AC]/10 text-[#13C1AC] font-medium' : 'text-gray-700'}`}
+                        >
+                          Cele mai noi
+                        </button>
+                        <button
+                          onClick={() => { setSortBy('price-asc'); setShowSortMenu(false); }}
+                          className={`w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 transition-colors ${sortBy === 'price-asc' ? 'bg-[#13C1AC]/10 text-[#13C1AC] font-medium' : 'text-gray-700'}`}
+                        >
+                          Preț crescător
+                        </button>
+                        <button
+                          onClick={() => { setSortBy('price-desc'); setShowSortMenu(false); }}
+                          className={`w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 transition-colors ${sortBy === 'price-desc' ? 'bg-[#13C1AC]/10 text-[#13C1AC] font-medium' : 'text-gray-700'}`}
+                        >
+                          Preț descrescător
+                        </button>
                       </div>
                     </>
                   )}
                 </div>
-                
-                {/* Subcategory Dropdown */}
-                {categoryParam && SUBCATEGORIES[categoryParam] && (
-                  <div className="relative z-[90]" ref={subcategoryRef}>
-                    <button 
-                      onClick={() => setShowSubcategoryMenu(!showSubcategoryMenu)}
-                      className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border rounded-xl text-xs sm:text-sm font-medium hover:shadow-sm active:scale-[0.98] transition-all shadow-sm ${
-                        selectedSubcategory 
-                          ? 'border-[#13C1AC] text-[#13C1AC]' 
-                          : 'border-gray-200 text-gray-700 hover:border-[#13C1AC]'
-                      }`}
-                    >
-                      <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      <span className="max-w-[60px] sm:max-w-none truncate">{selectedSubcategory || 'Sub.'}</span>
-                      <ChevronDown className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-400 transition-transform duration-200 ${showSubcategoryMenu ? 'rotate-180' : ''}`} />
-                    </button>
-                    
-                    {showSubcategoryMenu && (
-                      <>
-                        <div 
-                          className="fixed inset-0 z-[80]" 
-                          onClick={() => setShowSubcategoryMenu(false)}
-                        />
-                        <div className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-100 rounded-xl shadow-xl z-[90] overflow-hidden max-h-72 overflow-y-auto">
-                          <div className="py-1">
-                            <button
-                              onClick={() => { setSelectedSubcategory(null); setShowSubcategoryMenu(false); }}
-                              className={`w-full px-4 py-2.5 text-left text-sm transition-all flex items-center gap-3 ${
-                                !selectedSubcategory 
-                                  ? 'bg-gradient-to-r from-[#13C1AC]/10 to-transparent text-[#13C1AC] font-semibold' 
-                                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                              }`}
-                            >
-                              <Layers className="w-4 h-4" />
-                              <span>Toate subcategoriile</span>
-                              {!selectedSubcategory && (
-                                <span className="ml-auto w-2 h-2 bg-[#13C1AC] rounded-full"></span>
-                              )}
-                            </button>
-                            <div className="h-px bg-gray-100 my-1"></div>
-                            {SUBCATEGORIES[categoryParam].map((subcat) => {
-                              const SubIcon = subcat.icon;
-                              return (
-                                <button
-                                  key={subcat.name}
-                                  onClick={() => { setSelectedSubcategory(subcat.name); setShowSubcategoryMenu(false); }}
-                                  className={`w-full px-4 py-2.5 text-left text-sm transition-all flex items-center gap-3 ${
-                                    selectedSubcategory === subcat.name 
-                                      ? 'bg-gradient-to-r from-[#13C1AC]/10 to-transparent text-[#13C1AC] font-semibold' 
-                                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                  }`}
-                                >
-                                  <SubIcon className="w-4 h-4" />
-                                  <span>{subcat.name}</span>
-                                  {selectedSubcategory === subcat.name && (
-                                    <span className="ml-auto w-2 h-2 bg-[#13C1AC] rounded-full"></span>
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-                
-                {/* Mobile Filter Button - Inline */}
-                <button
-                  onClick={onOpenFilters}
-                  className="lg:hidden flex items-center gap-1.5 px-3 py-2 sm:py-2.5 bg-[#13C1AC] text-white font-medium rounded-xl text-xs sm:text-sm hover:bg-[#10a593] active:scale-[0.98] transition-all shadow-sm"
-                >
-                  <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  <span className="hidden sm:inline">Filtre</span>
-                </button>
-                
-                {/* View Toggle - At the end */}
-                <div className="flex items-center bg-white border border-gray-200 rounded-lg sm:rounded-xl overflow-hidden shadow-sm">
+
+                {/* View Toggle */}
+                <div className="flex items-center bg-white rounded-lg overflow-hidden border border-gray-200">
                   <button 
                     onClick={() => setViewMode('grid')}
-                    className={`p-1.5 sm:p-2.5 transition-all ${viewMode === 'grid' ? 'bg-[#13C1AC] text-white' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+                    className={`p-2 transition-all ${viewMode === 'grid' ? 'bg-[#13C1AC] text-white' : 'text-gray-500 hover:bg-gray-50'}`}
                   >
                     <Grid3X3 className="w-4 h-4" />
                   </button>
-                  <div className="w-px h-4 sm:h-5 bg-gray-200"></div>
                   <button 
                     onClick={() => setViewMode('list')}
-                    className={`p-1.5 sm:p-2.5 transition-all ${viewMode === 'list' ? 'bg-[#13C1AC] text-white' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+                    className={`p-2 transition-all ${viewMode === 'list' ? 'bg-[#13C1AC] text-white' : 'text-gray-500 hover:bg-gray-50'}`}
                   >
                     <LayoutList className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             </div>
-            
-            {/* Category/Location badges - Second row */}
-            {categoryParam && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] sm:text-xs font-medium text-[#13C1AC] bg-[#13C1AC]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Layers className="w-3 h-3" />
-                  {categoryParam}
-                </span>
-                {locationParam && (
-                  <span className="text-[10px] sm:text-xs font-medium text-[#13C1AC] bg-[#13C1AC]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <MapPin className="w-3 h-3" />
-                    {locationParam}
-                  </span>
-                )}
-              </div>
-            )}
-            {!categoryParam && locationParam && (
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] sm:text-xs font-medium text-[#13C1AC] bg-[#13C1AC]/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  {locationParam}
-                </span>
-              </div>
-            )}
-            {query && (
-              <span className="text-xs sm:text-sm text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full truncate max-w-[200px] sm:max-w-none self-start">
-                "{query}"
-              </span>
-            )}
-        </div>
 
-        {sortedProducts.length > 0 ? (
-            viewMode === 'list' ? (
+            {/* Product Grid */}
+            {sortedProducts.length > 0 ? (
+              viewMode === 'list' ? (
               // Elegant List View
               <div className="space-y-3">
                 {sortedProducts.map((product, index) => {
@@ -707,7 +1024,7 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
               </div>
             ) : (
               // Grid View
-              <div className="grid gap-2 sm:gap-4 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+              <div className="grid gap-1 sm:gap-1.5 md:gap-2 grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {sortedProducts.map((product) => (
                     <div 
                       key={`${product.id}-theme-${currentTheme}`} 
@@ -727,6 +1044,8 @@ function SearchResults({ onOpenFilters }: { onOpenFilters: () => void }) {
                 <p className="text-xs sm:text-sm text-gray-500 px-4 max-w-xs mx-auto">Încearcă alți termeni sau filtre mai puțin specifice</p>
             </div>
         )}
+          </div>
+        </div>
     </div>
   );
 }
@@ -1338,91 +1657,18 @@ function SearchFiltersSidebar({ onClose }: { onClose?: () => void }) {
     );
 }
 
-// Mobile Filter Sheet Component
-function MobileFilterSheet({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  if (!isOpen) return null;
-  
-  return (
-    <div className="fixed inset-0 z-50 lg:hidden">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      {/* Sheet */}
-      <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[24px] max-h-[80vh] overflow-y-auto animate-slide-up overflow-x-hidden shadow-2xl">
-        {/* Handle bar */}
-        <div className="sticky top-0 bg-white pt-3 pb-2 px-4 z-10 border-b border-gray-100">
-          <div className="w-10 h-1 bg-gray-300 rounded-full mx-auto mb-3" />
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <SlidersHorizontal className="w-5 h-5 text-[#13C1AC]" />
-              Filtre
-            </h2>
-            <button 
-              onClick={onClose}
-              className="p-1.5 -mr-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-        
-        {/* Content */}
-        <div className="p-4 pb-8">
-          <Suspense fallback={<div className="py-8 text-center text-gray-500">Se încarcă...</div>}>
-            <SearchFiltersSidebar onClose={onClose} />
-          </Suspense>
-        </div>
-      </div>
-      <style jsx>{`
-        @keyframes slide-up {
-          from { transform: translateY(100%); }
-          to { transform: translateY(0); }
-        }
-        .animate-slide-up {
-          animation: slide-up 0.3s ease-out forwards;
-        }
-      `}</style>
-    </div>
-  );
-}
-
 export default function SearchPage() {
-  const [showMobileFilters, setShowMobileFilters] = useState(false);
-  
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Fixed Sidebar - Always visible on desktop */}
-      <div className="hidden lg:block fixed top-20 left-[max(1rem,calc((100vw-80rem)/2+1rem))] w-80 z-30 max-h-[calc(100vh-6rem)] overflow-visible">
-        <div className="max-h-[calc(100vh-6rem)] overflow-y-auto overflow-x-visible pr-2 -mr-2">
-          <Suspense fallback={<div className="w-full h-96 bg-gray-100 rounded-xl animate-pulse" />}>
-            <SearchFiltersSidebar />
-          </Suspense>
-        </div>
-      </div>
-      
       <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 pt-8 sm:pt-6 lg:pt-8 pb-24 md:pb-8">
-         {/* Mobile Filter Button - Now inline in header, this is hidden */}
-         
-         <div className="flex flex-col lg:flex-row lg:gap-8">
-            
-            {/* Spacer for fixed sidebar on desktop */}
-            <div className="hidden lg:block w-80 flex-shrink-0" />
-
+         <div className="flex flex-col">
             <main className="flex-1 min-w-0 pb-20 lg:pb-0">
                <Suspense fallback={<div className="flex justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#13C1AC]"></div></div>}>
-                 <SearchResults onOpenFilters={() => setShowMobileFilters(true)} />
+                 <SearchResults onOpenFilters={() => {}} />
                </Suspense>
             </main>
          </div>
       </div>
-      
-      {/* Mobile Filter Sheet */}
-      <MobileFilterSheet 
-        isOpen={showMobileFilters} 
-        onClose={() => setShowMobileFilters(false)} 
-      />
     </div>
   );
 }

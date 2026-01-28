@@ -10,7 +10,7 @@ const contactMethods = [
     {
         icon: Mail,
         title: 'Email',
-        value: 'support@vindel.ro',
+        value: 'support@vindu.ro',
         description: 'Răspundem în maxim 24h',
         color: 'from-blue-500 to-cyan-500'
     },

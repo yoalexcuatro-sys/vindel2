@@ -7,13 +7,13 @@ import { db } from '@/lib/firebase';
 
 export default function AdminSEO() {
   const [settings, setSettings] = useState({
-    siteName: 'Vindel.ro',
+    siteName: 'Vindu.ro',
     siteTitleSuffix: 'Anunțuri Gratuite România',
     siteDescription: 'Platforma ta de anunțuri gratuite. Cumpără și vinde rapid și sigur.',
     keywords: 'anunturi, vanzari, cumparari, auto, imobiliare, electronice, romania',
-    socialFacebook: 'https://facebook.com/vindel',
-    socialInstagram: 'https://instagram.com/vindel',
-    contactEmail: 'suport@vindel.ro',
+    socialFacebook: 'https://facebook.com/vindu',
+    socialInstagram: 'https://instagram.com/vindu',
+    contactEmail: 'suport@vindu.ro',
     googleSiteVerification: '',
     allowIndexing: true
   });
@@ -140,8 +140,8 @@ export default function AdminSEO() {
                             V
                         </div>
                         <div className="flex flex-col leading-tight">
-                            <span className="text-sm text-[#202124]">vindel.ro</span>
-                            <span className="text-xs text-[#5f6368]">https://vindel.ro</span>
+                            <span className="text-sm text-[#202124]">vindu.ro</span>
+                            <span className="text-xs text-[#5f6368]">https://vindu.ro</span>
                         </div>
                     </div>
                     <h3 className="text-xl text-[#1a0dab] hover:underline cursor-pointer font-medium mb-1 truncate">
@@ -200,7 +200,7 @@ export default function AdminSEO() {
                         <p className="text-sm font-medium text-blue-900">Sitemap URL</p>
                         <p className="text-xs text-blue-700">Link-ul către harta site-ului pentru Google Search Console:</p>
                         <code className="block bg-white px-2 py-1 rounded border border-blue-200 text-xs font-mono text-blue-600 mt-1 select-all">
-                            https://vindel.ro/sitemap.xml
+                            https://vindu.ro/sitemap.xml
                         </code>
                     </div>
                 </div>

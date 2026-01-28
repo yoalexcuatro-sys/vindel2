@@ -91,7 +91,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { icon: Megaphone, label: 'Marketing', href: '/admin/promotions', badge: null },
     { icon: Users, label: 'Utilizatori', href: '/admin/users', badge: null },
     { icon: Globe, label: 'SEO & Config', href: '/admin/seo', badge: null },
-    { icon: Home, label: 'Vindel.ro', href: '/', badge: null },
+    { icon: Home, label: 'Vindu.ro', href: '/', badge: null },
   ];
 
   return (
@@ -113,7 +113,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#13C1AC] to-teal-600 flex items-center justify-center">
               <ShieldCheck className="w-4 h-4 text-white" />
             </div>
-            <span className="text-white font-semibold text-sm">Vindel Admin</span>
+            <span className="text-white font-semibold text-sm">Vindu Admin</span>
           </div>
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)} 
@@ -238,7 +238,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center mb-3 ring-4 ring-white/20 shadow-lg">
                     <ShieldCheck className="w-9 h-9 text-white" />
                   </div>
-                  <h2 className="font-bold text-white text-lg">Vindel Admin</h2>
+                  <h2 className="font-bold text-white text-lg">Vindu Admin</h2>
                   <p className="text-slate-400 text-sm mt-1 truncate px-2">{user?.email}</p>
                   
                   <span className="inline-flex items-center gap-1.5 mt-3 px-4 py-1.5 rounded-full text-xs font-semibold bg-teal-500/20 text-teal-400 border border-teal-500/30">

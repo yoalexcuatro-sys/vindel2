@@ -65,7 +65,7 @@ export default function SigurantaPage() {
                     <div className="inline-flex items-center justify-center w-16 h-16 bg-white/20 rounded-2xl mb-6">
                         <Shield className="w-8 h-8 text-white" />
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Siguranța pe Vindel</h1>
+                    <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Siguranța pe Vindu</h1>
                     <p className="text-xl text-white/90 max-w-2xl mx-auto">
                         Sfaturi esențiale pentru a avea tranzacții sigure și a evita înșelătoriile
                     </p>

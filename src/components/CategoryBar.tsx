@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState, useEffect } from 'react';
 
 const categories = [
-  { name: 'Imobiliare', shortName: 'Imobiliare', icon: Home, slug: 'imobiliare', color: '#3b82f6' },
+  { name: 'Imobiliare', shortName: 'Imobiliare', icon: Home, slug: 'imobiliare', color: '#3b82f6', isNew: true },
   { name: 'Auto & Moto', shortName: 'Auto', icon: Car, slug: 'auto-moto', color: '#ef4444' },
   { name: 'Locuri de muncă', shortName: 'Joburi', icon: Briefcase, slug: 'locuri-de-munca', color: '#a855f7' },
   { name: 'Matrimoniale', shortName: 'Matrimoniale', icon: Heart, slug: 'matrimoniale', color: '#ec4899' },
@@ -152,18 +152,25 @@ export default function CategoryBar() {
                 >
                     {/* Mobile: Modern pill style */}
                     <div className="sm:hidden flex flex-col items-center gap-1.5 min-w-[60px]">
-                      <div 
-                        className="w-12 h-12 rounded-full flex items-center justify-center group-active:scale-90 transition-all duration-200 shadow-sm"
-                        style={{ 
-                          backgroundColor: `${category.color}12`,
-                          border: `1.5px solid ${category.color}25`
-                        }}
-                      >
-                        <category.icon 
-                          className="h-5 w-5 transition-transform group-active:scale-110" 
-                          style={{ color: category.color }} 
-                          strokeWidth={2}
-                        />
+                      <div className="relative">
+                        <div 
+                          className="w-12 h-12 rounded-full flex items-center justify-center group-active:scale-90 transition-all duration-200 shadow-sm"
+                          style={{ 
+                            backgroundColor: `${category.color}12`,
+                            border: `1.5px solid ${category.color}25`
+                          }}
+                        >
+                          <category.icon 
+                            className="h-5 w-5 transition-transform group-active:scale-110" 
+                            style={{ color: category.color }} 
+                            strokeWidth={2}
+                          />
+                        </div>
+                        {category.isNew && (
+                          <span className="absolute top-0 -right-1 bg-[#22c55e] text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md shadow-sm">
+                            Nou
+                          </span>
+                        )}
                       </div>
                       <span 
                         className="text-[10px] font-semibold text-center leading-tight max-w-[60px] truncate"
@@ -175,8 +182,15 @@ export default function CategoryBar() {
                     
                     {/* Desktop: Icon + Label style */}
                     <div className="hidden sm:flex flex-col items-center w-20 group">
-                      <div className="w-14 h-14 rounded-2xl border border-gray-100 bg-white flex items-center justify-center mb-2 group-hover:border-[#13C1AC] group-hover:bg-[#13C1AC]/5 group-hover:shadow-lg transition-all text-gray-500 group-hover:text-[#13C1AC] shadow-sm group-hover:scale-105">
-                          <category.icon className="h-6 w-6" />
+                      <div className="relative">
+                        <div className="w-14 h-14 rounded-2xl border border-gray-100 bg-white flex items-center justify-center mb-2 group-hover:border-[#13C1AC] group-hover:bg-[#13C1AC]/5 group-hover:shadow-lg transition-all text-gray-500 group-hover:text-[#13C1AC] shadow-sm group-hover:scale-105">
+                            <category.icon className="h-6 w-6" />
+                        </div>
+                        {category.isNew && (
+                          <span className="absolute top-0 -right-2 bg-[#22c55e] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md shadow-sm">
+                            Nou
+                          </span>
+                        )}
                       </div>
                       <span className="text-xs font-medium text-gray-600 group-hover:text-[#13C1AC] text-center leading-tight transition-colors">{category.name}</span>
                     </div>

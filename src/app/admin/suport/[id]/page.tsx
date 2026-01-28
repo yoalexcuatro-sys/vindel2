@@ -101,7 +101,7 @@ export default function AdminSupportTicketPage() {
             await addMessageToTicket(
                 ticketId,
                 user.uid,
-                'Suport Vindel',
+                'Suport Vindu',
                 user.email || '',
                 newMessage.trim(),
                 true // IS admin

@@ -22,7 +22,7 @@ export default function ConfidentialitatePage() {
           
           <div className="bg-teal-50 border border-teal-200 rounded-lg p-6 mb-10">
             <p className="text-teal-800 m-0">
-              La Vindel, protejarea datelor dumneavoastră personale este o prioritate. Această politică explică 
+              La Vindu, protejarea datelor dumneavoastră personale este o prioritate. Această politică explică 
               cum colectăm, utilizăm și protejăm informațiile dumneavoastră în conformitate cu GDPR.
             </p>
           </div>
@@ -180,8 +180,8 @@ export default function ConfidentialitatePage() {
               Pentru exercitarea drepturilor sau întrebări despre datele personale:
             </p>
             <div className="bg-slate-50 rounded-lg p-4 mt-4">
-              <p className="text-slate-700"><strong>Responsabil Protecția Datelor:</strong> DPO Vindel</p>
-              <p className="text-slate-700"><strong>Email:</strong> dpo@vindel.ro</p>
+              <p className="text-slate-700"><strong>Responsabil Protecția Datelor:</strong> DPO Vindu</p>
+              <p className="text-slate-700"><strong>Email:</strong> dpo@vindu.ro</p>
               <p className="text-slate-700"><strong>Adresă:</strong> București, România</p>
             </div>
             <p className="text-slate-600 leading-relaxed mt-4">

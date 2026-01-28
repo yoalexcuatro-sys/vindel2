@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 3600; // Revalidate every hour
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://vindel.ro';
+  const baseUrl = 'https://vindu.ro';
   
   // Páginas estáticas
   const staticPages: MetadataRoute.Sitemap = [

@@ -17,6 +17,24 @@ import { extractIdFromSlug } from '@/lib/slugs';
 import { useProduct, useUserProducts, useUserProfile, useUserFavorites } from '@/lib/swr-hooks';
 import { formatPublicName } from '@/lib/messages';
 
+// Helper para verificar si el producto está promocionado
+const isProductPromoted = (product: Product): boolean => {
+  if (!product.promoted || !product.promotionEnd) return false;
+  
+  const now = new Date();
+  let endDate: Date;
+  
+  if (product.promotionEnd instanceof Timestamp) {
+    endDate = product.promotionEnd.toDate();
+  } else if (typeof product.promotionEnd === 'object' && 'seconds' in product.promotionEnd) {
+    endDate = new Date((product.promotionEnd as any).seconds * 1000);
+  } else {
+    return false;
+  }
+  
+  return endDate > now;
+};
+
 // Helper para tiempo relativo
 const getRelativeTime = (publishedAt?: Timestamp | { seconds: number; nanoseconds: number }): string => {
   if (!publishedAt) return 'Azi';
@@ -288,7 +306,7 @@ export default function ProductPage() {
   // Handle share
   const handleShare = async () => {
     const shareData = {
-      title: product?.title || 'Anunț Vindel.ro',
+      title: product?.title || 'Anunț Vindu.ro',
       text: `${product?.title} - ${product?.price?.toLocaleString('ro-RO')} ${product?.currency === 'EUR' ? '€' : 'Lei'}`,
       url: window.location.href,
     };
@@ -320,7 +338,7 @@ export default function ProductPage() {
     // Replace localhost with production URL for Facebook
     let shareUrl = window.location.href;
     if (shareUrl.includes('localhost')) {
-      shareUrl = shareUrl.replace(/http:\/\/localhost:\d+/, 'https://vindel.ro');
+      shareUrl = shareUrl.replace(/http:\/\/localhost:\d+/, 'https://vindu.ro');
     }
     const url = encodeURIComponent(shareUrl);
     window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank', 'width=600,height=400,noopener,noreferrer');
@@ -418,7 +436,7 @@ export default function ProductPage() {
     
     // Dynamic Title for SEO & UX
     if (product) {
-      document.title = `${product.title} | Vindel`;
+      document.title = `${product.title} | Vindu`;
       
       // Incrementar visitas únicas
       if (!hasTrackedView.current && product.sellerId !== user?.uid) {
@@ -633,6 +651,14 @@ export default function ProductPage() {
                         </svg>
                       </button>
                     </div>
+                    
+                    {/* Promoted badge */}
+                    {isProductPromoted(product) && (
+                      <div className="absolute top-2 sm:top-3 left-2 sm:left-3 bg-[#13C1AC] text-white px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm font-semibold shadow-lg animate-pulse-slow flex items-center gap-1.5">
+                        <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
+                        Promovat
+                      </div>
+                    )}
                     
                     {/* Views counter - hidden on mobile */}
                     <div className="hidden sm:flex absolute bottom-2 sm:bottom-3 left-2 sm:left-3 bg-black/70 text-white px-1.5 sm:px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium items-center gap-1">

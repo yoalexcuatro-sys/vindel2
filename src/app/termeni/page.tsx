@@ -26,7 +26,7 @@ export default function TermeniPage() {
               1. Acceptarea Termenilor
             </h2>
             <p className="text-slate-600 leading-relaxed">
-              Prin accesarea și utilizarea platformei Vindel („Platforma"), acceptați să fiți obligat de acești Termeni și Condiții. 
+              Prin accesarea și utilizarea platformei Vindu („Platforma"), acceptați să fiți obligat de acești Termeni și Condiții. 
               Dacă nu sunteți de acord cu oricare dintre acești termeni, vă rugăm să nu utilizați Platforma.
             </p>
           </section>
@@ -65,13 +65,13 @@ export default function TermeniPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">4. Anunțuri și Tranzacții</h2>
             <p className="text-slate-600 leading-relaxed mb-4">
-              Vindel acționează ca intermediar între vânzători și cumpărători. Nu suntem parte în tranzacțiile efectuate între utilizatori.
+              Vindu acționează ca intermediar între vânzători și cumpărători. Nu suntem parte în tranzacțiile efectuate între utilizatori.
             </p>
             <ul className="list-disc list-inside text-slate-600 space-y-2">
               <li>Vânzătorii sunt responsabili pentru acuratețea descrierilor produselor</li>
               <li>Prețurile trebuie să fie reale și să includă toate costurile</li>
               <li>Produsele interzise nu pot fi listate pe Platformă</li>
-              <li>Vindel își rezervă dreptul de a elimina orice anunț care încalcă regulile</li>
+              <li>Vindu își rezervă dreptul de a elimina orice anunț care încalcă regulile</li>
             </ul>
           </section>
 
@@ -99,7 +99,7 @@ export default function TermeniPage() {
               6. Limitarea Răspunderii
             </h2>
             <p className="text-slate-600 leading-relaxed">
-              Vindel nu este responsabil pentru:
+              Vindu nu este responsabil pentru:
             </p>
             <ul className="list-disc list-inside text-slate-600 space-y-2 mt-2">
               <li>Calitatea sau autenticitatea produselor listate</li>
@@ -113,7 +113,7 @@ export default function TermeniPage() {
             <h2 className="text-2xl font-bold text-slate-900 mb-4">7. Proprietate Intelectuală</h2>
             <p className="text-slate-600 leading-relaxed">
               Toate drepturile de proprietate intelectuală asupra Platformei și conținutului său (logo, design, cod sursă) 
-              aparțin Vindel. Utilizatorii acordă Vindel o licență non-exclusivă pentru a utiliza conținutul postat în 
+              aparțin Vindu. Utilizatorii acordă Vindu o licență non-exclusivă pentru a utiliza conținutul postat în 
               scopul operării Platformei.
             </p>
           </section>
@@ -121,7 +121,7 @@ export default function TermeniPage() {
           <section className="mb-10">
             <h2 className="text-2xl font-bold text-slate-900 mb-4">8. Suspendarea Contului</h2>
             <p className="text-slate-600 leading-relaxed">
-              Vindel își rezervă dreptul de a suspenda sau închide conturi care:
+              Vindu își rezervă dreptul de a suspenda sau închide conturi care:
             </p>
             <ul className="list-disc list-inside text-slate-600 space-y-2 mt-2">
               <li>Încalcă acești Termeni și Condiții</li>
@@ -149,7 +149,7 @@ export default function TermeniPage() {
               Pentru întrebări despre acești Termeni și Condiții, ne puteți contacta la:
             </p>
             <div className="bg-slate-50 rounded-lg p-4 mt-4">
-              <p className="text-slate-700"><strong>Email:</strong> legal@vindel.ro</p>
+              <p className="text-slate-700"><strong>Email:</strong> legal@vindu.ro</p>
               <p className="text-slate-700"><strong>Adresă:</strong> București, România</p>
             </div>
           </section>

@@ -157,7 +157,7 @@ export default function RegisterPage() {
         {/* Logo */}
         <div className="text-center mb-5 animate-[fadeInDown_0.8s_ease-out]">
           <Link href="/" className="inline-block text-3xl font-bold text-white drop-shadow-lg">
-            Vindel<span className="font-light opacity-80">.ro</span>
+            Vindu<span className="font-light opacity-80">.ro</span>
           </Link>
         </div>
 
@@ -439,7 +439,7 @@ export default function RegisterPage() {
         
         {/* Copyright */}
         <p className="text-center mt-4 text-xs text-white/50">
-          © 2026 Vindel.ro — Marketplace-ul tău de încredere
+          © 2026 Vindu.ro — Marketplace-ul tău de încredere
         </p>
       </div>
     </div>

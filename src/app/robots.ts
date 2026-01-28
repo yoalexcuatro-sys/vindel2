@@ -38,6 +38,6 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: 'https://vindel.ro/sitemap.xml',
+    sitemap: 'https://vindu.ro/sitemap.xml',
   };
 }

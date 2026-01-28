@@ -184,7 +184,7 @@ export default function UserProfile({ params }: { params: Promise<{ id: string }
                              </div>
                              <div className="flex items-center">
                                 <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
-                                <span className="hidden sm:inline">Pe Vindel din</span> {profileUser.joined || '2024'}
+                                <span className="hidden sm:inline">Pe Vindu din</span> {profileUser.joined || '2024'}
                              </div>
                         </div>
                         

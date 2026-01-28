@@ -7,7 +7,7 @@ import { ReactNode } from 'react';
 // CACHE UTILITIES
 // ============================================
 
-const CACHE_PREFIX = 'vindel-cache-';
+const CACHE_PREFIX = 'vindu-cache-';
 const CACHE_VERSION = 'v1';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos de TTL global
 

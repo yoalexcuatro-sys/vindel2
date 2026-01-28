@@ -31,7 +31,7 @@ function slugify(text: string): string {
 }
 
 async function generateSitemap() {
-  const baseUrl = 'https://www.vindel.ro';
+  const baseUrl = 'https://www.vindu.ro';
   const now = new Date().toISOString();
   
   console.log('🔍 Obteniendo productos de Firebase...');
@@ -137,7 +137,7 @@ ${allPages.map(page => `  <url>
   console.log(`   - ${productPages.length} productos`);
   console.log(`\n✅ Archivo guardado en: ${outputPath}`);
   console.log(`\n🌐 Después del deploy, estará disponible en:`);
-  console.log(`   https://www.vindel.ro/sitemap-products.xml`);
+  console.log(`   https://www.vindu.ro/sitemap-products.xml`);
   
   process.exit(0);
 }

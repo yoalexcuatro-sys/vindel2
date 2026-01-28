@@ -13,13 +13,13 @@ import {
 import { db } from './firebase';
 import { PromotionPlan } from './promotion-service';
 
-// Datos de la empresa emisora (Vindel)
+// Datos de la empresa emisora (Vindu)
 export const COMPANY_INFO = {
-  name: 'Vindel S.R.L.',
+  name: 'Vindu S.R.L.',
   cui: 'RO12345678',
   regCom: 'J40/1234/2024',
   address: 'Str. Exemplu nr. 10, București, România',
-  email: 'facturi@vindel.ro',
+  email: 'facturi@vindu.ro',
   phone: '+40 700 000 000',
   bank: 'Banca Transilvania',
   iban: 'RO49AAAA1B31007593840000',
@@ -504,7 +504,7 @@ export function generateInvoiceHTML(invoice: Invoice): string {
 <body>
   <div class="invoice">
     <div class="header">
-      <div class="logo">Vindel<span>.ro</span></div>
+      <div class="logo">Vindu<span>.ro</span></div>
       <div class="invoice-title">
         <h1>FACTURĂ</h1>
         <div class="invoice-number">${invoice.seriesNumber}</div>

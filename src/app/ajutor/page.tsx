@@ -63,7 +63,7 @@ export default function AjutorPage() {
                     </div>
                     <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Centru de ajutor</h1>
                     <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-                        Găsește răspunsuri la întrebările tale și învață cum să folosești platforma Vindel
+                        Găsește răspunsuri la întrebările tale și învață cum să folosești platforma Vindu
                     </p>
                     
                     {/* Search Bar */}
